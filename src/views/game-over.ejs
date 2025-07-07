@@ -1,0 +1,413 @@
+<% var pageScript = '/js/game-over.js'; var page = 'game-over'; %>
+<div class="game-over-container">
+    <!-- Game Over Header -->
+    <div class="game-over-header">
+        <h1>Game Over</h1>
+        <p class="game-over-subtitle">
+            <% if (runResult.victory) { %>
+                Congratulations! You have completed your journey.
+            <% } else { %>
+                Your journey has ended. Better luck next time.
+            <% } %>
+        </p>
+    </div>
+
+    <!-- Run Summary -->
+    <div class="run-summary">
+        <h2>Run Summary</h2>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <h4>Realm</h4>
+                <p><%= runResult.realmName %></p>
+            </div>
+            <div class="summary-item">
+                <h4>Level Reached</h4>
+                <p><%= runResult.levelReached %></p>
+            </div>
+            <div class="summary-item">
+                <h4>Final Health</h4>
+                <p><%= runResult.finalHealth %>/<%= runResult.maxHealth %></p>
+            </div>
+            <div class="summary-item">
+                <h4>Currency Earned</h4>
+                <p><%= runResult.currencyEarned %></p>
+            </div>
+            <div class="summary-item">
+                <h4>Enemies Defeated</h4>
+                <p><%= runResult.enemiesDefeated %></p>
+            </div>
+            <div class="summary-item">
+                <h4>Events Completed</h4>
+                <p><%= runResult.eventsCompleted %></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="achievements-section">
+        <h3>Achievements</h3>
+        <div class="achievements-list">
+            <% if (runResult.achievements && runResult.achievements.length > 0) { %>
+                <% runResult.achievements.forEach(achievement => { %>
+                <div class="achievement-item">
+                    <div class="achievement-icon">🏆</div>
+                    <div class="achievement-info">
+                        <h5><%= achievement.name %></h5>
+                        <p><%= achievement.description %></p>
+                    </div>
+                </div>
+                <% }); %>
+            <% } else { %>
+                <p class="no-achievements">No achievements earned this run.</p>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="statistics-section">
+        <h3>Run Statistics</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-label">Total Damage Dealt:</span>
+                <span class="stat-value"><%= runResult.totalDamageDealt %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Damage Taken:</span>
+                <span class="stat-value"><%= runResult.totalDamageTaken %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Cards Drawn:</span>
+                <span class="stat-value"><%= runResult.cardsDrawn %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Cards Played:</span>
+                <span class="stat-value"><%= runResult.cardsPlayed %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Shops Visited:</span>
+                <span class="stat-value"><%= runResult.shopsVisited %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Rest Events:</span>
+                <span class="stat-value"><%= runResult.restEvents %></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progression -->
+    <div class="progression-section">
+        <h3>Progression</h3>
+        <div class="progression-info">
+            <p><strong>XP Gained:</strong> <%= runResult.xpGained %></p>
+            <p><strong>Stats Improved:</strong></p>
+            <div class="stats-improvement">
+                <% if (runResult.statsImproved) { %>
+                    <% Object.entries(runResult.statsImproved).forEach(([stat, improvement]) => { %>
+                    <div class="stat-improvement">
+                        <span class="stat-name"><%= stat %>:</span>
+                        <span class="improvement-value">+<%= improvement %></span>
+                    </div>
+                    <% }); %>
+                <% } else { %>
+                    <p>No stats improved this run.</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equipment Found -->
+    <div class="equipment-section">
+        <h3>Equipment Found</h3>
+        <div class="equipment-found">
+            <% if (runResult.equipmentFound && runResult.equipmentFound.length > 0) { %>
+                <% runResult.equipmentFound.forEach(item => { %>
+                <div class="equipment-item">
+                    <span class="equipment-name"><%= item.name %></span>
+                    <span class="equipment-type"><%= item.type %></span>
+                </div>
+                <% }); %>
+            <% } else { %>
+                <p>No new equipment found this run.</p>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="game-over-actions">
+        <div class="row">
+            <div class="col-md-4">
+                <button class="btn btn-primary" onclick="returnToHomeRealm()">
+                    Return to Home Realm
+                </button>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-secondary" onclick="viewStatistics()">
+                    View Statistics
+                </button>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-success" onclick="startNewRun()">
+                    Start New Run
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Results -->
+    <div class="share-section">
+        <h4>Share Your Results</h4>
+        <div class="share-options">
+            <button class="btn btn-outline-primary" onclick="shareResults()">
+                Share on Social Media
+            </button>
+            <button class="btn btn-outline-secondary" onclick="copyResults()">
+                Copy Results
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Statistics Modal -->
+<div class="modal fade" id="statisticsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detailed Statistics</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="detailed-stats" id="detailed-stats">
+                    <!-- Detailed statistics will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Game over state management
+let runResult = <%- JSON.stringify(runResult) %>;
+
+// Initialize game over interface
+document.addEventListener('DOMContentLoaded', function() {
+    initializeGameOver();
+});
+
+function initializeGameOver() {
+    // Add any initialization logic here
+    console.log('Game over interface initialized');
+}
+
+// Game over actions
+function returnToHomeRealm() {
+    fetch('/game-over/return-home', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/home-realm';
+        } else {
+            alert('Failed to return to home realm: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to return to home realm');
+    });
+}
+
+function viewStatistics() {
+    fetch('/game-over/detailed-stats', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            populateDetailedStats(data.statistics);
+            new bootstrap.Modal(document.getElementById('statisticsModal')).show();
+        } else {
+            alert('Failed to load detailed statistics: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to load detailed statistics');
+    });
+}
+
+function populateDetailedStats(statistics) {
+    const detailedStats = document.getElementById('detailed-stats');
+    if (!detailedStats) return;
+    
+    detailedStats.innerHTML = `
+        <div class="detailed-stats-content">
+            <h4>Combat Statistics</h4>
+            <div class="stats-row">
+                <span>Battles Won:</span>
+                <span>${statistics.battlesWon || 0}</span>
+            </div>
+            <div class="stats-row">
+                <span>Battles Lost:</span>
+                <span>${statistics.battlesLost || 0}</span>
+            </div>
+            <div class="stats-row">
+                <span>Win Rate:</span>
+                <span>${statistics.winRate || '0%'}</span>
+            </div>
+            
+            <h4>Card Statistics</h4>
+            <div class="stats-row">
+                <span>Most Played Card:</span>
+                <span>${statistics.mostPlayedCard || 'None'}</span>
+            </div>
+            <div class="stats-row">
+                <span>Average Card Value:</span>
+                <span>${statistics.averageCardValue || '0'}</span>
+            </div>
+            
+            <h4>Progression Statistics</h4>
+            <div class="stats-row">
+                <span>Levels Completed:</span>
+                <span>${statistics.levelsCompleted || 0}</span>
+            </div>
+            <div class="stats-row">
+                <span>Realms Explored:</span>
+                <span>${statistics.realmsExplored || 0}</span>
+            </div>
+        </div>
+    `;
+}
+
+function startNewRun() {
+    fetch('/game-over/start-new-run', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                window.location.href = '/home-realm';
+            }
+        } else {
+            alert('Failed to start new run: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to start new run');
+    });
+}
+
+function shareResults() {
+    const shareText = generateShareText();
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Deckrift - Drawn to Dust',
+            text: shareText,
+            url: window.location.origin
+        }).catch(error => {
+            console.error('Error sharing:', error);
+            fallbackShare(shareText);
+        });
+    } else {
+        fallbackShare(shareText);
+    }
+}
+
+function copyResults() {
+    const shareText = generateShareText();
+    
+    navigator.clipboard.writeText(shareText).then(() => {
+        alert('Results copied to clipboard!');
+    }).catch(error => {
+        console.error('Error copying to clipboard:', error);
+        fallbackCopy(shareText);
+    });
+}
+
+function generateShareText() {
+    const result = runResult;
+    let text = `Deckrift - Drawn to Dust\n\n`;
+    
+    if (result.victory) {
+        text += `🏆 Victory! I completed ${result.realmName}!\n`;
+    } else {
+        text += `💀 Game Over. I reached level ${result.levelReached} in ${result.realmName}.\n`;
+    }
+    
+    text += `\n📊 Run Statistics:\n`;
+    text += `• Enemies Defeated: ${result.enemiesDefeated}\n`;
+    text += `• Events Completed: ${result.eventsCompleted}\n`;
+    text += `• Currency Earned: ${result.currencyEarned}\n`;
+    text += `• Final Health: ${result.finalHealth}/${result.maxHealth}\n`;
+    
+    if (result.achievements && result.achievements.length > 0) {
+        text += `\n🏆 Achievements: ${result.achievements.length}\n`;
+    }
+    
+    text += `\nPlay Deckrift - Drawn to Dust!`;
+    
+    return text;
+}
+
+function fallbackShare(text) {
+    // Create a temporary textarea to copy the text
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    
+    alert('Results copied to clipboard! You can now paste them anywhere.');
+}
+
+function fallbackCopy(text) {
+    // Create a temporary textarea to copy the text
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    
+    alert('Results copied to clipboard!');
+}
+
+// Add some visual effects
+document.addEventListener('DOMContentLoaded', function() {
+    // Add fade-in effect to summary items
+    const summaryItems = document.querySelectorAll('.summary-item');
+    summaryItems.forEach((item, index) => {
+        setTimeout(() => {
+            item.style.opacity = '1';
+            item.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Add achievement animations
+    const achievementItems = document.querySelectorAll('.achievement-item');
+    achievementItems.forEach((item, index) => {
+        setTimeout(() => {
+            item.style.opacity = '1';
+            item.style.transform = 'scale(1)';
+        }, (index + 5) * 100);
+    });
+});
+</script> 

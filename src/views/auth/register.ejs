@@ -1,0 +1,85 @@
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="home-card">
+                <div class="card-body">
+                    <h2 class="text-center mb-4">Register</h2>
+                    
+                    <form id="registerForm">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-input" id="username" name="username" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-input" id="email" name="email" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-input" id="password" name="password" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-input" id="confirmPassword" name="confirmPassword" required>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Register</button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <p>Already have an account? <a href="/login" class="text-primary">Login here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (password !== confirmPassword) {
+        showNotification('Error', 'Passwords do not match', 'error');
+        return;
+    }
+    
+    const formData = {
+        username: document.getElementById('username').value,
+        email: document.getElementById('email').value,
+        password: password
+    };
+    
+    try {
+        const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showNotification('Success', 'Registration successful! Please login.', 'success');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+        } else {
+            showNotification('Error', data.error || 'Registration failed', 'error');
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        showNotification('Error', 'Registration failed. Please try again.', 'error');
+    }
+});
+</script> 

@@ -1,31 +1,57 @@
 {
-  "name": "deckrift-server",
+  "name": "deckrift",
   "version": "1.0.0",
-  "description": "",
+  "description": "Deckrift – Drawn to Dust: A deck-based roguelike browser game with persistent progression and strategic card mechanics",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "pnpm format && pnpm lint:fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "build": "echo 'No build step required for this project'",
+    "deploy": "echo 'Deployment script to be configured'"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "game",
+    "card-game",
+    "roguelike",
+    "deck-building",
+    "browser-game",
+    "express",
+    "mongodb"
+  ],
+  "author": "Deckrift Development",
+  "license": "MIT",
   "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "connect-mongo": "^5.1.0",
     "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-ejs-layouts": "^2.5.1",
     "express-session": "^1.18.1",
     "mongodb": "^6.16.0",
-    "mongoose": "^8.15.0"
+    "mongoose": "^8.15.0",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
-    "eslint": "^9.27.0",
+    "axios": "^1.10.0",
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.0",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.10",
     "prettier": "^3.5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }

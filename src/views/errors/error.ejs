@@ -1,0 +1,22 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="error-page text-center">
+                <h1 class="text-danger mb-4">Oops! Something went wrong</h1>
+                <h2 class="mb-3"><%= message %></h2>
+                
+                <% if (error && error.stack) { %>
+                    <div class="error-details mt-4">
+                        <h4>Error Details (Development Only):</h4>
+                        <pre class="text-left bg-dark text-light p-3 rounded"><%= error.stack %></pre>
+                    </div>
+                <% } %>
+                
+                <div class="mt-4">
+                    <a href="/" class="btn btn-primary">Go Home</a>
+                    <a href="/home-realm" class="btn btn-secondary">Home Realm</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

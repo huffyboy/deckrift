@@ -1,0 +1,427 @@
+<% var pageScript = '/js/shop.js'; var page = 'shop'; %>
+<div class="shop-container">
+    <!-- Shop Header -->
+    <div class="shop-header">
+        <h2>Shop</h2>
+        <p class="shop-subtitle">Welcome to the merchant's stall. What would you like to purchase?</p>
+        <div class="shop-info">
+            <p><strong>Your Currency:</strong> <span class="currency-display"><%= player.currency %></span></p>
+            <p><strong>Current Health:</strong> <%= player.health %>/<%= player.maxHealth %></p>
+        </div>
+    </div>
+
+    <!-- Shop Items -->
+    <div class="shop-items">
+        <!-- Healing Section -->
+        <div class="shop-section">
+            <h3>Healing</h3>
+            <div class="shop-item">
+                <div class="item-info">
+                    <h4>Heal (10 HP)</h4>
+                    <p>Restore 10 health points</p>
+                    <p class="item-cost">Cost: <%= shop.healCost %> currency</p>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-primary" onclick="purchaseHeal()" <%= player.currency >= shop.healCost ? '' : 'disabled' %>>
+                        Purchase
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Removal Section -->
+        <div class="shop-section">
+            <h3>Deck Management</h3>
+            <div class="shop-item">
+                <div class="item-info">
+                    <h4>Remove Card</h4>
+                    <p>Draw your hand and choose a card to remove from your deck</p>
+                    <p class="item-cost">Cost: <%= shop.cardRemovalCost %> currency</p>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-primary" onclick="purchaseCardRemoval()" <%= player.currency >= shop.cardRemovalCost ? '' : 'disabled' %>>
+                        Purchase
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Equipment Section -->
+        <div class="shop-section">
+            <h3>Equipment</h3>
+            <% if (shop.equipment && shop.equipment.length > 0) { %>
+                <% shop.equipment.forEach(item => { %>
+                <div class="shop-item">
+                    <div class="item-info">
+                        <h4><%= item.name %></h4>
+                        <p><%= item.description %></p>
+                        <p class="item-cost">Cost: <%= item.cost %> currency</p>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-primary" onclick="purchaseEquipment('<%= item.id %>')" <%= player.currency >= item.cost ? '' : 'disabled' %>>
+                            Purchase
+                        </button>
+                    </div>
+                </div>
+                <% }); %>
+            <% } else { %>
+                <p class="no-equipment">No equipment available for purchase.</p>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Current Equipment Display -->
+    <div class="current-equipment">
+        <h3>Your Current Equipment</h3>
+        <div class="equipment-display">
+            <div class="weapons-section">
+                <h4>Weapons</h4>
+                <div class="weapons-list">
+                    <% player.equipment.weapons.forEach(weapon => { %>
+                    <div class="equipment-item <%= weapon.id === player.currentWeapon ? 'equipped' : '' %>">
+                        <span class="equipment-name"><%= weapon.name %></span>
+                        <span class="equipment-desc"><%= weapon.description %></span>
+                        <% if (weapon.id === player.currentWeapon) { %>
+                            <span class="equipped-badge">Equipped</span>
+                        <% } %>
+                    </div>
+                    <% }); %>
+                </div>
+            </div>
+            <div class="armor-section">
+                <h4>Armor</h4>
+                <div class="armor-list">
+                    <% player.equipment.armor.forEach(armor => { %>
+                    <div class="equipment-item <%= armor.id === player.currentArmor ? 'equipped' : '' %>">
+                        <span class="equipment-name"><%= armor.name %></span>
+                        <span class="equipment-desc"><%= armor.description %></span>
+                        <% if (armor.id === player.currentArmor) { %>
+                            <span class="equipped-badge">Equipped</span>
+                        <% } %>
+                    </div>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shop Actions -->
+    <div class="shop-actions">
+        <button class="btn btn-secondary" onclick="leaveShop()">Leave Shop</button>
+    </div>
+</div>
+
+<!-- Card Removal Modal -->
+<div class="modal fade" id="cardRemovalModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Remove Card from Deck</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Select a card to remove from your deck:</p>
+                <div class="card-selection" id="card-selection">
+                    <!-- Cards will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmCardRemoval()" disabled id="confirm-removal-btn">
+                    Remove Selected Card
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Purchase Confirmation Modal -->
+<div class="modal fade" id="purchaseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Purchase Confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="purchase-details">
+                    <!-- Purchase details will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmPurchase()">Confirm Purchase</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Shop state management
+let currentPlayer = <%- JSON.stringify(player) %>;
+let currentShop = <%- JSON.stringify(shop) %>;
+let selectedCardForRemoval = null;
+let pendingPurchase = null;
+
+// Initialize shop interface
+document.addEventListener('DOMContentLoaded', function() {
+    initializeShop();
+});
+
+function initializeShop() {
+    updateCurrencyDisplay();
+    updateEquipmentDisplay();
+}
+
+function updateCurrencyDisplay() {
+    const currencyDisplay = document.querySelector('.currency-display');
+    if (currencyDisplay) {
+        currencyDisplay.textContent = currentPlayer.currency;
+    }
+}
+
+function updateEquipmentDisplay() {
+    // Update equipment display if needed
+    console.log('Equipment display updated');
+}
+
+// Shop actions
+function purchaseHeal() {
+    if (currentPlayer.currency < currentShop.healCost) {
+        alert('Not enough currency!');
+        return;
+    }
+    
+    showPurchaseConfirmation('Heal (10 HP)', currentShop.healCost, 'heal');
+}
+
+function purchaseCardRemoval() {
+    if (currentPlayer.currency < currentShop.cardRemovalCost) {
+        alert('Not enough currency!');
+        return;
+    }
+    
+    showPurchaseConfirmation('Remove Card', currentShop.cardRemovalCost, 'cardRemoval');
+}
+
+function purchaseEquipment(equipmentId) {
+    const equipment = currentShop.equipment.find(item => item.id === equipmentId);
+    if (!equipment) {
+        alert('Equipment not found!');
+        return;
+    }
+    
+    if (currentPlayer.currency < equipment.cost) {
+        alert('Not enough currency!');
+        return;
+    }
+    
+    showPurchaseConfirmation(equipment.name, equipment.cost, 'equipment', equipmentId);
+}
+
+function showPurchaseConfirmation(itemName, cost, type, equipmentId = null) {
+    pendingPurchase = { itemName, cost, type, equipmentId };
+    
+    const purchaseDetails = document.getElementById('purchase-details');
+    if (purchaseDetails) {
+        purchaseDetails.innerHTML = `
+            <p><strong>Item:</strong> ${itemName}</p>
+            <p><strong>Cost:</strong> ${cost} currency</p>
+            <p><strong>Your Currency:</strong> ${currentPlayer.currency}</p>
+            <p><strong>Remaining After Purchase:</strong> ${currentPlayer.currency - cost} currency</p>
+        `;
+    }
+    
+    new bootstrap.Modal(document.getElementById('purchaseModal')).show();
+}
+
+function confirmPurchase() {
+    if (!pendingPurchase) {
+        alert('No purchase pending!');
+        return;
+    }
+    
+    fetch('/shop/purchase', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            purchaseType: pendingPurchase.type,
+            equipmentId: pendingPurchase.equipmentId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentPlayer = data.player;
+            updateCurrencyDisplay();
+            updateEquipmentDisplay();
+            
+            bootstrap.Modal.getInstance(document.getElementById('purchaseModal')).hide();
+            
+            if (data.message) {
+                alert(data.message);
+            }
+        } else {
+            alert('Failed to purchase: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to purchase');
+    });
+}
+
+function leaveShop() {
+    fetch('/shop/leave', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                window.location.href = '/game';
+            }
+        } else {
+            alert('Failed to leave shop: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to leave shop');
+    });
+}
+
+// Card removal functionality
+function showCardRemoval() {
+    fetch('/shop/get-cards-for-removal', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            populateCardSelection(data.cards);
+            new bootstrap.Modal(document.getElementById('cardRemovalModal')).show();
+        } else {
+            alert('Failed to get cards: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to get cards');
+    });
+}
+
+function populateCardSelection(cards) {
+    const cardSelection = document.getElementById('card-selection');
+    if (!cardSelection) return;
+    
+    cardSelection.innerHTML = '';
+    selectedCardForRemoval = null;
+    
+    cards.forEach((card, index) => {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'card-option';
+        cardDiv.onclick = () => selectCardForRemoval(index);
+        cardDiv.innerHTML = `
+            <div class="card ${card.suit}">
+                <div class="card-value">${card.value}</div>
+                <div class="card-suit">${card.suitSymbol}</div>
+            </div>
+        `;
+        cardSelection.appendChild(cardDiv);
+    });
+    
+    // Reset confirm button
+    const confirmBtn = document.getElementById('confirm-removal-btn');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+    }
+}
+
+function selectCardForRemoval(cardIndex) {
+    // Remove previous selection
+    const cardOptions = document.querySelectorAll('.card-option');
+    cardOptions.forEach(option => option.classList.remove('selected'));
+    
+    // Add selection to clicked card
+    event.target.closest('.card-option').classList.add('selected');
+    
+    selectedCardForRemoval = cardIndex;
+    
+    // Enable confirm button
+    const confirmBtn = document.getElementById('confirm-removal-btn');
+    if (confirmBtn) {
+        confirmBtn.disabled = false;
+    }
+}
+
+function confirmCardRemoval() {
+    if (selectedCardForRemoval === null) {
+        alert('Please select a card to remove!');
+        return;
+    }
+    
+    fetch('/shop/remove-card', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            cardIndex: selectedCardForRemoval
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('cardRemovalModal')).hide();
+            alert('Card removed successfully!');
+        } else {
+            alert('Failed to remove card: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to remove card');
+    });
+}
+
+// Update purchase card removal to show modal
+function purchaseCardRemoval() {
+    if (currentPlayer.currency < currentShop.cardRemovalCost) {
+        alert('Not enough currency!');
+        return;
+    }
+    
+    // First purchase the card removal service
+    fetch('/shop/purchase-card-removal', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentPlayer = data.player;
+            updateCurrencyDisplay();
+            showCardRemoval();
+        } else {
+            alert('Failed to purchase card removal: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to purchase card removal');
+    });
+}
+</script> 

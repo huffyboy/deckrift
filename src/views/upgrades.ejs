@@ -1,0 +1,98 @@
+<% var pageScript = '/js/upgrades.js'; var page = 'upgrades'; %>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="text-center mb-4">Upgrades</h1>
+            <div class="text-center mb-4">
+                <h4>Currency: <%= currency %></h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- XP Boost Upgrades -->
+    <div class="upgrades-section mb-4">
+        <h3>XP Boost Upgrades</h3>
+        <div class="row">
+            <% Object.entries(availableUpgrades).forEach(([upgradeId, upgrade]) => { %>
+                <% if (upgrade.effect === 'xp_boost') { %>
+                    <div class="col-md-4">
+                        <div class="upgrade-card">
+                            <h4><%= upgrade.name %></h4>
+                            <p><%= upgrade.description %></p>
+                            <button class="btn btn-secondary purchase-upgrade-btn" 
+                                    data-upgrade-id="<%= upgradeId %>" 
+                                    data-cost="<%= upgrade.cost %>"
+                                    <%= unlockedUpgrades.includes(upgradeId) ? 'disabled' : '' %>>
+                                <% if (unlockedUpgrades.includes(upgradeId)) { %>
+                                    Purchased
+                                <% } else { %>
+                                    Purchase (<%= upgrade.cost %> Currency)
+                                <% } %>
+                            </button>
+                        </div>
+                    </div>
+                <% } %>
+            <% }); %>
+        </div>
+    </div>
+
+    <!-- Currency Boost Upgrades -->
+    <div class="upgrades-section mb-4">
+        <h3>Currency Boost Upgrades</h3>
+        <div class="row">
+            <% Object.entries(availableUpgrades).forEach(([upgradeId, upgrade]) => { %>
+                <% if (upgrade.effect === 'currency_boost') { %>
+                    <div class="col-md-4">
+                        <div class="upgrade-card">
+                            <h4><%= upgrade.name %></h4>
+                            <p><%= upgrade.description %></p>
+                            <button class="btn btn-secondary purchase-upgrade-btn" 
+                                    data-upgrade-id="<%= upgradeId %>" 
+                                    data-cost="<%= upgrade.cost %>"
+                                    <%= unlockedUpgrades.includes(upgradeId) ? 'disabled' : '' %>>
+                                <% if (unlockedUpgrades.includes(upgradeId)) { %>
+                                    Purchased
+                                <% } else { %>
+                                    Purchase (<%= upgrade.cost %> Currency)
+                                <% } %>
+                            </button>
+                        </div>
+                    </div>
+                <% } %>
+            <% }); %>
+        </div>
+    </div>
+
+    <!-- Equipment Unlock Upgrades -->
+    <div class="upgrades-section mb-4">
+        <h3>Equipment Unlocks</h3>
+        <div class="row">
+            <% Object.entries(availableUpgrades).forEach(([upgradeId, upgrade]) => { %>
+                <% if (upgrade.effect && upgrade.effect.startsWith('unlock_')) { %>
+                    <div class="col-md-4">
+                        <div class="upgrade-card">
+                            <h4><%= upgrade.name %></h4>
+                            <p><%= upgrade.description %></p>
+                            <button class="btn btn-secondary purchase-upgrade-btn" 
+                                    data-upgrade-id="<%= upgradeId %>" 
+                                    data-cost="<%= upgrade.cost %>"
+                                    <%= unlockedUpgrades.includes(upgradeId) ? 'disabled' : '' %>>
+                                <% if (unlockedUpgrades.includes(upgradeId)) { %>
+                                    Purchased
+                                <% } else { %>
+                                    Purchase (<%= upgrade.cost %> Currency)
+                                <% } %>
+                            </button>
+                        </div>
+                    </div>
+                <% } %>
+            <% }); %>
+        </div>
+    </div>
+
+    <!-- Back to Home Realm -->
+    <div class="text-center mt-4">
+        <a href="/home-realm" class="btn btn-primary">Back to Home Realm</a>
+    </div>
+</div> 

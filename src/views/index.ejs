@@ -1,0 +1,201 @@
+<div class="hero-section">
+    <div class="container">
+        <div class="row align-items-center min-vh-100">
+            <div class="col-lg-6">
+                <div class="hero-content">
+                    <h1 class="game-title mb-4">Deckrift</h1>
+                    <h2 class="game-subtitle mb-4">Drawn to Dust</h2>
+                    <p class="hero-description mb-5">
+                        Embark on a cursed journey through card-based encounters. 
+                        Build your deck, face strategic challenges, and discover the secrets 
+                        of the immortal realm where every card tells a story.
+                    </p>
+                    
+                    <div class="hero-features mb-5">
+                        <div class="feature-item">
+                            <span class="feature-icon">🎴</span>
+                            <span>Deck-building roguelike</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">⚔️</span>
+                            <span>Strategic card combat</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🏰</span>
+                            <span>Multiple realms to explore</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">💎</span>
+                            <span>Persistent progression</span>
+                        </div>
+                    </div>
+
+                    <div class="hero-actions">
+                        <a href="/login" class="btn btn-primary btn-lg me-3">Start Adventure</a>
+                        <a href="/register" class="btn btn-outline-primary btn-lg">Create Account</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="hero-visual">
+                    <div class="card-display">
+                        <div class="card-stack">
+                            <div class="card card-back"></div>
+                            <div class="card card-back"></div>
+                            <div class="card card-back"></div>
+                        </div>
+                        <div class="floating-card card-heart">♥</div>
+                        <div class="floating-card card-diamond">♦</div>
+                        <div class="floating-card card-spade">♠</div>
+                        <div class="floating-card card-club">♣</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="game-info-section py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h2 class="section-title">Game Features</h2>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="info-card">
+                    <div class="info-icon">🎯</div>
+                    <h4>Strategic Combat</h4>
+                    <p>Use cards strategically to defeat enemies and overcome challenges in turn-based battles.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-3">
+                <div class="info-card">
+                    <div class="info-icon">🏆</div>
+                    <h4>Character Progression</h4>
+                    <p>Level up your stats, unlock equipment, and build your character across multiple runs.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-3">
+                <div class="info-card">
+                    <div class="info-icon">🗺️</div>
+                    <h4>Realm Exploration</h4>
+                    <p>Navigate through different realms, each with unique challenges and bosses to conquer.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-3">
+                <div class="info-card">
+                    <div class="info-icon">💎</div>
+                    <h4>Persistent Upgrades</h4>
+                    <p>Unlock permanent upgrades that persist between runs and enhance your capabilities.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="cta-section py-5">
+    <div class="container text-center">
+        <h2 class="mb-4">Ready to Begin Your Journey?</h2>
+        <p class="mb-4">Join the immortal realm and discover the secrets that await in Deckrift.</p>
+        <div class="cta-buttons">
+            <a href="/login" class="btn btn-primary btn-lg me-3">Login</a>
+            <a href="/register" class="btn btn-secondary btn-lg">Register</a>
+        </div>
+    </div>
+</div>
+
+<!-- Authentication Modal -->
+<div class="modal fade" id="authModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="authModalTitle">Login</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="login-form" class="auth-form">
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label for="loginUsername" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="loginUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="loginPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="loginPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </form>
+                    <p class="mt-3">
+                        Don't have an account? 
+                        <a href="#" id="showRegister">Register here</a>
+                    </p>
+                </div>
+                
+                <div id="register-form" class="auth-form" style="display: none;">
+                    <form id="registerForm">
+                        <div class="mb-3">
+                            <label for="registerUsername" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="registerUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="registerEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="registerPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">Register</button>
+                    </form>
+                    <p class="mt-3">
+                        Already have an account? 
+                        <a href="#" id="showLogin">Login here</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save/Load Modal -->
+<div class="modal fade" id="saveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Save Game</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="saveName" class="form-label">Save Name</label>
+                    <input type="text" class="form-control" id="saveName" placeholder="Enter save name">
+                </div>
+                <button type="button" class="btn btn-primary" id="saveGameBtn">Save Game</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load Game Modal -->
+<div class="modal fade" id="loadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Load Game</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="savesList">
+                    <!-- Saves will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

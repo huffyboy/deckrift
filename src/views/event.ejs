@@ -1,0 +1,481 @@
+<% var pageScript = '/js/event.js'; var page = 'event'; %>
+<div class="event-container">
+    <!-- Event Header -->
+    <div class="event-header">
+        <h2><%= event.title %></h2>
+        <p class="event-subtitle"><%= event.description %></p>
+    </div>
+
+    <!-- Event Content -->
+    <div class="event-content">
+        <% if (event.type === 'challenge') { %>
+            <!-- Stat Challenge -->
+            <div class="challenge-section">
+                <h3>Stat Challenge</h3>
+                <div class="challenge-info">
+                    <p><strong>Challenge:</strong> <%= event.stat %> + Card Value ≥ <%= event.target %></p>
+                    <p><strong>Current <%= event.stat %>:</strong> <%= player.stats[event.stat] %></p>
+                    <p><strong>Required from card:</strong> ≥ <%= event.target - player.stats[event.stat] %></p>
+                </div>
+                
+                <div class="challenge-actions">
+                    <button class="btn btn-primary" onclick="drawChallengeCard()">Draw Card</button>
+                    <button class="btn btn-secondary" onclick="skipChallenge()">Skip Challenge</button>
+                </div>
+                
+                <div class="drawn-cards" id="drawn-cards">
+                    <!-- Drawn cards will appear here -->
+                </div>
+                
+                <div class="challenge-result" id="challenge-result" style="display: none;">
+                    <!-- Challenge result will appear here -->
+                </div>
+            </div>
+        <% } else if (event.type === 'boon') { %>
+            <!-- Boon Event -->
+            <div class="boon-section">
+                <h3>Boon</h3>
+                <div class="boon-info">
+                    <p><%= event.boonDescription %></p>
+                </div>
+                
+                <div class="boon-actions">
+                    <button class="btn btn-primary" onclick="drawBoonCard()">Draw Boon Card</button>
+                </div>
+                
+                <div class="drawn-cards" id="drawn-cards">
+                    <!-- Drawn boon cards will appear here -->
+                </div>
+                
+                <div class="boon-result" id="boon-result" style="display: none;">
+                    <!-- Boon result will appear here -->
+                </div>
+            </div>
+        <% } else if (event.type === 'bane') { %>
+            <!-- Bane Event -->
+            <div class="bane-section">
+                <h3>Bane</h3>
+                <div class="bane-info">
+                    <p><%= event.baneDescription %></p>
+                </div>
+                
+                <div class="bane-actions">
+                    <button class="btn btn-danger" onclick="drawBaneCard()">Draw Bane Card</button>
+                </div>
+                
+                <div class="drawn-cards" id="drawn-cards">
+                    <!-- Drawn bane cards will appear here -->
+                </div>
+                
+                <div class="bane-result" id="bane-result" style="display: none;">
+                    <!-- Bane result will appear here -->
+                </div>
+            </div>
+        <% } else if (event.type === 'rest') { %>
+            <!-- Rest Event -->
+            <div class="rest-section">
+                <h3>Rest</h3>
+                <div class="rest-info">
+                    <p>You find a safe place to rest and recover.</p>
+                    <p><strong>Current Health:</strong> <%= player.health %>/<%= player.maxHealth %></p>
+                    <p><strong>Healing Amount:</strong> <%= Math.floor(player.maxHealth * 0.5) %></p>
+                </div>
+                
+                <div class="rest-actions">
+                    <button class="btn btn-primary" onclick="rest()">Rest</button>
+                </div>
+            </div>
+        <% } else if (event.type === 'nothing') { %>
+            <!-- Nothing Event -->
+            <div class="nothing-section">
+                <h3>Nothing Happens</h3>
+                <div class="nothing-info">
+                    <p>You find nothing of interest here.</p>
+                </div>
+                
+                <div class="nothing-actions">
+                    <button class="btn btn-secondary" onclick="continueEvent()">Continue</button>
+                </div>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Player Stats Display -->
+    <div class="player-stats-display">
+        <h4>Your Stats</h4>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-label">Health:</span>
+                <span class="stat-value"><%= player.health %>/<%= player.maxHealth %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Power:</span>
+                <span class="stat-value"><%= player.stats.power %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Will:</span>
+                <span class="stat-value"><%= player.stats.will %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Craft:</span>
+                <span class="stat-value"><%= player.stats.craft %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Control:</span>
+                <span class="stat-value"><%= player.stats.control %></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Currency:</span>
+                <span class="stat-value"><%= player.currency %></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Continue Button -->
+    <div class="event-continue" id="event-continue" style="display: none;">
+        <button class="btn btn-success" onclick="continueEvent()">Continue</button>
+    </div>
+</div>
+
+<!-- Card Details Modal -->
+<div class="modal fade" id="cardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Card Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="card-details" id="card-details">
+                    <!-- Card details will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Event state management
+let currentEvent = <%- JSON.stringify(event) %>;
+let currentPlayer = <%- JSON.stringify(player) %>;
+let drawnCards = [];
+
+// Initialize event interface
+document.addEventListener('DOMContentLoaded', function() {
+    initializeEvent();
+});
+
+function initializeEvent() {
+    // Event-specific initialization
+    if (currentEvent.type === 'challenge') {
+        initializeChallenge();
+    } else if (currentEvent.type === 'boon') {
+        initializeBoon();
+    } else if (currentEvent.type === 'bane') {
+        initializeBane();
+    }
+}
+
+function initializeChallenge() {
+    // Challenge-specific setup
+    console.log('Initializing challenge event');
+}
+
+function initializeBoon() {
+    // Boon-specific setup
+    console.log('Initializing boon event');
+}
+
+function initializeBane() {
+    // Bane-specific setup
+    console.log('Initializing bane event');
+}
+
+// Event actions
+function drawChallengeCard() {
+    fetch('/event/draw-challenge-card', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayDrawnCard(data.card);
+            checkChallengeResult(data.card);
+        } else {
+            alert('Failed to draw card: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to draw card');
+    });
+}
+
+function drawBoonCard() {
+    fetch('/event/draw-boon-card', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayDrawnCard(data.card);
+            processBoonResult(data.card);
+        } else {
+            alert('Failed to draw boon card: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to draw boon card');
+    });
+}
+
+function drawBaneCard() {
+    fetch('/event/draw-bane-card', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayDrawnCard(data.card);
+            processBaneResult(data.card);
+        } else {
+            alert('Failed to draw bane card: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to draw bane card');
+    });
+}
+
+function displayDrawnCard(card) {
+    const drawnCardsContainer = document.getElementById('drawn-cards');
+    if (!drawnCardsContainer) return;
+    
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'drawn-card';
+    cardDiv.innerHTML = `
+        <div class="card ${card.suit}" onclick="showCardDetails('${card.value}', '${card.suit}')">
+            <div class="card-value">${card.value}</div>
+            <div class="card-suit">${card.suitSymbol}</div>
+        </div>
+    `;
+    
+    drawnCardsContainer.appendChild(cardDiv);
+    drawnCards.push(card);
+}
+
+function checkChallengeResult(card) {
+    const challengeResult = document.getElementById('challenge-result');
+    if (!challengeResult) return;
+    
+    const statValue = currentPlayer.stats[currentEvent.stat];
+    const cardValue = getCardValue(card.value);
+    const total = statValue + cardValue;
+    const target = currentEvent.target;
+    
+    const success = total >= target;
+    
+    challengeResult.innerHTML = `
+        <div class="result ${success ? 'success' : 'failure'}">
+            <h4>${success ? 'Challenge Success!' : 'Challenge Failed!'}</h4>
+            <p><strong>Your ${currentEvent.stat}:</strong> ${statValue}</p>
+            <p><strong>Card value:</strong> ${cardValue}</p>
+            <p><strong>Total:</strong> ${total}</p>
+            <p><strong>Target:</strong> ${target}</p>
+            <p>${success ? 'You gain XP and a boon!' : 'You suffer a bane!'}</p>
+        </div>
+    `;
+    
+    challengeResult.style.display = 'block';
+    document.getElementById('event-continue').style.display = 'block';
+}
+
+function processBoonResult(card) {
+    const boonResult = document.getElementById('boon-result');
+    if (!boonResult) return;
+    
+    // Process boon based on card value
+    const boon = getBoonForCard(card);
+    
+    boonResult.innerHTML = `
+        <div class="result success">
+            <h4>Boon Received!</h4>
+            <p><strong>Card:</strong> ${card.value} of ${card.suit}</p>
+            <p><strong>Effect:</strong> ${boon.description}</p>
+        </div>
+    `;
+    
+    boonResult.style.display = 'block';
+    document.getElementById('event-continue').style.display = 'block';
+}
+
+function processBaneResult(card) {
+    const baneResult = document.getElementById('bane-result');
+    if (!baneResult) return;
+    
+    // Process bane based on card value
+    const bane = getBaneForCard(card);
+    
+    baneResult.innerHTML = `
+        <div class="result failure">
+            <h4>Bane Received!</h4>
+            <p><strong>Card:</strong> ${card.value} of ${card.suit}</p>
+            <p><strong>Effect:</strong> ${bane.description}</p>
+        </div>
+    `;
+    
+    baneResult.style.display = 'block';
+    document.getElementById('event-continue').style.display = 'block';
+}
+
+function rest() {
+    fetch('/event/rest', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentPlayer = data.player;
+            updatePlayerStats();
+            document.getElementById('event-continue').style.display = 'block';
+        } else {
+            alert('Failed to rest: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to rest');
+    });
+}
+
+function skipChallenge() {
+    if (confirm('Are you sure you want to skip this challenge? You will receive a bane.')) {
+        fetch('/event/skip-challenge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const challengeResult = document.getElementById('challenge-result');
+                if (challengeResult) {
+                    challengeResult.innerHTML = `
+                        <div class="result failure">
+                            <h4>Challenge Skipped!</h4>
+                            <p>You chose to skip the challenge and received a bane.</p>
+                        </div>
+                    `;
+                    challengeResult.style.display = 'block';
+                }
+                document.getElementById('event-continue').style.display = 'block';
+            } else {
+                alert('Failed to skip challenge: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to skip challenge');
+        });
+    }
+}
+
+function continueEvent() {
+    fetch('/event/continue', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                // Continue to next event or return to game
+                window.location.href = '/game';
+            }
+        } else {
+            alert('Failed to continue: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to continue');
+    });
+}
+
+function showCardDetails(value, suit) {
+    const cardDetails = document.getElementById('card-details');
+    if (!cardDetails) return;
+    
+    cardDetails.innerHTML = `
+        <div class="card-detail">
+            <h6>Card Details</h6>
+            <p><strong>Value:</strong> ${value}</p>
+            <p><strong>Suit:</strong> ${suit}</p>
+            <p><strong>Numeric Value:</strong> ${getCardValue(value)}</p>
+        </div>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('cardModal')).show();
+}
+
+function updatePlayerStats() {
+    // Update displayed player stats
+    const statElements = document.querySelectorAll('.stat-value');
+    statElements.forEach(element => {
+        const statLabel = element.previousElementSibling.textContent.replace(':', '').toLowerCase();
+        if (statLabel === 'health') {
+            element.textContent = `${currentPlayer.health}/${currentPlayer.maxHealth}`;
+        } else if (currentPlayer.stats[statLabel]) {
+            element.textContent = currentPlayer.stats[statLabel];
+        } else if (statLabel === 'currency') {
+            element.textContent = currentPlayer.currency;
+        }
+    });
+}
+
+// Helper functions
+function getCardValue(value) {
+    const cardValues = {
+        'A': 14, 'K': 13, 'Q': 12, 'J': 11,
+        '10': 10, '9': 9, '8': 8, '7': 7,
+        '6': 6, '5': 5, '4': 4, '3': 3, '2': 2
+    };
+    return cardValues[value] || parseInt(value) || 0;
+}
+
+function getBoonForCard(card) {
+    // This would be implemented based on the game's boon system
+    return {
+        description: `Boon effect for ${card.value} of ${card.suit}`
+    };
+}
+
+function getBaneForCard(card) {
+    // This would be implemented based on the game's bane system
+    return {
+        description: `Bane effect for ${card.value} of ${card.suit}`
+    };
+}
+</script> 

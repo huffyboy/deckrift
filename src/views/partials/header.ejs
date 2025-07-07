@@ -1,0 +1,46 @@
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">
+            <strong>Deckrift</strong> - Drawn to Dust
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <% if (locals.user && locals.user.username) { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/home-realm">Home Realm</a>
+                    </li>
+                    <% if (locals.gameSave && locals.gameSave.isActive) { %>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/game">Adventure</a>
+                        </li>
+                    <% } %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/stats">Statistics</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/profile">Profile</a>
+                    </li>
+                    <li class="nav-item">
+                        <form method="POST" action="/api/auth/logout" style="display: inline;">
+                            <button type="submit" class="nav-link btn btn-link" style="border: none; background: none; padding: 0.5rem 1rem;">Logout</button>
+                        </form>
+                    </li>
+                <% } else { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register">Register</a>
+                    </li>
+                <% } %>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Notification Area -->
+<div id="notification-area" class="notification-container"></div> 

@@ -1,0 +1,162 @@
+<% pageScript = '/js/home-realm.js'; page = 'home-realm'; %>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="text-center mb-4">Home Realm</h1>
+        </div>
+    </div>
+
+    <!-- Current Profile -->
+    <div class="profile-section mb-4">
+        <h3>Current Profile</h3>
+        <div class="profile-info">
+            <p><strong>Name:</strong> <%= currentProfile ? currentProfile.profileName : 'No Profile Selected' %></p>
+            <p><strong>Currency:</strong> <%= currency %></p>
+        </div>
+    </div>
+
+    <!-- Active Run Status -->
+    <% if (activeSave) { %>
+    <div class="active-run-section mb-4">
+        <h3>Active Run</h3>
+        <div class="run-info">
+            <p><strong>Realm:</strong> 
+                <%= REALMS[activeSave.realm] ? REALMS[activeSave.realm].name : `Realm ${activeSave.realm}` %>
+            </p>
+            <p><strong>Level:</strong> <%= activeSave.level %></p>
+            <p><strong>Health:</strong> <%= activeSave.health %>/<%= activeSave.maxHealth %></p>
+        </div>
+        <button class="btn btn-primary" id="resume-run-btn">Resume Run</button>
+    </div>
+    <% } %>
+
+    <!-- Start New Run -->
+    <div class="new-run-section mb-4">
+        <h3>Adventure</h3>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="home-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Start New Run</h5>
+                        <p class="card-text">Begin a new adventure in the cursed realms.</p>
+                        <button class="btn btn-primary" id="start-new-run-btn">Begin Adventure</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="home-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Upgrades</h5>
+                        <p class="card-text">Purchase permanent upgrades and unlock new equipment.</p>
+                        <a href="/upgrades" class="btn btn-secondary">View Upgrades</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equipment Selection (Hidden until run is initiated) -->
+    <div class="equipment-selection-section mb-4" id="equipment-selection" style="display: none;">
+        <h3>Choose Your Equipment</h3>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="equipment-card">
+                    <h5>Weapon</h5>
+                    <div class="equipment-options" id="weapon-options">
+                        <!-- Weapon options will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="equipment-card">
+                    <h5>Armor</h5>
+                    <div class="equipment-options" id="armor-options">
+                        <!-- Armor options will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-3">
+            <button class="btn btn-secondary" id="cancel-equipment-btn">Cancel</button>
+            <button class="btn btn-primary" id="confirm-equipment-btn">Start Run</button>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="stats-section mb-4">
+        <h4>Character Stats</h4>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <strong>Power:</strong> <%= currentProfile ? currentProfile.power : 4 %> 
+                <small>(<%= currentProfile ? currentProfile.powerXP : 0 %>/<%= xpThresholds.power %>)</small>
+            </div>
+            <div class="stat-item">
+                <strong>Will:</strong> <%= currentProfile ? currentProfile.will : 4 %> 
+                <small>(<%= currentProfile ? currentProfile.willXP : 0 %>/<%= xpThresholds.will %>)</small>
+            </div>
+            <div class="stat-item">
+                <strong>Craft:</strong> <%= currentProfile ? currentProfile.craft : 4 %> 
+                <small>(<%= currentProfile ? currentProfile.craftXP : 0 %>/<%= xpThresholds.craft %>)</small>
+            </div>
+            <div class="stat-item">
+                <strong>Control:</strong> <%= currentProfile ? currentProfile.control : 4 %> 
+                <small>(<%= currentProfile ? currentProfile.controlXP : 0 %>/<%= xpThresholds.control %>)</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Realm Selection (Hidden until run is initiated) -->
+    <div class="realm-selection-section mb-4" id="realm-selection" style="display: none;">
+        <h3>Choose Your Realm</h3>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="realm-card <%= unlockedRealms.includes(1) ? 'unlocked' : 'locked' %>">
+                    <h4>Steel Realm</h4>
+                    <p>Here talking is done with the blade. All must obey the ruler of steel.</p>
+                    <p><strong>Ruler:</strong> Jack of Steel</p>
+                    <% if (unlockedRealms.includes(1)) { %>
+                        <button class="btn btn-primary start-realm-btn" data-realm-id="1">Enter Realm</button>
+                    <% } else { %>
+                        <span class="locked-badge">Locked</span>
+                    <% } %>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="realm-card <%= unlockedRealms.includes(2) ? 'unlocked' : 'locked' %>">
+                    <h4>Blood Realm</h4>
+                    <p>Blood is currency. All seek to draw it from the veins of the living.</p>
+                    <p><strong>Ruler:</strong> Queen of Blood</p>
+                    <% if (unlockedRealms.includes(2)) { %>
+                        <button class="btn btn-primary start-realm-btn" data-realm-id="2">Enter Realm</button>
+                    <% } else { %>
+                        <span class="locked-badge">Locked</span>
+                    <% } %>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="realm-card <%= unlockedRealms.includes(3) ? 'unlocked' : 'locked' %>">
+                    <h4>Ash Realm</h4>
+                    <p>Few survive to tell the tale. The ash is the only thing that remains.</p>
+                    <p><strong>Ruler:</strong> King of Ash</p>
+                    <% if (unlockedRealms.includes(3)) { %>
+                        <button class="btn btn-primary start-realm-btn" data-realm-id="3">Enter Realm</button>
+                    <% } else { %>
+                        <span class="locked-badge">Locked</span>
+                    <% } %>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="realm-card <%= unlockedRealms.includes(4) ? 'unlocked' : 'locked' %>">
+                    <h4>Speed Realm</h4>
+                    <p>In a blink of an eye everything can change. Speed is the only thing that matters.</p>
+                    <p><strong>Ruler:</strong> Ace of Speed</p>
+                    <% if (unlockedRealms.includes(4)) { %>
+                        <button class="btn btn-primary start-realm-btn" data-realm-id="4">Enter Realm</button>
+                    <% } else { %>
+                        <span class="locked-badge">Locked</span>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

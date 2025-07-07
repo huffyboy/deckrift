@@ -1,0 +1,502 @@
+<% var pageScript = '/js/battle.js'; var page = 'battle'; %>
+<div class="battle-container">
+    <!-- Battle Header -->
+    <div class="battle-header">
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Battle</h2>
+                <p class="battle-subtitle">Fighting <%= enemy.name %></p>
+            </div>
+            <div class="col-md-6">
+                <div class="battle-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Turn:</span>
+                        <span class="stat-value"><%= battleState.turn %></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Phase:</span>
+                        <span class="stat-value"><%= battleState.phase %></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enemy Section -->
+    <div class="enemy-section">
+        <div class="enemy-card">
+            <h3><%= enemy.name %></h3>
+            <div class="enemy-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Health:</span>
+                    <div class="health-bar enemy-health">
+                        <div class="health-fill" style="width: <%= (enemy.health / enemy.maxHealth) * 100 %>%"></div>
+                    </div>
+                    <span class="stat-value"><%= enemy.health %>/<%= enemy.maxHealth %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Weapon:</span>
+                    <span class="stat-value"><%= enemy.weapon %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Power:</span>
+                    <span class="stat-value"><%= enemy.stats.power %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Will:</span>
+                    <span class="stat-value"><%= enemy.stats.will %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Craft:</span>
+                    <span class="stat-value"><%= enemy.stats.craft %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Control:</span>
+                    <span class="stat-value"><%= enemy.stats.control %></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Section -->
+    <div class="player-section">
+        <div class="player-card">
+            <h3>Your Character</h3>
+            <div class="player-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Health:</span>
+                    <div class="health-bar player-health">
+                        <div class="health-fill" style="width: <%= (player.health / player.maxHealth) * 100 %>%"></div>
+                    </div>
+                    <span class="stat-value"><%= player.health %>/<%= player.maxHealth %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Current Weapon:</span>
+                    <span class="stat-value"><%= player.currentWeapon %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Current Armor:</span>
+                    <span class="stat-value"><%= player.currentArmor %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Power:</span>
+                    <span class="stat-value"><%= player.stats.power %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Will:</span>
+                    <span class="stat-value"><%= player.stats.will %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Craft:</span>
+                    <span class="stat-value"><%= player.stats.craft %></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Control:</span>
+                    <span class="stat-value"><%= player.stats.control %></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Battle Actions -->
+    <div class="battle-actions">
+        <div class="row">
+            <div class="col-md-4">
+                <button class="btn btn-primary" onclick="drawCards()" <%= battleState.canDraw ? '' : 'disabled' %>>
+                    Draw Cards
+                </button>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-secondary" onclick="switchWeapon()" <%= battleState.canSwitchWeapon ? '' : 'disabled' %>>
+                    Switch Weapon
+                </button>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-warning" onclick="endTurn()" <%= battleState.canEndTurn ? '' : 'disabled' %>>
+                    End Turn
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Hand -->
+    <div class="hand-section">
+        <h4>Your Hand</h4>
+        <div class="hand-container" id="player-hand">
+            <% if (player.hand && player.hand.length > 0) { %>
+                <% player.hand.forEach((card, index) => { %>
+                <div class="hand-card" onclick="playCard(<%= index %>)">
+                    <div class="card <%= card.suit %>">
+                        <div class="card-value"><%= card.value %></div>
+                        <div class="card-suit"><%= card.suitSymbol %></div>
+                    </div>
+                </div>
+                <% }); %>
+            <% } else { %>
+                <p class="no-cards">No cards in hand. Draw cards to continue.</p>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Battle Log -->
+    <div class="battle-log">
+        <h4>Battle Log</h4>
+        <div class="log-container" id="battle-log">
+            <% if (battleState.log && battleState.log.length > 0) { %>
+                <% battleState.log.forEach(logEntry => { %>
+                <div class="log-entry <%= logEntry.type %>">
+                    <span class="log-turn"><%= logEntry.turn %>:</span>
+                    <span class="log-message"><%= logEntry.message %></span>
+                </div>
+                <% }); %>
+            <% } else { %>
+                <p class="no-log">Battle log will appear here.</p>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Equipment Selection -->
+    <div class="equipment-section">
+        <h4>Available Equipment</h4>
+        <div class="equipment-container">
+            <div class="weapons-section">
+                <h5>Weapons</h5>
+                <div class="weapons-list">
+                    <% player.equipment.weapons.forEach(weapon => { %>
+                    <div class="equipment-item <%= weapon.id === player.currentWeapon ? 'selected' : '' %>">
+                        <span class="equipment-name"><%= weapon.name %></span>
+                        <span class="equipment-desc"><%= weapon.description %></span>
+                    </div>
+                    <% }); %>
+                </div>
+            </div>
+            <div class="armor-section">
+                <h5>Armor</h5>
+                <div class="armor-list">
+                    <% player.equipment.armor.forEach(armor => { %>
+                    <div class="equipment-item <%= armor.id === player.currentArmor ? 'selected' : '' %>">
+                        <span class="equipment-name"><%= armor.name %></span>
+                        <span class="equipment-desc"><%= armor.description %></span>
+                    </div>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Card Details Modal -->
+<div class="modal fade" id="cardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Card Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="card-details" id="card-details">
+                    <!-- Card details will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Weapon Selection Modal -->
+<div class="modal fade" id="weaponModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Weapon</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="weapon-options" id="weapon-options">
+                    <!-- Weapon options will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmWeaponSelection()">Select Weapon</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Battle state management
+let currentBattleState = <%- JSON.stringify(battleState) %>;
+let selectedCardIndex = null;
+let selectedWeapon = null;
+
+// Initialize battle interface
+document.addEventListener('DOMContentLoaded', function() {
+    initializeBattle();
+});
+
+function initializeBattle() {
+    updateBattleInterface();
+    scrollToBottom();
+}
+
+function updateBattleInterface() {
+    // Update health bars
+    updateHealthBars();
+    
+    // Update action buttons
+    updateActionButtons();
+    
+    // Update hand display
+    updateHandDisplay();
+    
+    // Update battle log
+    updateBattleLog();
+}
+
+function updateHealthBars() {
+    const enemyHealthBar = document.querySelector('.enemy-health .health-fill');
+    const playerHealthBar = document.querySelector('.player-health .health-fill');
+    
+    if (enemyHealthBar) {
+        enemyHealthBar.style.width = (currentBattleState.enemy.health / currentBattleState.enemy.maxHealth) * 100 + '%';
+    }
+    
+    if (playerHealthBar) {
+        playerHealthBar.style.width = (currentBattleState.player.health / currentBattleState.player.maxHealth) * 100 + '%';
+    }
+}
+
+function updateActionButtons() {
+    const drawButton = document.querySelector('button[onclick="drawCards()"]');
+    const switchButton = document.querySelector('button[onclick="switchWeapon()"]');
+    const endTurnButton = document.querySelector('button[onclick="endTurn()"]');
+    
+    if (drawButton) {
+        drawButton.disabled = !currentBattleState.canDraw;
+    }
+    
+    if (switchButton) {
+        switchButton.disabled = !currentBattleState.canSwitchWeapon;
+    }
+    
+    if (endTurnButton) {
+        endTurnButton.disabled = !currentBattleState.canEndTurn;
+    }
+}
+
+function updateHandDisplay() {
+    const handContainer = document.getElementById('player-hand');
+    if (!handContainer) return;
+    
+    if (currentBattleState.player.hand && currentBattleState.player.hand.length > 0) {
+        handContainer.innerHTML = '';
+        currentBattleState.player.hand.forEach((card, index) => {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'hand-card';
+            cardDiv.innerHTML = `
+                <div class="card ${card.suit}" onclick="playCard(${index})">
+                    <div class="card-value">${card.value}</div>
+                    <div class="card-suit">${card.suitSymbol}</div>
+                </div>
+            `;
+            handContainer.appendChild(cardDiv);
+        });
+    } else {
+        handContainer.innerHTML = '<p class="no-cards">No cards in hand. Draw cards to continue.</p>';
+    }
+}
+
+function updateBattleLog() {
+    const logContainer = document.getElementById('battle-log');
+    if (!logContainer) return;
+    
+    if (currentBattleState.log && currentBattleState.log.length > 0) {
+        logContainer.innerHTML = '';
+        currentBattleState.log.forEach(logEntry => {
+            const logDiv = document.createElement('div');
+            logDiv.className = `log-entry ${logEntry.type}`;
+            logDiv.innerHTML = `
+                <span class="log-turn">${logEntry.turn}:</span>
+                <span class="log-message">${logEntry.message}</span>
+            `;
+            logContainer.appendChild(logDiv);
+        });
+    } else {
+        logContainer.innerHTML = '<p class="no-log">Battle log will appear here.</p>';
+    }
+}
+
+function scrollToBottom() {
+    const logContainer = document.getElementById('battle-log');
+    if (logContainer) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+}
+
+// Battle actions
+function drawCards() {
+    fetch('/battle/draw-cards', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentBattleState = data.battleState;
+            updateBattleInterface();
+        } else {
+            alert('Failed to draw cards: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to draw cards');
+    });
+}
+
+function playCard(cardIndex) {
+    selectedCardIndex = cardIndex;
+    
+    fetch('/battle/play-card', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            cardIndex: cardIndex
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentBattleState = data.battleState;
+            updateBattleInterface();
+            
+            if (data.battleEnded) {
+                if (data.playerWon) {
+                    window.location.href = '/battle/victory';
+                } else {
+                    window.location.href = '/battle/defeat';
+                }
+            }
+        } else {
+            alert('Failed to play card: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to play card');
+    });
+}
+
+function switchWeapon() {
+    // Populate weapon options
+    const weaponOptions = document.getElementById('weapon-options');
+    if (!weaponOptions) return;
+    
+    weaponOptions.innerHTML = '';
+    currentBattleState.player.equipment.weapons.forEach(weapon => {
+        const weaponDiv = document.createElement('div');
+        weaponDiv.className = `weapon-option ${weapon.id === currentBattleState.player.currentWeapon ? 'selected' : ''}`;
+        weaponDiv.onclick = () => selectWeapon(weapon.id);
+        weaponDiv.innerHTML = `
+            <h6>${weapon.name}</h6>
+            <p>${weapon.description}</p>
+        `;
+        weaponOptions.appendChild(weaponDiv);
+    });
+    
+    new bootstrap.Modal(document.getElementById('weaponModal')).show();
+}
+
+function selectWeapon(weaponId) {
+    selectedWeapon = weaponId;
+    
+    // Update selection display
+    const weaponOptions = document.querySelectorAll('.weapon-option');
+    weaponOptions.forEach(option => option.classList.remove('selected'));
+    event.target.closest('.weapon-option').classList.add('selected');
+}
+
+function confirmWeaponSelection() {
+    if (!selectedWeapon) {
+        alert('Please select a weapon first.');
+        return;
+    }
+    
+    fetch('/battle/switch-weapon', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            weaponId: selectedWeapon
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentBattleState = data.battleState;
+            updateBattleInterface();
+            bootstrap.Modal.getInstance(document.getElementById('weaponModal')).hide();
+        } else {
+            alert('Failed to switch weapon: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to switch weapon');
+    });
+}
+
+function endTurn() {
+    fetch('/battle/end-turn', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentBattleState = data.battleState;
+            updateBattleInterface();
+            
+            if (data.battleEnded) {
+                if (data.playerWon) {
+                    window.location.href = '/battle/victory';
+                } else {
+                    window.location.href = '/battle/defeat';
+                }
+            }
+        } else {
+            alert('Failed to end turn: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to end turn');
+    });
+}
+
+// Auto-scroll log when new entries are added
+const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.type === 'childList') {
+            scrollToBottom();
+        }
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const logContainer = document.getElementById('battle-log');
+    if (logContainer) {
+        observer.observe(logContainer, { childList: true });
+    }
+});
+</script> 

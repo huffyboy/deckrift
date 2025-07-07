@@ -1,0 +1,465 @@
+<% var pageScript = '/js/stats.js'; var page = 'stats'; %>
+<div class="stats-container">
+    <!-- Stats Header -->
+    <div class="stats-header">
+        <h1>Statistics</h1>
+        <p class="stats-subtitle">Track your progress and achievements across all runs.</p>
+    </div>
+
+    <!-- Overall Statistics -->
+    <div class="overall-stats">
+        <h2>Overall Statistics</h2>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>Total Runs</h4>
+                <p class="stat-value"><%= overallStats.totalRuns %></p>
+            </div>
+            <div class="stat-card">
+                <h4>Successful Runs</h4>
+                <p class="stat-value"><%= overallStats.successfulRuns %></p>
+            </div>
+            <div class="stat-card">
+                <h4>Win Rate</h4>
+                <p class="stat-value"><%= overallStats.winRate %>%</p>
+            </div>
+            <div class="stat-card">
+                <h4>Total Playtime</h4>
+                <p class="stat-value"><%= Math.floor(overallStats.totalPlaytime / 60) %>h <%= overallStats.totalPlaytime % 60 %>m</p>
+            </div>
+            <div class="stat-card">
+                <h4>Total Currency Earned</h4>
+                <p class="stat-value"><%= overallStats.totalCurrencyEarned %></p>
+            </div>
+            <div class="stat-card">
+                <h4>Total Enemies Defeated</h4>
+                <p class="stat-value"><%= overallStats.totalEnemiesDefeated %></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="performance-metrics">
+        <h2>Performance Metrics</h2>
+        <div class="metrics-grid">
+            <div class="metric-section">
+                <h3>Combat Performance</h3>
+                <div class="metric-item">
+                    <span class="metric-label">Average Damage Dealt:</span>
+                    <span class="metric-value"><%= performanceMetrics.averageDamageDealt %></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Average Damage Taken:</span>
+                    <span class="metric-value"><%= performanceMetrics.averageDamageTaken %></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Battle Win Rate:</span>
+                    <span class="metric-value"><%= performanceMetrics.battleWinRate %>%</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Average Battle Duration:</span>
+                    <span class="metric-value"><%= performanceMetrics.averageBattleDuration %> turns</span>
+                </div>
+            </div>
+            
+            <div class="metric-section">
+                <h3>Card Performance</h3>
+                <div class="metric-item">
+                    <span class="metric-label">Most Played Card:</span>
+                    <span class="metric-value"><%= performanceMetrics.mostPlayedCard %></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Average Card Value:</span>
+                    <span class="metric-value"><%= performanceMetrics.averageCardValue %></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Cards Drawn per Run:</span>
+                    <span class="metric-value"><%= performanceMetrics.cardsDrawnPerRun %></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Cards Played per Run:</span>
+                    <span class="metric-value"><%= performanceMetrics.cardsPlayedPerRun %></span>
+                </div>
+            </div>
+            
+            <div class="metric-section">
+                <h3>Progression</h3>
+                <div class="metric-item">
+                    <span class="metric-label">Average Level Reached:</span>
+                    <span class="metric-value"><%= performanceMetrics.averageLevelReached %></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Farthest Realm:</span>
+                    <span class="metric-value"><%= performanceMetrics.farthestRealm %></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Events Completed per Run:</span>
+                    <span class="metric-value"><%= performanceMetrics.eventsCompletedPerRun %></span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Shops Visited per Run:</span>
+                    <span class="metric-value"><%= performanceMetrics.shopsVisitedPerRun %></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Run History -->
+    <div class="run-history">
+        <h2>Run History</h2>
+        <div class="history-controls">
+            <div class="filter-controls">
+                <label for="realm-filter">Filter by Realm:</label>
+                <select id="realm-filter" onchange="filterRuns()">
+                    <option value="">All Realms</option>
+                    <option value="steel">Steel Realm</option>
+                    <option value="blood">Blood Realm</option>
+                    <option value="ash">Ash Realm</option>
+                    <option value="speed">Speed Realm</option>
+                </select>
+                
+                <label for="result-filter">Filter by Result:</label>
+                <select id="result-filter" onchange="filterRuns()">
+                    <option value="">All Results</option>
+                    <option value="victory">Victory</option>
+                    <option value="defeat">Defeat</option>
+                </select>
+            </div>
+            
+            <div class="sort-controls">
+                <label for="sort-by">Sort by:</label>
+                <select id="sort-by" onchange="sortRuns()">
+                    <option value="date">Date</option>
+                    <option value="level">Level Reached</option>
+                    <option value="currency">Currency Earned</option>
+                    <option value="enemies">Enemies Defeated</option>
+                    <option value="duration">Duration</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="runs-list" id="runs-list">
+            <% if (runHistory && runHistory.length > 0) { %>
+                <% runHistory.forEach(run => { %>
+                <div class="run-item" data-realm="<%= run.realm %>" data-result="<%= run.result %>">
+                    <div class="run-header">
+                        <h4><%= run.realmName %> - Level <%= run.levelReached %></h4>
+                        <span class="run-date"><%= new Date(run.date).toLocaleDateString() %></span>
+                    </div>
+                    <div class="run-details">
+                        <div class="run-stat">
+                            <span class="stat-label">Result:</span>
+                            <span class="stat-value <%= run.result %>"><%= run.result === 'victory' ? 'Victory' : 'Defeat' %></span>
+                        </div>
+                        <div class="run-stat">
+                            <span class="stat-label">Currency:</span>
+                            <span class="stat-value"><%= run.currencyEarned %></span>
+                        </div>
+                        <div class="run-stat">
+                            <span class="stat-label">Enemies:</span>
+                            <span class="stat-value"><%= run.enemiesDefeated %></span>
+                        </div>
+                        <div class="run-stat">
+                            <span class="stat-label">Duration:</span>
+                            <span class="stat-value"><%= Math.floor(run.duration / 60) %>m <%= run.duration % 60 %>s</span>
+                        </div>
+                    </div>
+                    <div class="run-actions">
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewRunDetails('<%= run.id %>')">
+                            View Details
+                        </button>
+                    </div>
+                </div>
+                <% }); %>
+            <% } else { %>
+                <p class="no-runs">No runs completed yet. Start your first run to see statistics here!</p>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="achievements-section">
+        <h2>Achievements</h2>
+        <div class="achievements-grid">
+            <% if (achievements && achievements.length > 0) { %>
+                <% achievements.forEach(achievement => { %>
+                <div class="achievement-card <%= achievement.unlocked ? 'unlocked' : 'locked' %>">
+                    <div class="achievement-icon">
+                        <%= achievement.unlocked ? '🏆' : '🔒' %>
+                    </div>
+                    <div class="achievement-info">
+                        <h5><%= achievement.name %></h5>
+                        <p><%= achievement.description %></p>
+                        <% if (achievement.unlocked) { %>
+                            <span class="unlock-date">Unlocked: <%= new Date(achievement.unlockDate).toLocaleDateString() %></span>
+                        <% } else { %>
+                            <span class="progress">Progress: <%= achievement.progress %>/<%= achievement.requirement %></span>
+                        <% } %>
+                    </div>
+                </div>
+                <% }); %>
+            <% } else { %>
+                <p class="no-achievements">No achievements available yet.</p>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Equipment Collection -->
+    <div class="equipment-collection">
+        <h2>Equipment Collection</h2>
+        <div class="equipment-grid">
+            <div class="weapons-collection">
+                <h3>Weapons</h3>
+                <div class="equipment-list">
+                    <% equipmentCollection.weapons.forEach(weapon => { %>
+                    <div class="equipment-item <%= weapon.owned ? 'owned' : 'missing' %>">
+                        <span class="equipment-name"><%= weapon.name %></span>
+                        <span class="equipment-status">
+                            <%= weapon.owned ? 'Owned' : 'Not Found' %>
+                        </span>
+                    </div>
+                    <% }); %>
+                </div>
+            </div>
+            <div class="armor-collection">
+                <h3>Armor</h3>
+                <div class="equipment-list">
+                    <% equipmentCollection.armor.forEach(armor => { %>
+                    <div class="equipment-item <%= armor.owned ? 'owned' : 'missing' %>">
+                        <span class="equipment-name"><%= armor.name %></span>
+                        <span class="equipment-status">
+                            <%= armor.owned ? 'Owned' : 'Not Found' %>
+                        </span>
+                    </div>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Run Details Modal -->
+<div class="modal fade" id="runDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Run Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="run-details-content" id="run-details-content">
+                    <!-- Run details will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Stats state management
+let runHistory = <%- JSON.stringify(runHistory) %>;
+let overallStats = <%- JSON.stringify(overallStats) %>;
+let performanceMetrics = <%- JSON.stringify(performanceMetrics) %>;
+let achievements = <%- JSON.stringify(achievements) %>;
+let equipmentCollection = <%- JSON.stringify(equipmentCollection) %>;
+
+// Initialize stats interface
+document.addEventListener('DOMContentLoaded', function() {
+    initializeStats();
+});
+
+function initializeStats() {
+    // Add any initialization logic here
+    console.log('Stats interface initialized');
+}
+
+// Filter and sort functions
+function filterRuns() {
+    const realmFilter = document.getElementById('realm-filter').value;
+    const resultFilter = document.getElementById('result-filter').value;
+    
+    const runItems = document.querySelectorAll('.run-item');
+    
+    runItems.forEach(item => {
+        const realm = item.dataset.realm;
+        const result = item.dataset.result;
+        
+        const realmMatch = !realmFilter || realm === realmFilter;
+        const resultMatch = !resultFilter || result === resultFilter;
+        
+        if (realmMatch && resultMatch) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function sortRuns() {
+    const sortBy = document.getElementById('sort-by').value;
+    const runsList = document.getElementById('runs-list');
+    const runItems = Array.from(runsList.querySelectorAll('.run-item'));
+    
+    runItems.sort((a, b) => {
+        const aValue = getSortValue(a, sortBy);
+        const bValue = getSortValue(b, sortBy);
+        
+        if (sortBy === 'date') {
+            return new Date(bValue) - new Date(aValue);
+        } else {
+            return bValue - aValue;
+        }
+    });
+    
+    // Re-append sorted items
+    runItems.forEach(item => runsList.appendChild(item));
+}
+
+function getSortValue(item, sortBy) {
+    const details = item.querySelector('.run-details');
+    const stats = details.querySelectorAll('.run-stat');
+    
+    switch (sortBy) {
+        case 'level':
+            return parseInt(item.querySelector('h4').textContent.match(/Level (\d+)/)[1]);
+        case 'currency':
+            return parseInt(stats[1].querySelector('.stat-value').textContent);
+        case 'enemies':
+            return parseInt(stats[2].querySelector('.stat-value').textContent);
+        case 'duration':
+            const durationText = stats[3].querySelector('.stat-value').textContent;
+            const minutes = parseInt(durationText.match(/(\d+)m/)[1]);
+            const seconds = parseInt(durationText.match(/(\d+)s/)[1]);
+            return minutes * 60 + seconds;
+        case 'date':
+            return item.querySelector('.run-date').textContent;
+        default:
+            return 0;
+    }
+}
+
+function viewRunDetails(runId) {
+    fetch(`/stats/run-details/${runId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            populateRunDetails(data.runDetails);
+            new bootstrap.Modal(document.getElementById('runDetailsModal')).show();
+        } else {
+            alert('Failed to load run details: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to load run details');
+    });
+}
+
+function populateRunDetails(runDetails) {
+    const detailsContent = document.getElementById('run-details-content');
+    if (!detailsContent) return;
+    
+    detailsContent.innerHTML = `
+        <div class="run-details-full">
+            <h4>${runDetails.realmName} - Level ${runDetails.levelReached}</h4>
+            <p><strong>Date:</strong> ${new Date(runDetails.date).toLocaleString()}</p>
+            <p><strong>Result:</strong> <span class="${runDetails.result}">${runDetails.result === 'victory' ? 'Victory' : 'Defeat'}</span></p>
+            <p><strong>Duration:</strong> ${Math.floor(runDetails.duration / 60)}m ${runDetails.duration % 60}s</p>
+            
+            <h5>Combat Statistics</h5>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Enemies Defeated:</span>
+                    <span class="detail-value">${runDetails.enemiesDefeated}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Total Damage Dealt:</span>
+                    <span class="detail-value">${runDetails.totalDamageDealt}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Total Damage Taken:</span>
+                    <span class="detail-value">${runDetails.totalDamageTaken}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Battle Win Rate:</span>
+                    <span class="detail-value">${runDetails.battleWinRate}%</span>
+                </div>
+            </div>
+            
+            <h5>Progression</h5>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Events Completed:</span>
+                    <span class="detail-value">${runDetails.eventsCompleted}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Shops Visited:</span>
+                    <span class="detail-value">${runDetails.shopsVisited}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Rest Events:</span>
+                    <span class="detail-value">${runDetails.restEvents}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Currency Earned:</span>
+                    <span class="detail-value">${runDetails.currencyEarned}</span>
+                </div>
+            </div>
+            
+            <h5>Equipment Found</h5>
+            <div class="equipment-found">
+                ${runDetails.equipmentFound && runDetails.equipmentFound.length > 0 
+                    ? runDetails.equipmentFound.map(item => `<div class="equipment-found-item">${item.name} (${item.type})</div>`).join('')
+                    : '<p>No equipment found this run.</p>'
+                }
+            </div>
+            
+            <h5>Achievements Earned</h5>
+            <div class="achievements-earned">
+                ${runDetails.achievements && runDetails.achievements.length > 0
+                    ? runDetails.achievements.map(achievement => `<div class="achievement-earned">🏆 ${achievement.name}</div>`).join('')
+                    : '<p>No achievements earned this run.</p>'
+                }
+            </div>
+        </div>
+    `;
+}
+
+// Export statistics
+function exportStats() {
+    const statsData = {
+        overallStats,
+        performanceMetrics,
+        runHistory,
+        achievements,
+        equipmentCollection
+    };
+    
+    const dataStr = JSON.stringify(statsData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = 'deckrift-stats.json';
+    link.click();
+}
+
+// Add export button to page
+document.addEventListener('DOMContentLoaded', function() {
+    const statsHeader = document.querySelector('.stats-header');
+    if (statsHeader) {
+        const exportButton = document.createElement('button');
+        exportButton.className = 'btn btn-outline-secondary';
+        exportButton.textContent = 'Export Stats';
+        exportButton.onclick = exportStats;
+        statsHeader.appendChild(exportButton);
+    }
+});
+</script> 

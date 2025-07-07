@@ -1,0 +1,112 @@
+<div class="container mt-4 profile-container">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="text-center mb-4">Profile Settings</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main content - Edit Profile -->
+        <div class="col-lg-8 col-md-12 mb-4">
+            <div class="home-card">
+                <div class="card-body">
+                    <h5 class="card-title">Edit Profile</h5>
+                    <form id="profileForm">
+                        <div class="mb-3">
+                            <label for="displayName" class="form-label">Display Name</label>
+                            <input type="text" class="form-input" id="displayName" 
+                                   value="<%= profile.displayName || '' %>" 
+                                   placeholder="Enter display name">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="bio" class="form-label">Bio</label>
+                            <textarea class="form-input form-textarea" id="bio" rows="3" 
+                                      placeholder="Tell us about yourself"><%= profile.bio || '' %></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Game Preferences</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="autoSave" 
+                                       <%= profile.preferences && profile.preferences.autoSave ? 'checked' : '' %>>
+                                <label class="form-check-label" for="autoSave">
+                                    Auto-save during gameplay
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="soundEnabled" 
+                                       <%= profile.preferences && profile.preferences.soundEnabled ? 'checked' : '' %>>
+                                <label class="form-check-label" for="soundEnabled">
+                                    Enable sound effects
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar content -->
+        <div class="col-lg-4 col-md-12">
+            <!-- Account Info -->
+            <div class="home-card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Account Info</h5>
+                    <div class="account-info">
+                        <p><strong>Username:</strong> <%= user.username %></p>
+                        <p><strong>Email:</strong> <%= user.email %></p>
+                        <p><strong>Member since:</strong> <%= new Date(user.createdAt).toLocaleDateString() %></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="home-card">
+                <div class="card-body">
+                    <h5 class="card-title">Actions</h5>
+                    <div class="action-buttons">
+                        <a href="/home-realm" class="btn btn-secondary btn-sm me-2 mb-2">Home Realm</a>
+                        <a href="/stats" class="btn btn-outline-primary btn-sm mb-2">Statistics</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = {
+        displayName: document.getElementById('displayName').value,
+        bio: document.getElementById('bio').value,
+        preferences: {
+            autoSave: document.getElementById('autoSave').checked,
+            soundEnabled: document.getElementById('soundEnabled').checked
+        }
+    };
+    
+    try {
+        const response = await fetch('/api/auth/profile', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            showNotification('Success', 'Profile updated successfully!', 'success');
+        } else {
+            showNotification('Error', 'Failed to update profile', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        showNotification('Error', 'Error updating profile', 'error');
+    }
+});
+</script> 
