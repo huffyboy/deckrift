@@ -27,7 +27,6 @@ async function initializeDeck() {
         remaining: 52,
         drawnCards: [],
       };
-    } else {
     }
   } catch (error) {
     // Fallback to random selection if API fails
