@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
+import { calculateAllXPThresholds } from '../services/gameUtils.js';
 
 const router = express.Router();
 
@@ -70,6 +71,9 @@ router.get('/', requireAuth, async (req, res) => {
       }
     });
 
+    // Calculate XP thresholds for each stat
+    const xpThresholds = calculateAllXPThresholds(currentProfile || {});
+
     return res.render('upgrades', {
       title: 'Upgrades - Deckrift',
       user: { username: req.session.username },
@@ -77,6 +81,7 @@ router.get('/', requireAuth, async (req, res) => {
       unlockedUpgrades,
       availableUpgrades,
       currency: user.currency || 0,
+      xpThresholds,
     });
   } catch (error) {
     return res.status(500).render('error', {

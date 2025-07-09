@@ -10,14 +10,9 @@ import {
 import GameSave from '../models/GameSave.js';
 import User from '../models/User.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { calculateAllXPThresholds } from '../services/gameUtils.js';
 
 const router = express.Router();
-
-// Helper function to calculate XP threshold for a stat level
-function calculateXPThreshold(statLevel) {
-  const targetLevel = statLevel + 1;
-  return 40 * (targetLevel - 4); // Level 4 needs 40 XP to reach level 5, Level 5 needs 80 XP to reach level 6, etc.
-}
 
 // Game API endpoints
 router.get('/api/game/status/:profileId', getGameStatus);
@@ -65,17 +60,17 @@ router.get('/', requireAuth, async (req, res) => {
     const unlockedUpgrades = user.upgrades || [];
 
     // Calculate XP thresholds for each stat
-    const xpThresholds = {
-      power: calculateXPThreshold(activeSave.stats?.power || 4),
-      will: calculateXPThreshold(activeSave.stats?.will || 4),
-      craft: calculateXPThreshold(activeSave.stats?.craft || 4),
-      control: calculateXPThreshold(activeSave.stats?.control || 4),
-    };
+    const xpThresholds = calculateAllXPThresholds(activeSave.stats || {});
 
-    // Import realm data from gameData.js
-    const { REALMS, getChallengeModifier } = await import(
-      '../public/js/modules/gameData.js'
-    );
+    // Import realm data and map constants from gameData.js
+    const {
+      REALMS,
+      getChallengeModifier,
+      MAP_CARD_VALUES,
+      MAP_CARD_SUITS,
+      MAP_CONSTANTS,
+      SHOP_PRICES,
+    } = await import('../public/js/modules/gameData.js');
 
     // Calculate health based on Will stat (10 HP per Will point)
     const willStat = activeSave.stats?.will || 4;
@@ -87,34 +82,17 @@ router.get('/', requireAuth, async (req, res) => {
       activeSave.realm,
       activeSave.level
     );
-    const cardsPerLevel = 5;
     const rows = challengeModifier;
 
     // Create a grid-based map structure
     const map = [];
 
     // Generate actual cards for the map (excluding jokers)
-    const cardValues = [
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-      '7',
-      '8',
-      '9',
-      '10',
-      'J',
-      'Q',
-      'K',
-      'A',
-    ];
-    const cardSuits = ['♠', '♥', '♦', '♣'];
     const availableCards = [];
 
     // Create a deck of cards (excluding jokers)
-    cardSuits.forEach((suit) => {
-      cardValues.forEach((value) => {
+    MAP_CARD_SUITS.forEach((suit) => {
+      MAP_CARD_VALUES.forEach((value) => {
         availableCards.push(`${value}${suit}`);
       });
     });
@@ -183,14 +161,14 @@ router.get('/', requireAuth, async (req, res) => {
       level: activeSave.level,
       currentScreen: 'overworld', // Always start with overworld screen
       challengeModifier,
-      cardsPerLevel,
+      cardsPerLevel: MAP_CONSTANTS.CARDS_PER_LEVEL,
       map,
       playerPosition: { x: 0, y: 0 }, // Start at top-left corner
       enemy: activeSave.battleState?.enemy || {},
       event: {}, // Will be populated when in event screen
       shop: {
-        healCost: 10,
-        cardRemovalCost: 25,
+        healCost: SHOP_PRICES.basicHeal,
+        cardRemovalCost: SHOP_PRICES.cardRemoval,
         equipment: [],
       },
     };

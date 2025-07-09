@@ -100,105 +100,35 @@ export const CARD_UNICODE_MAP = {
 // Card back symbol
 export const CARD_BACK_SYMBOL = '🂠';
 
-// Helper function to get card Unicode symbol
-export function getCardUnicode(cardValue, suit) {
-  const key = cardValue + suit.charAt(0).toUpperCase();
-  return CARD_UNICODE_MAP[key] || CARD_BACK_SYMBOL;
-}
+// Unicode to card value mapping
+export const UNICODE_TO_VALUE_MAP = {
+  '🂡': 'A', '🂱': 'A', '🃁': 'A', '🃑': 'A',
+  '🂢': '2', '🂲': '2', '🃂': '2', '🃒': '2',
+  '🂣': '3', '🂳': '3', '🃃': '3', '🃓': '3',
+  '🂤': '4', '🂴': '4', '🃄': '4', '🃔': '4',
+  '🂥': '5', '🂵': '5', '🃅': '5', '🃕': '5',
+  '🂦': '6', '🂶': '6', '🃆': '6', '🃖': '6',
+  '🂧': '7', '🂷': '7', '🃇': '7', '🃗': '7',
+  '🂨': '8', '🂸': '8', '🃈': '8', '🃘': '8',
+  '🂩': '9', '🂹': '9', '🃉': '9', '🃙': '9',
+  '🂪': '10', '🂺': '10', '🃊': '10', '🃚': '10',
+  '🂫': 'J', '🂻': 'J', '🃋': 'J', '🃛': 'J',
+  '🂭': 'Q', '🂽': 'Q', '🃍': 'Q', '🃝': 'Q',
+  '🂮': 'K', '🂾': 'K', '🃎': 'K', '🃞': 'K',
+  '🃟': 'joker',
+};
 
-// Helper function to get card value from Unicode symbol
-export function getCardValueFromUnicode(unicodeSymbol) {
-  // Map Unicode symbols back to card values
-  const unicodeToValue = {
-    '🂡': 'A',
-    '🂱': 'A',
-    '🃁': 'A',
-    '🃑': 'A',
-    '🂢': '2',
-    '🂲': '2',
-    '🃂': '2',
-    '🃒': '2',
-    '🂣': '3',
-    '🂳': '3',
-    '🃃': '3',
-    '🃓': '3',
-    '🂤': '4',
-    '🂴': '4',
-    '🃄': '4',
-    '🃔': '4',
-    '🂥': '5',
-    '🂵': '5',
-    '🃅': '5',
-    '🃕': '5',
-    '🂦': '6',
-    '🂶': '6',
-    '🃆': '6',
-    '🃖': '6',
-    '🂧': '7',
-    '🂷': '7',
-    '🃇': '7',
-    '🃗': '7',
-    '🂨': '8',
-    '🂸': '8',
-    '🃈': '8',
-    '🃘': '8',
-    '🂩': '9',
-    '🂹': '9',
-    '🃉': '9',
-    '🃙': '9',
-    '🂪': '10',
-    '🂺': '10',
-    '🃊': '10',
-    '🃚': '10',
-    '🂫': 'J',
-    '🂻': 'J',
-    '🃋': 'J',
-    '🃛': 'J',
-    '🂭': 'Q',
-    '🂽': 'Q',
-    '🃍': 'Q',
-    '🃝': 'Q',
-    '🂮': 'K',
-    '🂾': 'K',
-    '🃎': 'K',
-    '🃞': 'K',
-    '🃟': 'joker',
-  };
+// Red card Unicode symbols (hearts and diamonds)
+export const RED_CARD_UNICODES = [
+  '🂱', '🂲', '🂳', '🂴', '🂵', '🂶', '🂷', '🂸', '🂹', '🂺', '🂻', '🂽', '🂾',
+  '🃁', '🃂', '🃃', '🃄', '🃅', '🃆', '🃇', '🃈', '🃉', '🃊', '🃋', '🃍', '🃎'
+];
 
-  return unicodeToValue[unicodeSymbol] || 'J'; // Default to nothing
-}
-
-// Helper function to check if card is red
-export function isRedCard(unicodeSymbol) {
-  return (
-    unicodeSymbol.includes('🂱') ||
-    unicodeSymbol.includes('🂲') ||
-    unicodeSymbol.includes('🂳') ||
-    unicodeSymbol.includes('🂴') ||
-    unicodeSymbol.includes('🂵') ||
-    unicodeSymbol.includes('🂶') ||
-    unicodeSymbol.includes('🂷') ||
-    unicodeSymbol.includes('🂸') ||
-    unicodeSymbol.includes('🂹') ||
-    unicodeSymbol.includes('🂺') ||
-    unicodeSymbol.includes('🂻') ||
-    unicodeSymbol.includes('🂽') ||
-    unicodeSymbol.includes('🂾') ||
-    unicodeSymbol.includes('🃁') ||
-    unicodeSymbol.includes('🃂') ||
-    unicodeSymbol.includes('🃃') ||
-    unicodeSymbol.includes('🃄') ||
-    unicodeSymbol.includes('🃅') ||
-    unicodeSymbol.includes('🃆') ||
-    unicodeSymbol.includes('🃇') ||
-    unicodeSymbol.includes('🃈') ||
-    unicodeSymbol.includes('🃉') ||
-    unicodeSymbol.includes('🃊') ||
-    unicodeSymbol.includes('🃋') ||
-    unicodeSymbol.includes('🃍') ||
-    unicodeSymbol.includes('🃎')
-  );
-}
+// Text to numeric value mapping
+export const TEXT_TO_VALUE_MAP = {
+  A: 14, K: 13, Q: 12, J: 11,
+  10: 10, 9: 9, 8: 8, 7: 7, 6: 6, 5: 5, 4: 4, 3: 3, 2: 2,
+};
 
 // Card ranges for easier validation
 export const CARD_RANGES = {
@@ -323,18 +253,6 @@ export const CHALLENGE_MODIFIERS = {
   3: [3, 4, 5, 6],
   4: [4, 5, 6, 7],
 };
-
-// Helper function to calculate challenge modifier
-export function getChallengeModifier(realmId, level) {
-  const realmModifiers = CHALLENGE_MODIFIERS[realmId];
-  if (!realmModifiers) return 1;
-
-  // Level is 1-based, so subtract 1 for array index
-  const levelIndex = level - 1;
-  return (
-    realmModifiers[levelIndex] || realmModifiers[realmModifiers.length - 1]
-  );
-}
 
 // ============================================================================
 // EQUIPMENT SYSTEM
@@ -1363,40 +1281,34 @@ export const CARD_DISPLAY_SYMBOLS = [
   { value: 'A', suit: '♣️', display: 'A♣️' },
 ];
 
-// Helper function to get a random card display symbol
-export function getRandomCardDisplay() {
-  return CARD_DISPLAY_SYMBOLS[
-    Math.floor(Math.random() * CARD_DISPLAY_SYMBOLS.length)
-  ];
-}
-
-// Helper function to get card value from card object
-export function getCardValue(cardObject) {
-  const textToValue = {
-    A: 14,
-    K: 13,
-    Q: 12,
-    J: 11,
-    10: 10,
-    9: 9,
-    8: 8,
-    7: 7,
-    6: 6,
-    5: 5,
-    4: 4,
-    3: 3,
-    2: 2,
-  };
-
-  return textToValue[cardObject.value] || 11;
-}
-
 // Suit symbol mapping for API conversion
 export const SUIT_SYMBOL_MAP = {
   HEARTS: '♥️',
   DIAMONDS: '♦️',
   CLUBS: '♣️',
   SPADES: '♠️',
+};
+
+// ============================================================================
+// MAP GENERATION CONSTANTS
+// ============================================================================
+
+// Card values for map generation (excluding jokers)
+export const MAP_CARD_VALUES = [
+  '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'
+];
+
+// Card suits for map generation
+export const MAP_CARD_SUITS = ['♠', '♥', '♦', '♣'];
+
+// Map generation constants
+export const MAP_CONSTANTS = {
+  CARDS_PER_LEVEL: 5,
+  MAP_COLUMNS: 7,
+  PLAYER_START_COL: 0,
+  JOKER_COL: 6,
+  CARD_START_COL: 1,
+  CARD_END_COL: 5,
 };
 
 // ============================================================================
@@ -1486,11 +1398,9 @@ export default {
   CARD_SUITS,
   CARD_UNICODE_MAP,
   CARD_BACK_SYMBOL,
-  getCardUnicode,
-  getCardValueFromUnicode,
-  isRedCard,
-  getRandomCardDisplay,
-  getCardValue,
+  UNICODE_TO_VALUE_MAP,
+  RED_CARD_UNICODES,
+  TEXT_TO_VALUE_MAP,
 
   // Game Configuration
   GAME_CONSTANTS,
@@ -1530,4 +1440,9 @@ export default {
 
   // Suit Symbol Mapping
   SUIT_SYMBOL_MAP,
+
+  // Map Generation
+  MAP_CARD_VALUES,
+  MAP_CARD_SUITS,
+  MAP_CONSTANTS,
 };

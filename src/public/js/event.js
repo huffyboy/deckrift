@@ -1,5 +1,8 @@
 // event.js - Page-specific logic for Event
 
+// Import shared utilities
+import { getCardValue } from './modules/gameUtils.js';
+
 // Initialize event interface
 document.addEventListener('DOMContentLoaded', () => {
   // Get event state from server-side data
@@ -14,3 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeEvent() {
   // Event initialization logic
 }
+
+// Make getCardValue available globally for EJS compatibility
+window.getCardValue = getCardValue;

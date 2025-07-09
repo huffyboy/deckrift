@@ -3,14 +3,9 @@ import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import GameSave from '../models/GameSave.js';
 import { requireAuth } from '../middlewares/auth.js';
+import { calculateAllXPThresholds } from '../services/gameUtils.js';
 
 const router = express.Router();
-
-// Helper function to calculate XP threshold for a stat level
-function calculateXPThreshold(statLevel) {
-  const targetLevel = statLevel + 1;
-  return 40 * (targetLevel - 4); // Level 4 needs 40 XP to reach level 5, Level 5 needs 80 XP to reach level 6, etc.
-}
 
 // Helper function to update existing saves with correct health values
 async function updateSaveHealth(save) {
@@ -93,12 +88,7 @@ router.get('/', requireAuth, async (req, res) => {
     // Realm 4 unlocked when user beats Realm 3
 
     // Calculate XP thresholds for each stat
-    const xpThresholds = {
-      power: await calculateXPThreshold(currentProfile.power || 4),
-      will: await calculateXPThreshold(currentProfile.will || 4),
-      craft: await calculateXPThreshold(currentProfile.craft || 4),
-      control: await calculateXPThreshold(currentProfile.control || 4),
-    };
+    const xpThresholds = calculateAllXPThresholds(currentProfile || {});
 
     return res.render('home-realm', {
       title: 'Home Realm - Deckrift',

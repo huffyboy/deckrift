@@ -283,7 +283,8 @@ function checkChallengeResult(card) {
     if (!challengeResult) return;
     
     const statValue = currentPlayer.stats[currentEvent.stat];
-    const cardValue = getCardValue(card.value);
+    // Use the card value calculation from the server-side data
+    const cardValue = card.numericValue || 0;
     const total = statValue + cardValue;
     const target = currentEvent.target;
     
@@ -428,12 +429,16 @@ function showCardDetails(value, suit) {
     const cardDetails = document.getElementById('card-details');
     if (!cardDetails) return;
     
+    // Find the card object to get its numeric value
+    const card = drawnCards.find(c => c.value === value && c.suit === suit);
+    const numericValue = card ? card.numericValue : 'Unknown';
+    
     cardDetails.innerHTML = `
         <div class="card-detail">
             <h6>Card Details</h6>
             <p><strong>Value:</strong> ${value}</p>
             <p><strong>Suit:</strong> ${suit}</p>
-            <p><strong>Numeric Value:</strong> ${getCardValue(value)}</p>
+            <p><strong>Numeric Value:</strong> ${numericValue}</p>
         </div>
     `;
     
@@ -456,15 +461,6 @@ function updatePlayerStats() {
 }
 
 // Helper functions
-function getCardValue(value) {
-    const cardValues = {
-        'A': 14, 'K': 13, 'Q': 12, 'J': 11,
-        '10': 10, '9': 9, '8': 8, '7': 7,
-        '6': 6, '5': 5, '4': 4, '3': 3, '2': 2
-    };
-    return cardValues[value] || parseInt(value) || 0;
-}
-
 function getBoonForCard(card) {
     // This would be implemented based on the game's boon system
     return {

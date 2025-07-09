@@ -3,10 +3,14 @@
 // Import game data constants
 import {
   EVENTS,
-  getRandomCardDisplay,
-  getCardValue,
   SUIT_SYMBOL_MAP,
 } from './modules/gameData.js';
+
+// Import game utility functions
+import {
+  getRandomCardDisplay,
+  getCardValue,
+} from './modules/gameUtils.js';
 
 // Game state management
 let currentGameState = null;
