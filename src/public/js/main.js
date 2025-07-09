@@ -14,9 +14,6 @@ class DeckriftGame {
 
   async init() {
     try {
-      // Check authentication status
-      await this.checkAuthentication();
-
       // Initialize page-specific functionality
       this.initializePage();
 
@@ -41,22 +38,8 @@ class DeckriftGame {
     return 'home';
   }
 
-  async checkAuthentication() {
-    try {
-      const response = await fetch('/api/auth/check');
-      const data = await response.json();
-
-      if (data.authenticated) {
-        this.isAuthenticated = true;
-        this.user = data.user;
-      } else {
-        // Redirect to login if not authenticated
-        window.location.href = '/auth/login';
-      }
-    } catch (error) {
-      // Handle authentication check errors
-    }
-  }
+  // Authentication is handled by server-side middleware
+  // No client-side authentication checks needed
 
   initializePage() {
     switch (this.currentPage) {
@@ -163,82 +146,11 @@ class DeckriftGame {
     });
   }
 
-  setupAuthForms() {
-    // Setup authentication forms for home page
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
+  // Authentication forms are handled by normal HTML form submission
+  // No JavaScript setup needed - server handles everything
 
-    if (loginForm) {
-      loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await this.handleLogin();
-      });
-    }
-
-    if (registerForm) {
-      registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await this.handleRegister();
-      });
-    }
-  }
-
-  async handleLogin() {
-    const form = document.getElementById('login-form');
-    const formData = new FormData(form);
-
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.get('username'),
-          password: formData.get('password'),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        window.location.href = '/home-realm';
-      } else {
-        this.showError(data.error || 'Login failed');
-      }
-    } catch (error) {
-      this.showError('Login failed. Please try again.');
-    }
-  }
-
-  async handleRegister() {
-    const form = document.getElementById('register-form');
-    const formData = new FormData(form);
-
-    try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.get('username'),
-          email: formData.get('email'),
-          password: formData.get('password'),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        window.location.href = '/home-realm';
-      } else {
-        this.showError(data.error || 'Registration failed');
-      }
-    } catch (error) {
-      this.showError('Registration failed. Please try again.');
-    }
-  }
+  // Login and register are handled by server-side form processing
+  // No client-side handlers needed
 
   async handleLogout() {
     try {

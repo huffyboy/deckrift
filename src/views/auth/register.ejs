@@ -5,7 +5,13 @@
                 <div class="card-body">
                     <h2 class="text-center mb-4">Register</h2>
                     
-                    <form id="registerForm">
+                    <% if (typeof error !== 'undefined' && error) { %>
+                        <div class="alert alert-danger" role="alert">
+                            <%= error %>
+                        </div>
+                    <% } %>
+                    
+                    <form method="POST" action="/api/auth/register">
                         <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
                             <input type="text" class="form-input" id="username" name="username" required>
@@ -40,46 +46,4 @@
     </div>
 </div>
 
-<script>
-document.getElementById('registerForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    
-    if (password !== confirmPassword) {
-        showNotification('Error', 'Passwords do not match', 'error');
-        return;
-    }
-    
-    const formData = {
-        username: document.getElementById('username').value,
-        email: document.getElementById('email').value,
-        password: password
-    };
-    
-    try {
-        const response = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            showNotification('Success', 'Registration successful! Please login.', 'success');
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 2000);
-        } else {
-            showNotification('Error', data.error || 'Registration failed', 'error');
-        }
-    } catch (error) {
-        console.error('Registration error:', error);
-        showNotification('Error', 'Registration failed. Please try again.', 'error');
-    }
-});
-</script> 
+<!-- Form submission is handled by server-side processing --> 

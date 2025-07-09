@@ -1,5 +1,6 @@
 import express from 'express';
 import GameSave from '../models/GameSave.js';
+import { requireAuth } from '../middlewares/auth.js';
 
 const router = express.Router();
 
@@ -31,13 +32,6 @@ function processWeaponSwitch(battle, weaponId) {
     battleLog: [...battle.battleLog, `Switched to ${weaponId}`],
   };
 }
-
-const requireAuth = (req, res, next) => {
-  if (!req.session.userId) {
-    return res.redirect('/auth/login');
-  }
-  return next();
-};
 
 // Battle page
 router.get('/', requireAuth, async (req, res) => {

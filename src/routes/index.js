@@ -2,18 +2,19 @@ import express from 'express';
 import gameRoutes from './game.js';
 import authRoutes from './auth.js';
 import apiRoutes from './api.js';
+import { optionalAuth, requireGuest } from '../middlewares/auth.js';
 
 const router = express.Router();
 
-// Home page route
-router.get('/', (req, res) => {
-  if (req.session.userId) {
+// Home page route - accessible to everyone
+router.get('/', optionalAuth, (req, res) => {
+  if (req.user) {
     return res.redirect('/home-realm');
   }
 
   return res.render('index', {
     title: 'Deckrift - Drawn to Dust',
-    user: null,
+    user: req.user || null,
     page: 'home',
     pageScript: '/js/main.js',
   });
@@ -71,28 +72,22 @@ router.get('/profile', async (req, res) => {
 });
 
 // Login route
-router.get('/login', (req, res) => {
-  if (req.session.userId) {
-    return res.redirect('/home-realm');
-  }
-
+router.get('/login', requireGuest, (req, res) => {
   return res.render('auth/login', {
     title: 'Login - Deckrift',
     user: null,
     page: 'login',
+    error: req.query.error || null,
   });
 });
 
 // Register route
-router.get('/register', (req, res) => {
-  if (req.session.userId) {
-    return res.redirect('/home-realm');
-  }
-
+router.get('/register', requireGuest, (req, res) => {
   return res.render('auth/register', {
     title: 'Register - Deckrift',
     user: null,
     page: 'register',
+    error: req.query.error || null,
   });
 });
 

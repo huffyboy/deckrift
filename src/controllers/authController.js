@@ -16,7 +16,7 @@ export const registerUser = async (req, res) => {
 
     // Validate input
     if (!username || !email || !password) {
-      return res.status(400).json({ error: 'All fields are required' });
+      return res.redirect('/register?error=All fields are required');
     }
 
     // Check if user already exists
@@ -25,9 +25,7 @@ export const registerUser = async (req, res) => {
     });
 
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ error: 'Username or email already exists' });
+      return res.redirect('/register?error=Username or email already exists');
     }
 
     // Hash password
@@ -63,16 +61,10 @@ export const registerUser = async (req, res) => {
     req.session.userId = user._id;
     req.session.username = user.username;
 
-    res.status(201).json({
-      message: 'User registered successfully',
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      },
-    });
+    // Redirect to home realm on successful registration
+    res.redirect('/home-realm');
   } catch (error) {
-    res.status(500).json({ error: 'Registration failed' });
+    res.redirect('/register?error=Registration failed');
   }
 };
 
@@ -83,21 +75,19 @@ export const loginUser = async (req, res) => {
 
     // Validate input
     if (!username || !password) {
-      return res
-        .status(400)
-        .json({ error: 'Username and password are required' });
+      return res.redirect('/login?error=Username and password are required');
     }
 
     // Find user
     const user = await User.findOne({ username });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.redirect('/login?error=Invalid credentials');
     }
 
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.redirect('/login?error=Invalid credentials');
     }
 
     // Update last login
@@ -108,16 +98,10 @@ export const loginUser = async (req, res) => {
     req.session.userId = user._id;
     req.session.username = user.username;
 
-    res.json({
-      message: 'Login successful',
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      },
-    });
+    // Redirect to home realm on successful login
+    res.redirect('/home-realm');
   } catch (error) {
-    res.status(500).json({ error: 'Login failed' });
+    res.redirect('/login?error=Login failed');
   }
 };
 

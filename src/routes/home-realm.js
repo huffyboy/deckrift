@@ -2,16 +2,9 @@ import express from 'express';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import GameSave from '../models/GameSave.js';
+import { requireAuth } from '../middlewares/auth.js';
 
 const router = express.Router();
-
-// Middleware to check if user is authenticated
-const requireAuth = (req, res, next) => {
-  if (!req.session.userId) {
-    return res.redirect('/');
-  }
-  return next();
-};
 
 // Helper function to calculate XP threshold for a stat level
 function calculateXPThreshold(statLevel) {

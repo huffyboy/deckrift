@@ -9,6 +9,7 @@ import {
 } from '../controllers/gameController.js';
 import GameSave from '../models/GameSave.js';
 import User from '../models/User.js';
+import { requireAuth } from '../middlewares/auth.js';
 
 const router = express.Router();
 
@@ -17,14 +18,6 @@ function calculateXPThreshold(statLevel) {
   const targetLevel = statLevel + 1;
   return 40 * (targetLevel - 4); // Level 4 needs 40 XP to reach level 5, Level 5 needs 80 XP to reach level 6, etc.
 }
-
-// Middleware to check if user is authenticated
-const requireAuth = (req, res, next) => {
-  if (!req.session.userId) {
-    return res.redirect('/');
-  }
-  return next();
-};
 
 // Game API endpoints
 router.get('/api/game/status/:profileId', getGameStatus);

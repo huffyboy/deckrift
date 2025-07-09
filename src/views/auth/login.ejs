@@ -5,7 +5,13 @@
                 <div class="card-body">
                     <h2 class="text-center mb-4">Login</h2>
                     
-                    <form id="loginForm">
+                    <% if (typeof error !== 'undefined' && error) { %>
+                        <div class="alert alert-danger" role="alert">
+                            <%= error %>
+                        </div>
+                    <% } %>
+                    
+                    <form method="POST" action="/api/auth/login">
                         <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
                             <input type="text" class="form-input" id="username" name="username" required>
@@ -30,37 +36,4 @@
     </div>
 </div>
 
-<script>
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const formData = {
-        username: document.getElementById('username').value,
-        password: document.getElementById('password').value
-    };
-    
-    try {
-        const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            showNotification('Success', 'Login successful! Redirecting...', 'success');
-            setTimeout(() => {
-                window.location.href = '/home-realm';
-            }, 1000);
-        } else {
-            showNotification('Error', data.error || 'Login failed', 'error');
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        showNotification('Error', 'Login failed. Please try again.', 'error');
-    }
-});
-</script> 
+<!-- Form submission is handled by server-side processing --> 
