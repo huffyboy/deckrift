@@ -1,20 +1,33 @@
 // game.js - Page-specific logic for Game
 
 // Import game data constants
-import {
-  EVENTS,
-  SUIT_SYMBOL_MAP,
-} from './modules/gameData.js';
+import { EVENTS, SUIT_SYMBOL_MAP } from './modules/gameData.js';
 
 // Import game utility functions
 import {
   getRandomCardDisplay,
   getCardValue,
+  convertApiValueToInternal,
+  generateEnemyStats as generateEnemyStatsUtil,
+  generateBossStats as generateBossStatsUtil,
+  generateShopItems as generateShopItemsUtil,
+  calculateShopCosts as calculateShopCostsUtil,
+  generateBoonOptions as generateBoonOptionsUtil,
+  generateBaneEffect as generateBaneEffectUtil,
 } from './modules/gameUtils.js';
+
+import { showNotification } from './modules/uiUtils.js';
+
+// Import event handler functions
+import {
+  handleCardFlip as handleCardFlipUtil,
+  handleCardEvent as handleCardEventUtil,
+} from './modules/eventHandler.js';
 
 // Game state management
 let currentGameState = null;
 let currentDeck = null; // Store the current deck state
+let isCardSequenceInProgress = false; // Track if card flip/movement is happening
 
 // Deck management functions
 async function initializeDeck() {
@@ -58,9 +71,9 @@ async function drawCard() {
 
       // Convert API card format to our format
       const cardObject = {
-        value: card.value,
-        suit: card.suit,
-        display: `${card.value}${SUIT_SYMBOL_MAP[card.suit]}`,
+        value: convertApiValueToInternal(card.value),
+        suit: card.suit.toLowerCase(),
+        display: `${convertApiValueToInternal(card.value)}${SUIT_SYMBOL_MAP[card.suit]}`,
         code: card.code,
       };
 
@@ -75,184 +88,64 @@ async function drawCard() {
   }
 }
 
-function showNotification(title, message, type = 'info') {
-  // Create notification element
-  const notification = document.createElement('div');
-  notification.className = `notification notification-${type}`;
-  notification.innerHTML = `
-    <h4>${title}</h4>
-    <p>${message}</p>
-  `;
-
-  // Add to page
-  document.body.appendChild(notification);
-
-  // Remove after 3 seconds
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.parentNode.removeChild(notification);
-    }
-  }, 3000);
-}
-
+// Game state generation functions - now using shared gameUtils
 function generateEnemyStats(enemyType) {
-  const baseStats = { power: 2, will: 2, craft: 2, control: 2 };
   const challengeModifier = currentGameState.challengeModifier || 1;
-
-  // Add challenge modifier to stats
-  Object.keys(baseStats).forEach((stat) => {
-    baseStats[stat] += challengeModifier;
-  });
-
-  // Boost the primary stat based on enemy type
-  if (enemyType === 'power') baseStats.power += 1;
-  else if (enemyType === 'will') baseStats.will += 1;
-  else if (enemyType === 'craft') baseStats.craft += 1;
-  else if (enemyType === 'control') baseStats.control += 1;
-
-  return baseStats;
+  return generateEnemyStatsUtil(enemyType, challengeModifier);
 }
 
 function generateBossStats() {
   const challengeModifier = currentGameState.challengeModifier || 1;
-  return {
-    power: 2 * challengeModifier,
-    will: 2 * challengeModifier,
-    craft: 2 * challengeModifier,
-    control: 2 * challengeModifier,
-  };
+  return generateBossStatsUtil(challengeModifier);
 }
 
 function generateShopItems() {
-  return ['heal', 'equipment1', 'equipment2', 'card_removal'];
+  return generateShopItemsUtil();
 }
 
 function calculateShopCosts() {
   const challengeModifier = currentGameState.challengeModifier || 1;
-  return {
-    heal: 10 + challengeModifier,
-    equipment1: 25 + challengeModifier,
-    equipment2: 30 + challengeModifier,
-    card_removal: 25 + challengeModifier,
-  };
+  return calculateShopCostsUtil(challengeModifier);
 }
 
 function generateBoonOptions() {
-  return ['stat_boost', 'artifact', 'currency'];
+  return generateBoonOptionsUtil();
 }
 
 function generateBaneEffect() {
-  return 'lose_item';
-}
-
-// Card handling functions - defined before render functions
-function handleCardEncounter(card) {
-  const cardValue = getCardValue(card);
-
-  if (cardValue >= 3 && cardValue <= 6) {
-    // Fight encounter
-    const enemyTypes = ['power', 'will', 'craft', 'control'];
-    const enemyType = enemyTypes[cardValue - 3];
-    startBattle(enemyType, currentGameState.playerPosition);
-  } else if (cardValue >= 7 && cardValue <= 10) {
-    // Stat challenge
-    const statTypes = ['power', 'will', 'craft', 'control'];
-    const statType = statTypes[cardValue - 7];
-    startChallenge(statType, currentGameState.playerPosition);
-  } else if (cardValue === 11) {
-    // Nothing
-    showNotification(
-      'Nothing Happens',
-      'You find nothing of interest.',
-      'info'
-    );
-  } else if (cardValue === 12) {
-    // Rest
-    handleRest(currentGameState.playerPosition);
-  } else if (cardValue === 13) {
-    // Shop
-    startShop(currentGameState.playerPosition);
-  } else if (cardValue === 14) {
-    // Boon
-    handleBoon(currentGameState.playerPosition);
-  } else if (cardValue === 2) {
-    // Bane
-    handleBane(currentGameState.playerPosition);
-  }
+  return generateBaneEffectUtil();
 }
 
 function handleCardFlip(mapCell, _newPosition) {
-  // Create a new object instead of mutating the parameter
-  const updatedMapCell = { ...mapCell, revealed: true, justRevealed: true };
-
-  // Draw a card from the deck for this position
-  drawCard().then((cardObject) => {
-    updatedMapCell.card = cardObject;
-
-    // Update the map in the game state
-    const { x, y } = _newPosition;
-    if (currentGameState.map[y] && currentGameState.map[y][x]) {
-      currentGameState.map[y][x] = updatedMapCell;
-    }
-
-    // Update the map display
-    renderOverworldMap();
-
-    // Handle the encounter
-    handleCardEncounter(updatedMapCell.card);
-  });
+  const handlers = {
+    drawCard,
+    renderOverworldMap,
+    startBattle,
+    startChallenge,
+    handleRest,
+    startShop,
+    handleBoon,
+    handleBane,
+    startBossBattle,
+    resetBusyState: () => {
+      isCardSequenceInProgress = false;
+    },
+  };
+  handleCardFlipUtil(mapCell, _newPosition, currentGameState, handlers);
 }
 
 function handleCardEvent(mapCell, _newPosition) {
-  // Create a new object instead of mutating the parameter
-  const updatedMapCell = { ...mapCell, visited: true, justRevealed: false };
-
-  // Update the map in the game state
-  const { x, y } = _newPosition;
-  if (currentGameState.map[y] && currentGameState.map[y][x]) {
-    currentGameState.map[y][x] = updatedMapCell;
-  }
-
-  // Update player position
-  currentGameState.playerPosition = _newPosition;
-
-  // Handle the encounter based on card type
-  const cardValue = getCardValue(updatedMapCell.card);
-
-  if (cardValue >= 3 && cardValue <= 6) {
-    // Fight encounter
-    const enemyTypes = ['power', 'will', 'craft', 'control'];
-    const enemyType = enemyTypes[cardValue - 3];
-    startBattle(enemyType, _newPosition);
-  } else if (cardValue >= 7 && cardValue <= 10) {
-    // Stat challenge
-    const statTypes = ['power', 'will', 'craft', 'control'];
-    const statType = statTypes[cardValue - 7];
-    startChallenge(statType, _newPosition);
-  } else if (cardValue === 11) {
-    // Nothing
-    showNotification(
-      'Nothing Happens',
-      'You find nothing of interest.',
-      'info'
-    );
-    renderOverworldMap();
-  } else if (cardValue === 12) {
-    // Rest
-    handleRest(_newPosition);
-  } else if (cardValue === 13) {
-    // Shop
-    startShop(_newPosition);
-  } else if (cardValue === 14) {
-    // Boon
-    handleBoon(_newPosition);
-  } else if (cardValue === 2) {
-    // Bane
-    handleBane(_newPosition);
-  } else if (updatedMapCell.type === 'joker') {
-    // Boss battle
-    startBossBattle(_newPosition);
-  }
+  const handlers = {
+    startBattle,
+    startChallenge,
+    handleRest,
+    startShop,
+    handleBoon,
+    handleBane,
+    startBossBattle,
+    renderOverworldMap,
+  };
+  handleCardEventUtil(mapCell, _newPosition, currentGameState, handlers, false);
 }
 
 // Render functions - defined before use
@@ -410,18 +303,21 @@ function renderOverworldMap() {
         // Allow clicking on adjacent cards (both revealed and unrevealed)
         if (
           Math.abs(playerX - col) + Math.abs(playerY - row) === 1 &&
-          mapCell
+          mapCell &&
+          !isCardSequenceInProgress
         ) {
           cardDiv.style.border = '3px solid #4CAF50'; // Green border for all clickable cards
 
           if (!mapCell.revealed) {
-            // Unrevealed card - flip it
+            // Unrevealed card - flip it and move there
             cardDiv.onclick = () => {
+              isCardSequenceInProgress = true; // Set busy state
               handleCardFlip(mapCell, { x: col, y: row });
             };
           } else {
-            // Revealed card - just move there
+            // Revealed card - move there and trigger event
             cardDiv.onclick = () => {
+              isCardSequenceInProgress = true; // Set busy state
               // Mark this card as visited when player moves to it
               mapCell.visited = true;
               currentGameState.playerPosition = { x: col, y: row };

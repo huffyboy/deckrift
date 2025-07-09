@@ -1,5 +1,7 @@
 // shop.js - Page-specific logic for Shop page
 
+import { loadShopItems as loadShopItemsUtil } from './modules/dataLoader.js';
+
 function displayShopItems(items) {
   // Display shop items on the page
   const shopContainer = document.getElementById('shop-container');
@@ -9,18 +11,16 @@ function displayShopItems(items) {
   }
 }
 
-function loadShopItems() {
+async function loadShopItems() {
   // Load available shop items
-  fetch('/api/shop/items')
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        displayShopItems(data.items);
-      }
-    })
-    .catch((_error) => {
-      // Handle error silently
-    });
+  try {
+    const data = await loadShopItemsUtil();
+    if (data.success) {
+      displayShopItems(data.items);
+    }
+  } catch (error) {
+    // Error already handled by dataLoader
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

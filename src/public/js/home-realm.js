@@ -1,27 +1,6 @@
 // home-realm.js - Page-specific logic for Home Realm
 
-function showError(message) {
-  // Create an error alert
-  const alertDiv = document.createElement('div');
-  alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-  alertDiv.innerHTML = `
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  `;
-
-  // Insert at the top of the container
-  const container = document.querySelector('.container');
-  if (container) {
-    container.insertBefore(alertDiv, container.firstChild);
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      if (alertDiv.parentNode) {
-        alertDiv.remove();
-      }
-    }, 5000);
-  }
-}
+import { showError } from './modules/uiUtils.js';
 
 function resumeRun() {
   fetch('/home-realm/resume-run', {

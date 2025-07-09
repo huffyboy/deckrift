@@ -1,6 +1,27 @@
 // Main Game Controller - Multi-Page Version
 // This file now handles basic initialization and page-specific functionality
 
+import {
+  showError as showErrorUtil,
+  showSuccess as showSuccessUtil,
+  showWarning as showWarningUtil,
+  showInfo as showInfoUtil,
+  showNotification as showNotificationUtil,
+  toggleLoadingScreen,
+  showGameInterface as showGameInterfaceUtil,
+} from './modules/uiUtils.js';
+
+import {
+  loadHomeRealmData as loadHomeRealmDataUtil,
+  loadGameState as loadGameStateUtil,
+  loadBattleState as loadBattleStateUtil,
+  loadEventData as loadEventDataUtil,
+  loadShopData as loadShopDataUtil,
+  loadGameOverData as loadGameOverDataUtil,
+  loadStatsData as loadStatsDataUtil,
+  loadProfileData as loadProfileDataUtil,
+} from './modules/dataLoader.js';
+
 class DeckriftGame {
   constructor() {
     // Initialize basic state
@@ -170,84 +191,76 @@ class DeckriftGame {
     }
   }
 
-  // Page-specific data loading methods
+  // Page-specific data loading methods - now using shared dataLoader
   async loadHomeRealmData() {
     try {
-      const response = await fetch('/api/home-realm/data');
-      const data = await response.json();
+      const data = await loadHomeRealmDataUtil();
       this.updateHomeRealmInterface(data);
     } catch (error) {
-      this.showError('Failed to load home realm data');
+      // Error already handled by dataLoader
     }
   }
 
   async loadGameState() {
     try {
-      const response = await fetch('/api/game/state');
-      const gameState = await response.json();
+      const gameState = await loadGameStateUtil();
       this.updateGameInterface(gameState);
     } catch (error) {
-      this.showError('Failed to load game state');
+      // Error already handled by dataLoader
     }
   }
 
   async loadBattleState() {
     try {
-      const response = await fetch('/api/battle/state');
-      const battleState = await response.json();
+      const battleState = await loadBattleStateUtil();
       this.updateBattleInterface(battleState);
     } catch (error) {
-      this.showError('Failed to load battle state');
+      // Error already handled by dataLoader
     }
   }
 
   async loadEventData() {
     try {
-      const response = await fetch('/api/event/data');
-      const eventData = await response.json();
+      const eventData = await loadEventDataUtil();
       this.updateEventInterface(eventData);
     } catch (error) {
-      this.showError('Failed to load event data');
+      // Error already handled by dataLoader
     }
   }
 
   async loadShopData() {
     try {
-      const response = await fetch('/api/shop/data');
-      const shopData = await response.json();
+      const shopData = await loadShopDataUtil();
       this.updateShopInterface(shopData);
     } catch (error) {
-      this.showError('Failed to load shop data');
+      // Error already handled by dataLoader
     }
   }
 
   async loadGameOverData() {
     try {
-      const response = await fetch('/api/game-over/data');
-      const runResult = await response.json();
+      const runResult = await loadGameOverDataUtil();
       this.updateGameOverInterface(runResult);
     } catch (error) {
-      this.showError('Failed to load game over data');
+      // Error already handled by dataLoader
     }
   }
 
   async loadStatsData() {
     try {
-      const response = await fetch('/api/stats/data');
-      const statsData = await response.json();
+      const statsData = await loadStatsDataUtil();
       this.updateStatsInterface(statsData);
     } catch (error) {
-      this.showError('Failed to load stats data');
+      // Error already handled by dataLoader
     }
   }
 
   async loadProfileData() {
     try {
-      const response = await fetch('/api/profile/data');
-      const profileData = await response.json();
+      const profileData = await loadProfileDataUtil();
       this.updateProfileInterface(profileData);
     } catch (error) {
-      this.showError('Failed to load profile data');
+      // Error already handled by dataLoader
     }
   }
 
@@ -284,70 +297,33 @@ class DeckriftGame {
     // Update profile interface with data
   }
 
-  // Utility methods
+  // Utility methods - now using shared uiUtils
   showError(message) {
-    this.showNotification('Error', message, 'error');
+    showErrorUtil(message);
   }
 
   showSuccess(message) {
-    this.showNotification('Success', message, 'success');
+    showSuccessUtil(message);
   }
 
   showWarning(message) {
-    this.showNotification('Warning', message, 'warning');
+    showWarningUtil(message);
   }
 
   showInfo(message) {
-    this.showNotification('Info', message, 'info');
+    showInfoUtil(message);
   }
 
   showNotification(title, message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-      <div class="notification-header">
-        <span class="notification-title">${title}</span>
-        <button class="notification-close">&times;</button>
-      </div>
-      <div class="notification-body">${message}</div>
-    `;
-
-    // Add to page
-    const container =
-      document.querySelector('.notification-container') || document.body;
-    container.appendChild(notification);
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-    }, 5000);
-
-    // Handle close button
-    const closeBtn = notification.querySelector('.notification-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
-        if (notification.parentNode) {
-          notification.parentNode.removeChild(notification);
-        }
-      });
-    }
+    showNotificationUtil(title, message, type);
   }
 
   hideLoadingScreen() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-      loadingScreen.style.display = 'none';
-    }
+    toggleLoadingScreen(false);
   }
 
   showGameInterface() {
-    const gameInterface = document.getElementById('game-interface');
-    if (gameInterface) {
-      gameInterface.style.display = 'block';
-    }
+    showGameInterfaceUtil();
   }
 }
 

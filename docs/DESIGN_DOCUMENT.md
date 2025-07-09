@@ -164,6 +164,23 @@ You were once an adventurer, until you vanished into a realm all your own. Immor
 
 ## Overworld System
 
+### Card Interaction Flow
+
+The overworld card interaction follows a specific timing sequence:
+
+1. **Card Selection**: Player clicks on adjacent card
+2. **Card Reveal**: The card flips to reveal its content (player token remains on original position)
+3. **Viewing Period**: Player sees the revealed card for 0.5-2 seconds
+4. **Player Movement**: Player token moves to the revealed card location
+5. **Movement Period**: Player sees their new position for 0.5-2 seconds
+6. **Event Trigger**: The card's encounter (battle, challenge, shop, etc.) automatically triggers
+
+This two-step timing sequence ensures players can clearly see:
+
+- What card was revealed
+- Where they moved to
+- Before the encounter begins
+
 ### Map Generation
 
 - Cards flipped upside down on the map

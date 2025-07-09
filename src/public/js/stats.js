@@ -1,5 +1,7 @@
 // stats.js - Page-specific logic for Stats page
 
+import { loadStats as loadStatsUtil } from './modules/dataLoader.js';
+
 function displayStats(_stats) {
   // Display statistics on the page
   const statsContainer = document.getElementById('stats-container');
@@ -9,18 +11,16 @@ function displayStats(_stats) {
   }
 }
 
-function loadStats() {
+async function loadStats() {
   // Load and display user statistics
-  fetch('/api/stats')
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        displayStats(data.stats);
-      }
-    })
-    .catch((_error) => {
-      // Handle error silently
-    });
+  try {
+    const data = await loadStatsUtil();
+    if (data.success) {
+      displayStats(data.stats);
+    }
+  } catch (error) {
+    // Error already handled by dataLoader
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

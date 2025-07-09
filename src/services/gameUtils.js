@@ -24,4 +24,4 @@ export function calculateAllXPThresholds(profile) {
     craft: calculateXPThreshold(profile.craft || 4),
     control: calculateXPThreshold(profile.control || 4),
   };
-} 
+}

@@ -104,7 +104,7 @@ router.get('/', requireAuth, async (req, res) => {
       REALMS, // Pass realm data to template
     });
   } catch (error) {
-    return res.status(500).render('error', {
+    return res.status(500).render('errors/error', {
       title: 'Error - Deckrift',
       message: 'Failed to load Home Realm',
       error,

@@ -7,11 +7,8 @@ import {
   CARD_DISPLAY_SYMBOLS,
   CHALLENGE_MODIFIERS,
   TEXT_TO_VALUE_MAP,
+  API_VALUE_CONVERSION_MAP,
 } from './gameData.js';
-
-
-
-
 
 /**
  * Calculate challenge modifier for a given realm and level
@@ -64,4 +61,88 @@ export function shuffleArray(array) {
   return shuffled;
 }
 
- 
+/**
+ * Generate enemy stats based on enemy type and challenge modifier
+ * @param {string} enemyType - Type of enemy ('power', 'will', 'craft', 'control')
+ * @param {number} challengeModifier - Current challenge modifier
+ * @returns {Object} - Enemy stats object
+ */
+export function generateEnemyStats(enemyType, challengeModifier = 1) {
+  const baseStats = { power: 2, will: 2, craft: 2, control: 2 };
+
+  // Boost the primary stat based on enemy type
+  if (enemyType === 'power') baseStats.power += 1;
+  else if (enemyType === 'will') baseStats.will += 1;
+  else if (enemyType === 'craft') baseStats.craft += 1;
+  else if (enemyType === 'control') baseStats.control += 1;
+
+  // Randomly distribute challenge modifier values across stats
+  const stats = Object.keys(baseStats);
+  for (let i = 0; i < challengeModifier; i++) {
+    const randomStat = stats[Math.floor(Math.random() * stats.length)];
+    baseStats[randomStat] += 1;
+  }
+
+  return baseStats;
+}
+
+/**
+ * Generate boss stats based on challenge modifier
+ * @param {number} challengeModifier - Current challenge modifier
+ * @returns {Object} - Boss stats object
+ */
+export function generateBossStats(challengeModifier = 1) {
+  return {
+    power: 2 * challengeModifier,
+    will: 2 * challengeModifier,
+    craft: 2 * challengeModifier,
+    control: 2 * challengeModifier,
+  };
+}
+
+/**
+ * Generate shop items
+ * @returns {Array} - Array of shop item types
+ */
+export function generateShopItems() {
+  return ['heal', 'equipment1', 'equipment2', 'card_removal'];
+}
+
+/**
+ * Calculate shop costs based on challenge modifier
+ * @param {number} challengeModifier - Current challenge modifier
+ * @returns {Object} - Shop costs object
+ */
+export function calculateShopCosts(challengeModifier = 1) {
+  return {
+    heal: 10 + challengeModifier,
+    equipment1: 25 + challengeModifier,
+    equipment2: 30 + challengeModifier,
+    card_removal: 25 + challengeModifier,
+  };
+}
+
+/**
+ * Generate boon options
+ * @returns {Array} - Array of boon types
+ */
+export function generateBoonOptions() {
+  return ['stat_boost', 'artifact', 'currency'];
+}
+
+/**
+ * Generate bane effect
+ * @returns {string} - Bane effect type
+ */
+export function generateBaneEffect() {
+  return 'lose_item';
+}
+
+/**
+ * Convert API card value to internal format
+ * @param {string} apiValue - Card value from Deck of Cards API
+ * @returns {string} - Internal card value format
+ */
+export function convertApiValueToInternal(apiValue) {
+  return API_VALUE_CONVERSION_MAP[apiValue] || apiValue;
+}

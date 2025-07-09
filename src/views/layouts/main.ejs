@@ -86,9 +86,9 @@
       <script>
         console.log('Layout: Including pageScript:', '<%= pageScript %>');
       </script>
-      <script src="<%= pageScript %>"></script>
+      <script type="module" src="<%= pageScript %>"></script>
     <% } else if (typeof page !== 'undefined' && page === 'home') { %>
-      <script src="/js/main.js"></script>
+      <script type="module" src="/js/main.js"></script>
     <% } %>
 </body>
 </html> 

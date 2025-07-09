@@ -65,12 +65,16 @@ router.get('/', requireAuth, async (req, res) => {
     // Import realm data and map constants from gameData.js
     const {
       REALMS,
-      getChallengeModifier,
       MAP_CARD_VALUES,
       MAP_CARD_SUITS,
       MAP_CONSTANTS,
       SHOP_PRICES,
     } = await import('../public/js/modules/gameData.js');
+
+    // Import utility functions from gameUtils.js
+    const { getChallengeModifier } = await import(
+      '../public/js/modules/gameUtils.js'
+    );
 
     // Calculate health based on Will stat (10 HP per Will point)
     const willStat = activeSave.stats?.will || 4;
@@ -183,7 +187,7 @@ router.get('/', requireAuth, async (req, res) => {
       xpThresholds,
     });
   } catch (error) {
-    return res.status(500).render('error', {
+    return res.status(500).render('errors/error', {
       title: 'Error - Deckrift',
       message: 'Failed to load game',
       error,

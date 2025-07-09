@@ -1,58 +1,11 @@
 // upgrades.js - Page-specific logic for Upgrades page
 
-function updateCurrencyDisplay(newCurrency) {
-  // Update the currency display on the page
-  const currencyElement = document.querySelector('h4');
-  if (currencyElement && currencyElement.textContent.includes('Currency:')) {
-    currencyElement.textContent = `Currency: ${newCurrency}`;
-  }
-}
-
-function showSuccess(message) {
-  // Create a success alert
-  const alertDiv = document.createElement('div');
-  alertDiv.className = 'alert alert-success alert-dismissible fade show';
-  alertDiv.innerHTML = `
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  `;
-
-  // Insert at the top of the container
-  const container = document.querySelector('.container');
-  if (container) {
-    container.insertBefore(alertDiv, container.firstChild);
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      if (alertDiv.parentNode) {
-        alertDiv.remove();
-      }
-    }, 5000);
-  }
-}
-
-function showError(message) {
-  // Create an error alert
-  const alertDiv = document.createElement('div');
-  alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-  alertDiv.innerHTML = `
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  `;
-
-  // Insert at the top of the container
-  const container = document.querySelector('.container');
-  if (container) {
-    container.insertBefore(alertDiv, container.firstChild);
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      if (alertDiv.parentNode) {
-        alertDiv.remove();
-      }
-    }, 5000);
-  }
-}
+import {
+  showSuccess,
+  showError,
+  updateCurrencyDisplay,
+} from './modules/uiUtils.js';
+import { loadUpgradesData } from './modules/dataLoader.js';
 
 function purchaseUpgrade(upgradeId, cost, buttonElement) {
   const button = buttonElement;
@@ -94,39 +47,37 @@ function purchaseUpgrade(upgradeId, cost, buttonElement) {
     });
 }
 
-function updateUpgradeUI() {
-  fetch('/api/upgrades')
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        const { upgrades, currency } = data;
+async function updateUpgradeUI() {
+  try {
+    const data = await loadUpgradesData();
+    if (data.success) {
+      const { upgrades, currency } = data;
 
-        const currencyElement = document.getElementById('currency-display');
-        if (currencyElement) {
-          currencyElement.textContent = currency;
-        }
-
-        upgrades.forEach((upgrade) => {
-          const buttonElement = document.querySelector(
-            `[data-upgrade="${upgrade.id}"]`
-          );
-          if (buttonElement) {
-            if (upgrade.unlocked) {
-              buttonElement.textContent = 'Unlocked';
-              buttonElement.disabled = true;
-              buttonElement.classList.add('unlocked');
-            } else {
-              buttonElement.textContent = `Purchase (${upgrade.cost})`;
-              buttonElement.disabled = currency < upgrade.cost;
-              buttonElement.classList.remove('unlocked');
-            }
-          }
-        });
+      const currencyElement = document.getElementById('currency-display');
+      if (currencyElement) {
+        currencyElement.textContent = currency;
       }
-    })
-    .catch((_error) => {
-      showError('Failed to load upgrades');
-    });
+
+      upgrades.forEach((upgrade) => {
+        const buttonElement = document.querySelector(
+          `[data-upgrade="${upgrade.id}"]`
+        );
+        if (buttonElement) {
+          if (upgrade.unlocked) {
+            buttonElement.textContent = 'Unlocked';
+            buttonElement.disabled = true;
+            buttonElement.classList.add('unlocked');
+          } else {
+            buttonElement.textContent = `Purchase (${upgrade.cost})`;
+            buttonElement.disabled = currency < upgrade.cost;
+            buttonElement.classList.remove('unlocked');
+          }
+        }
+      });
+    }
+  } catch (error) {
+    // Error already handled by dataLoader
+  }
 }
 
 function setupUpgradeEventListeners() {
