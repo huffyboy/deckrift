@@ -2,7 +2,7 @@
 
 import { getCardValue } from './gameUtils.js';
 import { showNotification, showGameMessage } from './uiUtils.js';
-import { EVENTS } from './gameData.js';
+import { EVENTS, GAME_CONSTANTS } from './gameData.js';
 
 /**
  * Handle card encounter based on card value
@@ -21,9 +21,42 @@ export function handleCardEncounter(card, gameState, handlers) {
     case 'challenge':
       handlers.startChallenge(event.stat, gameState.playerPosition);
       break;
-    case 'rest':
-      handlers.handleRest(gameState.playerPosition);
+    case 'rest': {
+      // Calculate heal amount using constant from gameData
+      const healAmount = Math.floor(
+        gameState.maxHealth * GAME_CONSTANTS.REST_HEAL_PERCENTAGE
+      );
+      const actualHealAmount = Math.min(
+        healAmount,
+        gameState.maxHealth - gameState.health
+      );
+      const newHealth = Math.min(
+        gameState.health + healAmount,
+        gameState.maxHealth
+      );
+
+      // Update game state health
+      gameState.health = newHealth;
+
+      showGameMessage(
+        'Rest Complete',
+        `You rest and recover ${actualHealAmount} health.`,
+        'success',
+        '🏕️',
+        4000,
+        () => {
+          // Callback when message is dismissed (either by timeout or click)
+          if (handlers.resetBusyState) {
+            handlers.resetBusyState();
+            // Re-render the map after resetting busy state
+            if (handlers.renderOverworldMap) {
+              handlers.renderOverworldMap();
+            }
+          }
+        }
+      );
       break;
+    }
     case 'shop':
       handlers.startShop(gameState.playerPosition);
       break;

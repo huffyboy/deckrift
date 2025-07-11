@@ -291,7 +291,6 @@ function renderOverworldMap() {
               <div style="font-size: 0.9em; color: #111; font-weight: bold;">Portal</div>
             </div>`;
             cardDiv.style.backgroundColor = '#d0d0d0';
-            cardDiv.style.border = '3px solid #d0d0d0';
             break;
 
           case 'joker': {
@@ -392,15 +391,31 @@ function renderOverworldMap() {
         ) {
           cardDiv.style.border = '3px solid #4CAF50'; // Green border for all clickable cards
 
-          if (!mapCell.revealed) {
+          // Special case for portal (player-start) - just move there, no events
+          if (mapCell.type === 'player-start') {
+            cardDiv.onclick = () => {
+              currentGameState.playerPosition = { x: col, y: row };
+              isCardSequenceInProgress = false; // Reset busy state immediately
+              renderOverworldMap();
+            };
+          } else if (!mapCell.revealed) {
             // Unrevealed card - flip it and move there
             cardDiv.onclick = () => {
               isCardSequenceInProgress = true; // Set busy state
               handleCardFlip(mapCell, { x: col, y: row });
             };
           } else {
-            // Revealed card - move there and trigger event
+            // Revealed card - move there and trigger event (only if not already visited)
             cardDiv.onclick = () => {
+              // Don't trigger event if already visited
+              if (mapCell.visited) {
+                // Just move player to the position without triggering event
+                currentGameState.playerPosition = { x: col, y: row };
+                isCardSequenceInProgress = false; // Reset busy state immediately
+                renderOverworldMap();
+                return;
+              }
+
               isCardSequenceInProgress = true; // Set busy state
               // Mark this card as visited when player moves to it
               mapCell.visited = true;
