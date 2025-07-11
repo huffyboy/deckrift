@@ -1,6 +1,72 @@
 // uiUtils.js - Shared UI utility functions
 
 /**
+ * Show a stylized game message (fantasy/roguelike themed)
+ * @param {string} title - Message title
+ * @param {string} message - Message text
+ * @param {string} type - Message type ('nothing', 'success', 'warning', 'error', 'info')
+ * @param {string} icon - Optional icon emoji
+ * @param {number} duration - Duration in milliseconds (default: 3000)
+ * @param {Function} onComplete - Optional callback function called when message is dismissed
+ */
+export function showGameMessage(
+  title,
+  message,
+  type = 'info',
+  icon = null,
+  duration = 3000,
+  onComplete = null
+) {
+  // Create game message element
+  const gameMessage = document.createElement('div');
+  gameMessage.className = `game-message game-message-${type}`;
+
+  let iconHtml = '';
+  if (icon) {
+    iconHtml = `<span class="game-message-icon">${icon}</span>`;
+  }
+
+  gameMessage.innerHTML = `
+    ${iconHtml}
+    <div class="game-message-title">${title}</div>
+    <div class="game-message-text">${message}</div>
+  `;
+
+  // Get or create game message container
+  let container = document.getElementById('game-message-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'game-message-container';
+    container.className = 'game-message-container';
+    document.body.appendChild(container);
+  }
+
+  // Add to page
+  container.appendChild(gameMessage);
+
+  // Helper function to remove message and call callback
+  const removeMessage = () => {
+    if (gameMessage.parentElement) {
+      gameMessage.classList.add('hiding');
+      setTimeout(() => {
+        if (gameMessage.parentElement) {
+          gameMessage.remove();
+          if (onComplete) {
+            onComplete();
+          }
+        }
+      }, 300);
+    }
+  };
+
+  // Auto-remove after duration
+  setTimeout(removeMessage, duration);
+
+  // Allow clicking to dismiss
+  gameMessage.addEventListener('click', removeMessage);
+}
+
+/**
  * Show a notification message to the user
  * @param {string} title - Notification title
  * @param {string} message - Notification message

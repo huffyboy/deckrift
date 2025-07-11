@@ -1,7 +1,7 @@
 // eventHandler.js - Event processing logic
 
 import { getCardValue } from './gameUtils.js';
-import { showNotification } from './uiUtils.js';
+import { showNotification, showGameMessage } from './uiUtils.js';
 import { EVENTS } from './gameData.js';
 
 /**
@@ -34,10 +34,22 @@ export function handleCardEncounter(card, gameState, handlers) {
       handlers.handleBane(gameState.playerPosition);
       break;
     case 'nothing':
-      showNotification(
+      showGameMessage(
         'Nothing Happens',
-        'You find nothing of interest.',
-        'info'
+        'You find nothing of interest in this place.',
+        'nothing',
+        '🍂',
+        4000,
+        () => {
+          // Callback when message is dismissed (either by timeout or click)
+          if (handlers.resetBusyState) {
+            handlers.resetBusyState();
+            // Re-render the map after resetting busy state
+            if (handlers.renderOverworldMap) {
+              handlers.renderOverworldMap();
+            }
+          }
+        }
       );
       break;
     case 'boss':
@@ -57,10 +69,8 @@ export function handleCardFlip(mapCell, newPosition, gameState, handlers) {
   // Create a new object instead of mutating the parameter
   const updatedMapCell = { ...mapCell, revealed: true, justRevealed: true };
 
-  // Draw a card from the deck for this position
-  handlers.drawCard().then((cardObject) => {
-    updatedMapCell.card = cardObject;
-
+  // Use the existing card from the map cell instead of drawing a new one
+  if (updatedMapCell.card) {
     // Update the map in the game state
     const { x, y } = newPosition;
     if (gameState.map[y] && gameState.map[y][x]) {
@@ -82,14 +92,9 @@ export function handleCardFlip(mapCell, newPosition, gameState, handlers) {
       setTimeout(() => {
         // Trigger the encounter
         handleCardEvent(updatedMapCell, newPosition, gameState, handlers);
-
-        // Reset busy state after encounter is triggered
-        if (handlers.resetBusyState) {
-          handlers.resetBusyState();
-        }
       }, 500);
     }, 500);
-  });
+  }
 }
 
 /**
@@ -108,6 +113,9 @@ export function handleCardEvent(mapCell, newPosition, gameState, handlers) {
   if (gameState.map[y] && gameState.map[y][x]) {
     gameState.map[y][x] = updatedMapCell;
   }
+
+  // Update player position
+  gameState.playerPosition = newPosition;
 
   // Handle the encounter for the card (with null check)
   if (updatedMapCell.card) {
@@ -175,10 +183,12 @@ export function handleRest(newPosition, gameState, renderOverworldMap) {
     gameState.player.maxHealth
   );
 
-  showNotification(
-    'Rest',
+  showGameMessage(
+    'Rest Complete',
     `You rest and recover ${healAmount} health.`,
-    'success'
+    'success',
+    '🏕️',
+    4000
   );
 
   // Update the map display
@@ -192,10 +202,12 @@ export function handleRest(newPosition, gameState, renderOverworldMap) {
  * @param {Function} renderOverworldMap - Map rendering function
  */
 export function handleBoon(newPosition, gameState, renderOverworldMap) {
-  showNotification(
+  showGameMessage(
     'Boon Received',
     'You receive a beneficial effect!',
-    'success'
+    'success',
+    '🌟',
+    4000
   );
 
   // TODO: Implement boon logic
@@ -212,7 +224,13 @@ export function handleBoon(newPosition, gameState, renderOverworldMap) {
  * @param {Function} renderOverworldMap - Map rendering function
  */
 export function handleBane(newPosition, gameState, renderOverworldMap) {
-  showNotification('Bane Received', 'You suffer a negative effect!', 'error');
+  showGameMessage(
+    'Bane Received',
+    'You suffer a negative effect!',
+    'error',
+    '🌧️',
+    4000
+  );
 
   // TODO: Implement bane logic
   // This would involve drawing a bane card and applying its effect

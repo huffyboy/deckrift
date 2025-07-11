@@ -28,8 +28,24 @@ const gameSaveSchema = new mongoose.Schema(
       default: 1,
     },
     playerPosition: {
-      type: Number,
-      default: 0,
+      x: { type: Number, default: 0 },
+      y: { type: Number, default: 0 },
+    },
+    // Map data
+    map: {
+      type: [[mongoose.Schema.Types.Mixed]],
+      default: [],
+    },
+    // Current screen/state
+    currentScreen: {
+      type: String,
+      default: 'overworld',
+      enum: ['overworld', 'battle', 'event', 'shop', 'game-over'],
+    },
+    // Current event (if in event screen)
+    currentEvent: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     // Player stats
     stats: {

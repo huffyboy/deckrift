@@ -1488,6 +1488,170 @@
   }
 }
 
+/* ===== GAME MESSAGE SYSTEM ===== */
+.game-message-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2000;
+  max-width: 600px;
+  width: 90%;
+  pointer-events: none;
+}
+
+.game-message {
+  background: linear-gradient(135deg, #1a0f2e, #2d1b69);
+  border: 3px solid #4a2c8f;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 1rem;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(74, 44, 143, 0.3);
+  animation: gameMessageSlideIn 0.5s ease-out;
+  font-family: 'Cinzel', serif;
+  color: #f0f0f0;
+  text-align: center;
+  position: relative;
+  pointer-events: auto;
+}
+
+.game-message::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(135deg, #1a0f2e, #2d1b69);
+  border-radius: 14px;
+  z-index: -1;
+  animation: borderGlow 2s ease-in-out infinite alternate;
+}
+
+.game-message-title {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #4a2c8f;
+  text-shadow: 0 0 10px rgba(74, 44, 143, 0.5);
+  letter-spacing: 1px;
+}
+
+.game-message-text {
+  font-family: 'Cardo', serif;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #e0e0e0;
+  margin-bottom: 1rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.game-message-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: block;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+.game-message.nothing {
+  border-color: #8b8b8b;
+  background: linear-gradient(135deg, #2a2a2a, #3a3a3a);
+}
+
+.game-message.nothing::before {
+  background: linear-gradient(45deg, #8b8b8b, #666, #8b8b8b);
+}
+
+.game-message.success {
+  border-color: #32cd32;
+  background: linear-gradient(135deg, #1a2e1a, #2a3a2a);
+}
+
+.game-message.success::before {
+  background: linear-gradient(45deg, #32cd32, #228b22, #32cd32);
+}
+
+.game-message.success .game-message-title {
+  color: #32cd32;
+}
+
+.game-message.error {
+  border-color: #dc143c;
+  background: linear-gradient(135deg, #2e1a1a, #3a2a2a);
+}
+
+.game-message.error::before {
+  background: linear-gradient(45deg, #dc143c, #b22222, #dc143c);
+}
+
+.game-message.error .game-message-title {
+  color: #dc143c;
+}
+
+.game-message.warning {
+  border-color: #ffa500;
+  background: linear-gradient(135deg, #2e2a1a, #3a3a2a);
+}
+
+.game-message.warning::before {
+  background: linear-gradient(45deg, #ffa500, #daa520, #ffa500);
+}
+
+.game-message.warning .game-message-title {
+  color: #ffa500;
+}
+
+.game-message.info {
+  border-color: #4169e1;
+  background: linear-gradient(135deg, #1a1a2e, #2a2a3a);
+}
+
+.game-message.info::before {
+  background: linear-gradient(45deg, #4169e1, #191970, #4169e1);
+}
+
+.game-message.info .game-message-title {
+  color: #4169e1;
+}
+
+@keyframes gameMessageSlideIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes gameMessageSlideOut {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes borderGlow {
+  from {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.game-message.hiding {
+  animation: gameMessageSlideOut 0.3s ease-in forwards;
+}
+
 /* ===== NOTIFICATION SYSTEM ===== */
 .notification-container {
   position: fixed;

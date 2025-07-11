@@ -1363,6 +1363,14 @@ export const SUIT_SYMBOL_MAP = {
   SPADES: '♠️',
 };
 
+// Internal suit to API suit mapping
+export const INTERNAL_SUIT_TO_API_MAP = {
+  '♠': 'SPADES',
+  '♥': 'HEARTS',
+  '♦': 'DIAMONDS',
+  '♣': 'CLUBS',
+};
+
 // API value to internal value conversion mapping
 export const API_VALUE_CONVERSION_MAP = {
   ACE: 'A',

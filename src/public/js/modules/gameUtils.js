@@ -8,6 +8,7 @@ import {
   CHALLENGE_MODIFIERS,
   TEXT_TO_VALUE_MAP,
   API_VALUE_CONVERSION_MAP,
+  INTERNAL_SUIT_TO_API_MAP,
 } from './gameData.js';
 
 /**
@@ -145,4 +146,27 @@ export function generateBaneEffect() {
  */
 export function convertApiValueToInternal(apiValue) {
   return API_VALUE_CONVERSION_MAP[apiValue] || apiValue;
+}
+
+/**
+ * Convert internal card value to API format
+ * @param {string} internalValue - Internal card value format
+ * @returns {string} - API card value format
+ */
+export function convertInternalValueToApi(internalValue) {
+  // Create reverse mapping
+  const reverseMap = {};
+  Object.entries(API_VALUE_CONVERSION_MAP).forEach(([api, internal]) => {
+    reverseMap[internal] = api;
+  });
+  return reverseMap[internalValue] || internalValue;
+}
+
+/**
+ * Convert internal suit symbol to API format
+ * @param {string} internalSuit - Internal suit symbol (♠, ♥, ♦, ♣)
+ * @returns {string} - API suit format (SPADES, HEARTS, DIAMONDS, CLUBS)
+ */
+export function convertInternalSuitToApi(internalSuit) {
+  return INTERNAL_SUIT_TO_API_MAP[internalSuit] || internalSuit;
 }

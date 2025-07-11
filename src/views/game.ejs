@@ -34,7 +34,24 @@
 
     <!-- Game Content -->
     <div class="game-content">
-        <% if (gameState.currentScreen === 'overworld') { %>
+        <% if (gameState.currentScreen === 'no-game') { %>
+            <!-- No Active Game Message -->
+            <div class="no-game-section">
+                <div class="text-center">
+                    <div class="no-game-icon">
+                        <span style="font-size: 4em; color: #666;">🌀</span>
+                    </div>
+                    <h3><%= gameState.message.title %></h3>
+                    <h5 class="text-muted"><%= gameState.message.subtitle %></h5>
+                    <p class="mt-3"><%= gameState.message.description %></p>
+                    <div class="mt-4">
+                        <a href="<%= gameState.message.action.url %>" class="btn btn-primary btn-lg">
+                            <%= gameState.message.action.text %>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        <% } else if (gameState.currentScreen === 'overworld') { %>
             <!-- Overworld Map -->
             <div class="overworld-section">
                 <h3>Overworld Map</h3>
@@ -159,6 +176,9 @@
         </div>
     </div>
 </div>
+<!-- Notification Container -->
+<div id="notification-container" class="notification-container"></div>
+
 <script>
 window.gameState = <%- JSON.stringify(gameState) %>;
 </script>

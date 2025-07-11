@@ -24,41 +24,80 @@ Strategy/card game enthusiasts who enjoy:
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: Vanilla JavaScript (ES6+)
+- **Backend**: Node.js with Express.js
+- **Database**: MongoDB with Mongoose ODM
+- **Frontend**: EJS templating engine with vanilla JavaScript
 - **Styling**: CSS3 with Flexbox/Grid
-- **Storage**: localStorage & sessionStorage
+- **Session Management**: Express-session with MongoDB store
+- **Authentication**: bcryptjs for password hashing
 - **External API**: [Deck of Cards API](https://deckofcardsapi.com)
 - **Typography**: Cinzel, Cardo (Google Fonts)
 - **Icons**: Custom CSS + free online icons
+- **Development**: Nodemon for hot reloading, ESLint for code quality
 
 ## 📁 Project Structure
 
 ```
 deckrift/
-├── index.html                 # Main entry point
-├── css/
-│   ├── main.css              # Main stylesheet
-│   ├── components.css        # UI component styles
-│   └── animations.css        # CSS animations
-├── js/
-│   ├── main.js               # Main game controller
-│   └── modules/              # Game logic modules
-│       ├── gameState.js      # Game state management
-│       ├── profileManager.js # Profile management
-│       ├── deckManager.js    # Card operations & API
-│       ├── battleLogic.js    # Combat mechanics
-│       ├── eventHandler.js   # Boons, banes, events
-│       ├── uiManager.js      # UI updates & screens
-│       ├── equipmentData.js  # Equipment definitions
-│       ├── shopSystem.js     # Shop functionality
-│       ├── artifactSystem.js # Artifact management
-│       └── bossSystem.js     # Boss encounters & progression
-├── assets/                   # Game assets
-├── DESIGN_DOCUMENT.md        # Game design specifications
-├── TODO.md                   # Development tracking
-├── PROJECT_COMPLETE.md       # Project completion summary
-├── MODULAR_STRUCTURE.md      # Code architecture documentation
-└── REFACTORING_COMPLETE.md   # Refactoring summary
+├── src/
+│   ├── server.js                 # Main server entry point
+│   ├── config/
+│   │   ├── database.js           # MongoDB connection
+│   │   └── logger.js             # Winston logging setup
+│   ├── controllers/
+│   │   ├── apiController.js      # API endpoints
+│   │   ├── authController.js     # Authentication logic
+│   │   └── gameController.js     # Game state management
+│   ├── middlewares/
+│   │   ├── auth.js               # Authentication middleware
+│   │   ├── errorHandler.js       # Error handling
+│   │   └── simpleLogger.js       # Request logging
+│   ├── models/
+│   │   ├── GameSave.js           # Game save data model
+│   │   ├── Profile.js            # User profile model
+│   │   ├── Statistics.js         # Game statistics model
+│   │   └── User.js               # User account model
+│   ├── public/
+│   │   ├── css/                  # Stylesheets
+│   │   ├── js/                   # Client-side JavaScript
+│   │   │   ├── modules/          # Modular game logic
+│   │   │   ├── main.js           # Main game controller
+│   │   │   ├── game.js           # Game interface
+│   │   │   ├── battle.js         # Battle system
+│   │   │   └── event.js          # Event system
+│   │   └── assets/               # Game assets
+│   ├── routes/
+│   │   ├── index.js              # Main routes
+│   │   ├── auth.js               # Authentication routes
+│   │   ├── game.js               # Game routes
+│   │   ├── battle.js             # Battle routes
+│   │   ├── event.js              # Event routes
+│   │   ├── shop.js               # Shop routes
+│   │   └── stats.js              # Statistics routes
+│   ├── services/
+│   │   └── gameUtils.js          # Game utility functions
+│   └── views/
+│       ├── layouts/
+│       │   └── main.ejs          # Main layout template
+│       ├── partials/
+│       │   ├── header.ejs        # Header component
+│       │   └── footer.ejs        # Footer component
+│       ├── auth/
+│       │   ├── login.ejs         # Login page
+│       │   └── register.ejs      # Registration page
+│       ├── game.ejs              # Main game interface
+│       ├── battle.ejs            # Battle interface
+│       ├── event.ejs             # Event interface
+│       ├── shop.ejs              # Shop interface
+│       └── errors/
+│           ├── 404.ejs           # 404 error page
+│           └── error.ejs         # Error page
+├── docs/
+│   └── DESIGN_DOCUMENT.md        # Complete game design specifications
+├── tests/
+│   └── basic-test.js             # Basic test suite
+├── package.json                   # Dependencies and scripts
+└── README.md                     # This file
 ```
 
 ## 🎨 Design System
@@ -87,63 +126,42 @@ deckrift/
 
 ### Prerequisites
 
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- Local web server (for development)
-
-### Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone [repository-url]
-   cd deckrift
-   ```
-
-2. Start a local server:
-
-   ```bash
-   # Using Python 3
-   python -m http.server 8000
-
-   # Using Node.js (if you have http-server installed)
-   npx http-server
-
-   # Using PHP
-   php -S localhost:8000
-   ```
-
-3. Open your browser and navigate to `http://localhost:8000`
+- Node.js (>=18.0.0)
+- MongoDB (local or cloud instance)
+- Modern web browser
 
 ## 🎯 Core Features
 
 ### Game Modes
 
-- **Profile System**: Up to 10 user profiles with persistent stats
+- **Profile System**: User accounts with persistent stats
 - **Runs**: Individual game sessions with progression
 - **Home Realm**: Persistent upgrades and meta-progression
 
 ### Core Systems
 
-1. **Profile Management**: Complete profile creation, editing, deletion, and statistics tracking
-2. **Deck Management**: Integration with Deck of Cards API and player deck tracking
-3. **Combat System**: Turn-based battles with strategic card play and boss encounters
-4. **Event System**: Random encounters, stat challenges, and boon/bane system
-5. **Shop System**: Economy and upgrade mechanics with dynamic pricing
-6. **Artifact System**: Special items that modify gameplay with rarity system
-7. **Boss System**: 4 unique bosses with realm progression and game completion
-8. **Storage System**: Persistent data across sessions with error handling
-9. **Error Recovery**: Comprehensive error handling with retry logic and performance monitoring
-10. **Message System**: Professional message UI with multiple types (success, error, warning, info)
+1. **Authentication System**: User registration, login, and session management
+2. **Profile Management**: Complete profile creation, editing, deletion, and statistics tracking
+3. **Deck Management**: Integration with Deck of Cards API and player deck tracking
+4. **Combat System**: Turn-based battles with strategic card play and boss encounters
+5. **Event System**: Random encounters, stat challenges, and boon/bane system
+6. **Shop System**: Economy and upgrade mechanics with dynamic pricing
+7. **Artifact System**: Special items that modify gameplay with rarity system
+8. **Boss System**: 4 unique bosses with realm progression and game completion
+9. **Storage System**: Persistent data across sessions with MongoDB
+10. **Error Recovery**: Comprehensive error handling with retry logic and performance monitoring
+11. **Message System**: Professional message UI with multiple types (success, error, warning, info)
 
 ### Game Flow
 
-1. **Profile Selection** → Choose or create a profile
-2. **Home Realm** → View stats, upgrades, start new run
-3. **Overworld** → Navigate map, encounter events
-4. **Combat/Events** → Battle enemies or face challenges
-5. **Shop** → Purchase items, heal, or modify deck
-6. **Boss Battles** → Defeat realm bosses to progress
-7. **Game Completion** → Complete all 4 realms for victory
+1. **Authentication** → Register or login
+2. **Profile Selection** → Choose or create a profile
+3. **Home Realm** → View stats, upgrades, start new run
+4. **Overworld** → Navigate map, encounter events
+5. **Combat/Events** → Battle enemies or face challenges
+6. **Shop** → Purchase items, heal, or modify deck
+7. **Boss Battles** → Defeat realm bosses to progress
+8. **Game Completion** → Complete all 4 realms for victory
 
 ## 📊 Data Management
 
@@ -153,10 +171,12 @@ deckrift/
   - Used for: Drawing cards, shuffling decks, overworld navigation
   - Endpoints: `/api/deck/new/`, `/api/deck/{deck_id}/draw/`
 
-### Local Storage
+### Database Schema
 
-- **localStorage**: User profiles, persistent stats, upgrades
-- **sessionStorage**: Current run state, temporary data
+- **Users**: Account information and authentication
+- **Profiles**: Player profiles with persistent stats
+- **GameSaves**: Active game sessions and state
+- **Statistics**: Lifetime achievements and performance tracking
 
 ### Data Files
 
@@ -167,13 +187,14 @@ deckrift/
 
 ### Core Gameplay Loop
 
-1. **Profile Selection** → Choose or create a profile
-2. **Home Realm** → View stats, upgrades, start new run
-3. **Overworld** → Navigate map, encounter events
-4. **Combat/Events** → Battle enemies or face challenges
-5. **Shop** → Purchase items, heal, or modify deck
-6. **Boss Battles** → Defeat realm bosses to progress
-7. **Game Completion** → Complete all 4 realms for victory
+1. **Authentication** → Register or login
+2. **Profile Selection** → Choose or create a profile
+3. **Home Realm** → View stats, upgrades, start new run
+4. **Overworld** → Navigate map, encounter events
+5. **Combat/Events** → Battle enemies or face challenges
+6. **Shop** → Purchase items, heal, or modify deck
+7. **Boss Battles** → Defeat realm bosses to progress
+8. **Game Completion** → Complete all 4 realms for victory
 
 ### Card System
 
@@ -208,7 +229,7 @@ deckrift/
 
 ### Code Quality & Architecture
 
-- **Modular Design**: 10 specialized modules with clear separation of concerns
+- **Modular Design**: Specialized modules with clear separation of concerns
 - **Error Handling**: Comprehensive error recovery with retry logic and performance monitoring
 - **Performance**: Memory usage tracking and load time optimization
 - **User Experience**: Professional message system with multiple types (success, error, warning, info)
@@ -216,7 +237,8 @@ deckrift/
 
 ### Technical Features
 
-- **Local Storage**: Persistent game state and profile management
+- **MongoDB Integration**: Persistent game state and profile management
+- **Session Management**: Secure user sessions with MongoDB store
 - **API Integration**: Deck of Cards API for dynamic card generation
 - **Async/Await**: Proper handling of asynchronous operations
 - **Error Recovery**: Graceful fallbacks for API failures
@@ -236,7 +258,7 @@ deckrift/
 
 All major features have been implemented and the game is fully functional:
 
-- ✅ **Foundation & Core Systems**: Profile management, home realm, game state
+- ✅ **Foundation & Core Systems**: Authentication, profile management, home realm, game state
 - ✅ **Overworld & Navigation**: Map generation, navigation, card type system
 - ✅ **Core Game Events**: Bane system, boon system, rest & shop events
 - ✅ **Combat System**: Enemy generation, turn-based combat, enemy craft mechanics
@@ -251,24 +273,13 @@ The game is now complete and ready for playtesting. All features from the origin
 
 ### 🏗️ **Technical Architecture**
 
-The project has been refactored into a clean, modular architecture with 10 specialized modules:
+The project has been built as a full-stack Node.js application with:
 
-1. **main.js** - Game controller and orchestration (835 lines)
-2. **gameState.js** - Persistent game data management (185 lines)
-3. **profileManager.js** - Profile creation and management (80 lines)
-4. **deckManager.js** - Card operations and deck management (160 lines)
-5. **battleLogic.js** - Combat mechanics and enemy AI (234 lines)
-6. **eventHandler.js** - Boon/bane system and event processing (315 lines)
-7. **uiManager.js** - Screen management and UI updates (549 lines)
-8. **shopSystem.js** - Shop mechanics and transactions (132 lines)
-9. **artifactSystem.js** - Artifact inventory and effects (133 lines)
-10. **bossSystem.js** - Boss encounters and progression (120 lines)
-11. **equipmentData.js** - Equipment definitions and data (205 lines)
-
-### 📚 **Documentation**
-
-- **DESIGN_DOCUMENT.md**: Complete game design specifications
-- **IMPROVEMENTS_SUMMARY.md**: Detailed summary of code improvements and enhancements
+- **Express.js**: Web framework for routing and middleware
+- **MongoDB**: Database for persistent data storage
+- **EJS**: Templating engine for server-side rendering
+- **Session Management**: Secure user sessions with MongoDB store
+- **Modular Design**: Clean separation of concerns across routes, controllers, and models
 
 ## 🤝 Contributing
 
@@ -310,7 +321,7 @@ This project is created for educational purposes.
 
 **Deckrift – Drawn to Dust** is a complete, polished, and fully functional deck-based roguelike game that successfully combines traditional card mechanics with persistent RPG progression and random events. The game offers:
 
-- **Complete gameplay loop** from profile creation to game completion
+- **Complete gameplay loop** from authentication to game completion
 - **Strategic depth** through equipment selection and deck management
 - **Progressive difficulty** with 4 unique realms and bosses
 - **Persistent progression** with permanent upgrades and stats

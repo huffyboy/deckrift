@@ -8,6 +8,8 @@ import {
   getRandomCardDisplay,
   getCardValue,
   convertApiValueToInternal,
+  convertInternalValueToApi,
+  convertInternalSuitToApi,
   generateEnemyStats as generateEnemyStatsUtil,
   generateBossStats as generateBossStatsUtil,
   generateShopItems as generateShopItemsUtil,
@@ -30,18 +32,32 @@ let currentDeck = null; // Store the current deck state
 let isCardSequenceInProgress = false; // Track if card flip/movement is happening
 
 // Deck management functions
-async function initializeDeck() {
+async function initializeDeck(customCards = null) {
   try {
+    let apiUrl =
+      'https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1';
+
+    // If custom cards are specified, create a custom deck
+    if (customCards && customCards.length > 0) {
+      // Convert card values to API format
+      const apiCards = customCards.map((card) => {
+        const apiValue = convertInternalValueToApi(card.value);
+        const apiSuit = convertInternalSuitToApi(card.suit);
+        return `${apiValue}${apiSuit}`;
+      });
+
+      // Create custom deck with specific cards
+      apiUrl = `https://deckofcardsapi.com/api/deck/new/shuffle/?cards=${apiCards.join(',')}`;
+    }
+
     // Use Deck of Cards API to create and shuffle a new deck
-    const response = await fetch(
-      'https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1'
-    );
+    const response = await fetch(apiUrl);
     const data = await response.json();
 
     if (data.success) {
       currentDeck = {
         deckId: data.deck_id,
-        remaining: 52,
+        remaining: data.remaining || 52,
         drawnCards: [],
       };
     }
@@ -50,6 +66,50 @@ async function initializeDeck() {
     currentDeck = null;
   }
 }
+
+// Function to create a testing deck with only J cards
+// To use for testing: replace initializeDeck() with initializeTestingDeck() in initializeGame()
+async function initializeTestingDeck() {
+  // Create a deck with only J cards (4 suits)
+  const jCards = [
+    { value: 'J', suit: '♠', display: 'J♠' },
+    { value: 'J', suit: '♥', display: 'J♥' },
+    { value: 'J', suit: '♦', display: 'J♦' },
+    { value: 'J', suit: '♣', display: 'J♣' },
+  ];
+
+  return initializeDeck(jCards);
+}
+
+// Function to create a custom deck with specific cards
+// Example: createCustomDeck(['J♠', 'J♥', 'K♠', 'Q♠', 'A♠'])
+async function createCustomDeck(cardStrings) {
+  const customCards = cardStrings.map((cardStr) => {
+    let value, suit;
+    if (cardStr.length === 2) {
+      value = cardStr[0];
+      suit = cardStr[1];
+    } else if (cardStr.length === 3) {
+      value = cardStr.substring(0, 2); // "10"
+      suit = cardStr[2];
+    } else {
+      value = '?';
+      suit = '?';
+    }
+
+    return {
+      value,
+      suit,
+      display: cardStr,
+    };
+  });
+
+  return initializeDeck(customCards);
+}
+
+// Make testing functions available globally for debugging
+window.initializeTestingDeck = initializeTestingDeck;
+window.createCustomDeck = createCustomDeck;
 
 async function drawCard() {
   if (!currentDeck) {
@@ -144,6 +204,9 @@ function handleCardEvent(mapCell, _newPosition) {
     handleBane,
     startBossBattle,
     renderOverworldMap,
+    resetBusyState: () => {
+      isCardSequenceInProgress = false;
+    },
   };
   handleCardEventUtil(mapCell, _newPosition, currentGameState, handlers, false);
 }
@@ -199,105 +262,126 @@ function renderOverworldMap() {
         cardDiv.style.backgroundColor = '#f0f0f0';
         cardDiv.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
 
-        // Show player token or portal
-        if (playerX === col && playerY === row) {
-          cardDiv.innerHTML = '<span style="font-size:4em">🚶‍➡️</span>';
-          cardDiv.style.backgroundColor = '#d4af37';
-          cardDiv.style.border = '3px solid #d4af37';
+        // Determine card type and render accordingly
+        const isPlayerPosition = playerX === col && playerY === row;
+        let cardType;
+
+        if (isPlayerPosition) {
+          cardType = 'player';
         } else if (mapCell && mapCell.type === 'player-start') {
-          // Show portal swirl for starting position
-          cardDiv.innerHTML = `<div style="text-align: center;">
-            <span style="font-size: 4em; display: block; margin-bottom: 5px; opacity: 0.3;">🌀</span>
-            <div style="font-size: 0.9em; color: #111; font-weight: bold;">Portal</div>
-          </div>`;
-          cardDiv.style.backgroundColor = '#d0d0d0';
-          cardDiv.style.border = '3px solid #d0d0d0';
-        } else if (mapCell.type === 'joker') {
-          const jokerEvent = EVENTS.joker;
-          cardDiv.innerHTML = `<div style="text-align: center;">
-            <span style="font-size: 4em; display: block; margin-bottom: 10px;">${jokerEvent.icon}</span>
-          </div>`;
-          cardDiv.style.backgroundColor = '#9c27b0';
-        } else if (mapCell.revealed) {
-          const cardObject = mapCell.card || {
-            value: ' ',
-            suit: ' ',
-            display: ' ',
-          };
-
-          // Get the card value for event lookup
-          const cardValue = getCardValue(cardObject);
-          const eventInfo = EVENTS[cardValue] || EVENTS[11]; // Default to nothing
-
-          // Create card content with event icon and text
-          let cardContent = '';
-
-          // Always show the playing card representation at the top
-          const cardRepresentation = cardObject.display;
-
-          // Determine card state
-          const isCurrentPosition = playerX === col && playerY === row;
-          const justRevealed = mapCell.justRevealed || false;
-          const hasBeenVisited = mapCell.visited || false;
-
-          // Set visual styles based on state
-          let opacity;
-          let textColor;
-          let backgroundColor;
-
-          if (isCurrentPosition) {
-            // Current position: bright and prominent
-            opacity = '1.0';
-            textColor = '#fff';
-            backgroundColor = '#d4af37';
-          } else if (justRevealed) {
-            // Just revealed: bright but not gold
-            opacity = '1.0';
-            textColor = '#fff';
-            backgroundColor = '#fff';
-          } else if (hasBeenVisited) {
-            // Past traveled: faded
-            opacity = '0.3';
-            textColor = '#111';
-            backgroundColor = '#d0d0d0';
-          } else {
-            // Fallback
-            opacity = '1.0';
-            textColor = '#fff';
-            backgroundColor = '#fff';
-          }
-
-          if (eventInfo.icon) {
-            cardContent = `<div style="text-align: center;">
-              <div style="font-size: 0.7em; color: ${textColor}; margin-bottom: 2px;">
-                ${cardRepresentation}
-              </div>
-              <span style="font-size: 4em; display: block; margin-bottom: 5px; opacity: ${opacity};">
-                ${eventInfo.icon}
-              </span>
-              <div style="font-size: 0.9em; color: ${textColor}; font-weight: bold;">
-                ${eventInfo.text}
-              </div>
-            </div>`;
-          } else {
-            // Fallback for events without icons
-            cardContent = `<div style="text-align: center;">
-              <div style="font-size: 0.7em; color: #ccc; margin-bottom: 2px;">
-                ${cardRepresentation}
-              </div>
-              <div style="font-size: 0.9em; color: ${textColor}; font-weight: bold; margin-top: 60px;">
-                ${eventInfo.text}
-              </div>
-            </div>`;
-          }
-
-          cardDiv.innerHTML = cardContent;
-          cardDiv.style.backgroundColor = backgroundColor;
+          cardType = 'player-start';
+        } else if (mapCell && mapCell.type === 'joker') {
+          cardType = 'joker';
+        } else if (mapCell && mapCell.revealed) {
+          cardType = 'revealed';
         } else {
-          cardDiv.innerHTML =
-            '<span style="font-size:6em; color: #666; opacity: 0.5;">🔮</span>';
-          cardDiv.style.background =
-            'linear-gradient(135deg, #1a1a1a, #2a2a2a)'; // Charcoal gradient
+          cardType = 'unrevealed';
+        }
+
+        switch (cardType) {
+          case 'player':
+            cardDiv.innerHTML = '<span style="font-size:4em">🚶‍➡️</span>';
+            cardDiv.style.backgroundColor = '#d4af37';
+            cardDiv.style.border = '3px solid #d4af37';
+            break;
+
+          case 'player-start':
+            cardDiv.innerHTML = `<div style="text-align: center;">
+              <span style="font-size: 4em; display: block; margin-bottom: 5px; opacity: 0.3;">🌀</span>
+              <div style="font-size: 0.9em; color: #111; font-weight: bold;">Portal</div>
+            </div>`;
+            cardDiv.style.backgroundColor = '#d0d0d0';
+            cardDiv.style.border = '3px solid #d0d0d0';
+            break;
+
+          case 'joker': {
+            const jokerEvent = EVENTS.joker;
+            cardDiv.innerHTML = `<div style="text-align: center;">
+              <span style="font-size: 4em; display: block; margin-bottom: 10px;">${jokerEvent.icon}</span>
+            </div>`;
+            cardDiv.style.backgroundColor = '#9c27b0';
+            break;
+          }
+
+          case 'revealed': {
+            const cardObject = mapCell.card || {
+              value: ' ',
+              suit: ' ',
+              display: ' ',
+            };
+
+            // Get the card value for event lookup
+            const cardValue = getCardValue(cardObject);
+            const eventInfo = EVENTS[cardValue] || EVENTS[11]; // Default to nothing
+
+            // Always show the playing card representation at the top
+            const cardRepresentation = cardObject.display;
+
+            // Determine card state
+            const justRevealed = mapCell.justRevealed || false;
+            const hasBeenVisited = mapCell.visited || false;
+
+            // Set visual styles based on state
+            let opacity, textColor, backgroundColor;
+
+            if (isPlayerPosition) {
+              // Current position: bright and prominent
+              opacity = '1.0';
+              textColor = '#fff';
+              backgroundColor = '#d4af37';
+            } else if (justRevealed) {
+              // Just revealed: bright but not gold
+              opacity = '1.0';
+              textColor = '#fff';
+              backgroundColor = '#fff';
+            } else if (hasBeenVisited) {
+              // Past traveled: faded
+              opacity = '0.3';
+              textColor = '#111';
+              backgroundColor = '#d0d0d0';
+            } else {
+              // Fallback
+              opacity = '1.0';
+              textColor = '#fff';
+              backgroundColor = '#fff';
+            }
+
+            let cardContent;
+            if (eventInfo.icon) {
+              cardContent = `<div style="text-align: center;">
+                <div style="font-size: 0.7em; color: ${textColor}; margin-bottom: 2px;">
+                  ${cardRepresentation}
+                </div>
+                <span style="font-size: 4em; display: block; margin-bottom: 5px; opacity: ${opacity};">
+                  ${eventInfo.icon}
+                </span>
+                <div style="font-size: 0.9em; color: ${textColor}; font-weight: bold;">
+                  ${eventInfo.text}
+                </div>
+              </div>`;
+            } else {
+              // Fallback for events without icons
+              cardContent = `<div style="text-align: center;">
+                <div style="font-size: 0.7em; color: #ccc; margin-bottom: 2px;">
+                  ${cardRepresentation}
+                </div>
+                <div style="font-size: 0.9em; color: ${textColor}; font-weight: bold; margin-top: 60px;">
+                  ${eventInfo.text}
+                </div>
+              </div>`;
+            }
+
+            cardDiv.innerHTML = cardContent;
+            cardDiv.style.backgroundColor = backgroundColor;
+            break;
+          }
+
+          default: // unrevealed
+            cardDiv.innerHTML =
+              '<span style="font-size:6em; color: #666; opacity: 0.5;">🔮</span>';
+            cardDiv.style.background =
+              'linear-gradient(135deg, #1a1a1a, #2a2a2a)'; // Charcoal gradient
+            break;
         }
 
         // Allow clicking on adjacent cards (both revealed and unrevealed)
@@ -320,7 +404,6 @@ function renderOverworldMap() {
               isCardSequenceInProgress = true; // Set busy state
               // Mark this card as visited when player moves to it
               mapCell.visited = true;
-              currentGameState.playerPosition = { x: col, y: row };
               handleCardEvent(mapCell, { x: col, y: row });
             };
           }
@@ -557,21 +640,27 @@ function initializeGame() {
     return;
   }
 
-  // Initialize the deck for this level
+  // Initialize the deck for this level - commented out for testing
   initializeDeck().then(() => {
-    if (currentGameState.currentScreen === 'overworld') {
-      renderOverworldMap();
-    } else if (currentGameState.currentScreen === 'battle') {
-      renderBattleInterface();
-    } else if (currentGameState.currentScreen === 'event') {
-      renderEventInterface();
-    } else if (currentGameState.currentScreen === 'shop') {
-      renderShopInterface();
-    } else {
-      // Default to overworld if no screen is specified
-      renderOverworldMap();
+    switch (currentGameState.currentScreen) {
+      case 'overworld':
+        renderOverworldMap();
+        break;
+      case 'battle':
+        renderBattleInterface();
+        break;
+      case 'event':
+        renderEventInterface();
+        break;
+      case 'shop':
+        renderShopInterface();
+        break;
+      default:
+        // Default to overworld if no screen is specified
+        renderOverworldMap();
+        break;
     }
-  });
+  }); // Commented out for testing
 }
 
 // Initialize game interface

@@ -1,74 +1,45 @@
+// Game routes
 import express from 'express';
-import {
-  getGameStatus,
-  saveGame,
-  loadGame,
-  getGameStats,
-  getGameSaves,
-  deleteGameSave,
-} from '../controllers/gameController.js';
 import GameSave from '../models/GameSave.js';
 import User from '../models/User.js';
-import { requireAuth } from '../middlewares/auth.js';
 import { calculateAllXPThresholds } from '../services/gameUtils.js';
 
 const router = express.Router();
 
-// Game API endpoints
-router.get('/api/game/status/:profileId', getGameStatus);
+const requireAuth = (req, res, next) => {
+  if (!req.session.userId) {
+    return res.redirect('/');
+  }
+  return next();
+};
 
-// Game save endpoints
-router.post('/api/game/save', saveGame);
-
-router.get('/api/game/load/:profileId', loadGame);
-router.get('/api/game/load/:profileId/:saveId', loadGame);
-
-// Statistics endpoints
-router.get('/api/stats/:profileId', getGameStats);
-
-// Game saves management
-router.get('/api/game/saves/:profileId', getGameSaves);
-
-router.delete('/api/game/saves/:saveId', deleteGameSave);
-
-// Game page - Main game interface
-router.get('/', requireAuth, async (req, res) => {
+// Start a new game
+router.get('/new', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
+    const { realm = 1, level = 1 } = req.query; // Default to realm 1, level 1
 
-    // Get active game save
-    const activeSave = await GameSave.findOne({
+    // Check if there's already an active game and delete it
+    const existingActiveSave = await GameSave.findOne({
       userId,
       isActive: true,
     });
 
-    if (!activeSave) {
-      return res.redirect('/home-realm');
-    }
-
-    // Update save health if needed (for existing saves with wrong health)
-    if (activeSave.health === 100 && activeSave.maxHealth === 100) {
-      const willStat = activeSave.stats?.will || 4;
-      const correctHealth = willStat * 10;
-      activeSave.health = correctHealth;
-      activeSave.maxHealth = correctHealth;
-      await activeSave.save();
+    if (existingActiveSave) {
+      await GameSave.deleteOne({ _id: existingActiveSave._id });
     }
 
     // Get user data for upgrades
     const user = await User.findById(userId);
     const unlockedUpgrades = user.upgrades || [];
 
-    // Calculate XP thresholds for each stat
-    const xpThresholds = calculateAllXPThresholds(activeSave.stats || {});
-
     // Import realm data and map constants from gameData.js
     const {
       REALMS,
-      MAP_CARD_VALUES,
       MAP_CARD_SUITS,
       MAP_CONSTANTS,
       SHOP_PRICES,
+      STARTING_STATS,
     } = await import('../public/js/modules/gameData.js');
 
     // Import utility functions from gameUtils.js
@@ -77,15 +48,11 @@ router.get('/', requireAuth, async (req, res) => {
     );
 
     // Calculate health based on Will stat (10 HP per Will point)
-    const willStat = activeSave.stats?.will || 4;
+    const willStat = STARTING_STATS.will;
     const calculatedMaxHealth = willStat * 10;
-    const currentHealth = calculatedMaxHealth; // Start with full health
 
     // Generate basic overworld map
-    const challengeModifier = getChallengeModifier(
-      activeSave.realm,
-      activeSave.level
-    );
+    const challengeModifier = getChallengeModifier(realm, level);
     const rows = challengeModifier;
 
     // Create a grid-based map structure
@@ -93,10 +60,12 @@ router.get('/', requireAuth, async (req, res) => {
 
     // Generate actual cards for the map (excluding jokers)
     const availableCards = [];
+    const testCardValues = ['J', 'Q'];
 
     // Create a deck of cards (excluding jokers)
     MAP_CARD_SUITS.forEach((suit) => {
-      MAP_CARD_VALUES.forEach((value) => {
+      // MAP_CARD_VALUES.forEach((value) => {
+      testCardValues.forEach((value) => {
         availableCards.push(`${value}${suit}`);
       });
     });
@@ -139,10 +108,28 @@ router.get('/', requireAuth, async (req, res) => {
           });
         } else if (isCardPosition) {
           const actualCard = availableCards[cardIndex] || '?';
+
+          // Parse the card string into components
+          let cardValue, cardSuit;
+          if (actualCard.length === 2) {
+            cardValue = actualCard[0];
+            cardSuit = actualCard[1];
+          } else if (actualCard.length === 3) {
+            cardValue = actualCard.substring(0, 2); // "10"
+            cardSuit = actualCard[2];
+          } else {
+            cardValue = '?';
+            cardSuit = '?';
+          }
+
           mapRow.push({
             id: `${row}-${col}`,
             revealed: false,
-            display: actualCard,
+            card: {
+              value: cardValue,
+              suit: cardSuit,
+              display: actualCard,
+            },
             type: 'unknown',
             position: { x: col, y: row },
             actualCard, // Store the actual card for logging
@@ -156,26 +143,149 @@ router.get('/', requireAuth, async (req, res) => {
       map.push(mapRow);
     }
 
+    // Create new game save
+    const newGameSave = new GameSave({
+      userId,
+      profileId: userId, // Use userId as profileId for now
+      saveName: `Realm ${realm} - Level ${level}`, // Generate a save name
+      realm,
+      level,
+      health: calculatedMaxHealth,
+      maxHealth: calculatedMaxHealth,
+      currency: user.currency || 0,
+      stats: STARTING_STATS,
+      statXP: { power: 0, will: 0, craft: 0, control: 0 },
+      map,
+      playerPosition: { x: 0, y: 0 },
+      isActive: true,
+      startedAt: new Date(),
+    });
+
+    await newGameSave.save();
+
     // Transform game save data to match template expectations
     const gameState = {
-      health: currentHealth,
+      health: calculatedMaxHealth,
       maxHealth: calculatedMaxHealth,
-      currency: activeSave.currency,
-      realmName: REALMS[activeSave.realm]?.name || `Realm ${activeSave.realm}`,
-      level: activeSave.level,
-      currentScreen: 'overworld', // Always start with overworld screen
+      currency: user.currency || 0,
+      realmName: REALMS[realm]?.name || `Realm ${realm}`,
+      level,
+      currentScreen: 'overworld',
       challengeModifier,
       cardsPerLevel: MAP_CONSTANTS.CARDS_PER_LEVEL,
       map,
-      playerPosition: { x: 0, y: 0 }, // Start at top-left corner
-      enemy: activeSave.battleState?.enemy || {},
-      event: {}, // Will be populated when in event screen
+      playerPosition: { x: 0, y: 0 },
+      enemy: {},
+      event: {},
       shop: {
         healCost: SHOP_PRICES.basicHeal,
         cardRemovalCost: SHOP_PRICES.cardRemoval,
         equipment: [],
       },
     };
+
+    // Calculate XP thresholds for each stat
+    const xpThresholds = calculateAllXPThresholds(STARTING_STATS);
+
+    return res.render('game', {
+      title: 'Game - Deckrift',
+      user: { username: req.session.username },
+      gameState,
+      gameSave: newGameSave,
+      unlockedUpgrades,
+      currency: user.currency || 0,
+      xpThresholds,
+    });
+  } catch (error) {
+    return res.status(500).render('errors/error', {
+      title: 'Error - Deckrift',
+      message: 'Failed to start new game',
+      error,
+    });
+  }
+});
+
+// Continue existing game (or show message if no active game)
+router.get('/', requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.session;
+
+    // Get active game save
+    const activeSave = await GameSave.findOne({
+      userId,
+      isActive: true,
+    });
+
+    if (!activeSave) {
+      // No active game - show a message instead of redirecting
+      return res.render('game', {
+        title: 'Game - Deckrift',
+        user: { username: req.session.username },
+        gameState: {
+          currentScreen: 'no-game',
+          message: {
+            title: 'No Active Adventure',
+            subtitle: 'You have not opened a portal yet.',
+            description: 'Return to the Home Realm to begin your journey.',
+            action: {
+              text: 'Go to Home Realm',
+              url: '/home-realm',
+            },
+          },
+        },
+        gameSave: null,
+        unlockedUpgrades: [],
+        currency: 0,
+        xpThresholds: {},
+      });
+    }
+
+    // Get user data for upgrades
+    const user = await User.findById(userId);
+    const unlockedUpgrades = user.upgrades || [];
+
+    // Import realm data and map constants from gameData.js
+    const { REALMS, MAP_CONSTANTS, SHOP_PRICES } = await import(
+      '../public/js/modules/gameData.js'
+    );
+
+    // Import utility functions from gameUtils.js
+    const { getChallengeModifier } = await import(
+      '../public/js/modules/gameUtils.js'
+    );
+
+    // Calculate challenge modifier
+    const challengeModifier = getChallengeModifier(
+      activeSave.realm,
+      activeSave.level
+    );
+
+    // Use the existing map from the save (don't regenerate!)
+    const map = activeSave.map || [];
+
+    // Transform game save data to match template expectations
+    const gameState = {
+      health: activeSave.health,
+      maxHealth: activeSave.maxHealth,
+      currency: activeSave.currency,
+      realmName: REALMS[activeSave.realm]?.name || `Realm ${activeSave.realm}`,
+      level: activeSave.level,
+      currentScreen: activeSave.currentScreen || 'overworld',
+      challengeModifier,
+      cardsPerLevel: MAP_CONSTANTS.CARDS_PER_LEVEL,
+      map,
+      playerPosition: activeSave.playerPosition || { x: 0, y: 0 },
+      enemy: activeSave.battleState?.enemy || {},
+      event: activeSave.currentEvent || {},
+      shop: {
+        healCost: SHOP_PRICES.basicHeal,
+        cardRemovalCost: SHOP_PRICES.cardRemoval,
+        equipment: [],
+      },
+    };
+
+    // Calculate XP thresholds for each stat
+    const xpThresholds = calculateAllXPThresholds(activeSave.stats || {});
 
     return res.render('game', {
       title: 'Game - Deckrift',
@@ -313,6 +423,151 @@ router.post('/save', requireAuth, async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to save game' });
+  }
+});
+
+// Temporary route to clear game saves for testing
+router.post('/clear-saves', requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.session;
+
+    const result = await GameSave.deleteMany({ userId });
+
+    return res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to clear saves' });
+  }
+});
+
+// Temporary route to regenerate map for current game
+router.post('/regenerate-map', requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.session;
+
+    const activeSave = await GameSave.findOne({
+      userId,
+      isActive: true,
+    });
+
+    if (!activeSave) {
+      return res.status(404).json({ error: 'No active game found' });
+    }
+
+    // Import realm data and map constants from gameData.js
+    const { MAP_CARD_VALUES, MAP_CARD_SUITS } = await import(
+      '../public/js/modules/gameData.js'
+    );
+
+    // Import utility functions from gameUtils.js
+    const { getChallengeModifier } = await import(
+      '../public/js/modules/gameUtils.js'
+    );
+
+    // Generate basic overworld map
+    const challengeModifier = getChallengeModifier(
+      activeSave.realm,
+      activeSave.level
+    );
+    const rows = challengeModifier;
+
+    // Create a grid-based map structure
+    const map = [];
+
+    // Generate actual cards for the map (excluding jokers)
+    const availableCards = [];
+
+    // Create a deck of cards (excluding jokers)
+    MAP_CARD_SUITS.forEach((suit) => {
+      MAP_CARD_VALUES.forEach((value) => {
+        availableCards.push(`${value}${suit}`);
+      });
+    });
+
+    // Shuffle the cards
+    for (let i = availableCards.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [availableCards[i], availableCards[j]] = [
+        availableCards[j],
+        availableCards[i],
+      ];
+    }
+
+    let cardIndex = 0;
+
+    for (let row = 0; row < rows; row += 1) {
+      const mapRow = [];
+      const isFirstRow = row === 0;
+      const isLastRow = row === rows - 1;
+
+      for (let col = 0; col < 7; col += 1) {
+        // 7 columns: 0-6
+        const isPlayerStart = isFirstRow && col === 0;
+        const isJokerPosition = isLastRow && col === 6;
+        const isCardPosition = col >= 1 && col <= 5;
+
+        if (isPlayerStart) {
+          mapRow.push({
+            id: `${row}-${col}`,
+            type: 'player-start',
+            position: { x: col, y: row },
+            isPlayerStart: true,
+          });
+        } else if (isJokerPosition) {
+          mapRow.push({
+            id: `${row}-${col}`,
+            type: 'joker',
+            position: { x: col, y: row },
+            isJoker: true,
+          });
+        } else if (isCardPosition) {
+          const actualCard = availableCards[cardIndex] || '?';
+
+          // Parse the card string into components
+          let cardValue, cardSuit;
+          if (actualCard.length === 2) {
+            cardValue = actualCard[0];
+            cardSuit = actualCard[1];
+          } else if (actualCard.length === 3) {
+            cardValue = actualCard.substring(0, 2); // "10"
+            cardSuit = actualCard[2];
+          } else {
+            cardValue = '?';
+            cardSuit = '?';
+          }
+
+          mapRow.push({
+            id: `${row}-${col}`,
+            revealed: false,
+            card: {
+              value: cardValue,
+              suit: cardSuit,
+              display: actualCard,
+            },
+            type: 'unknown',
+            position: { x: col, y: row },
+            actualCard,
+          });
+          cardIndex += 1;
+        } else {
+          // Empty space for non-first/last rows
+          mapRow.push(null);
+        }
+      }
+      map.push(mapRow);
+    }
+
+    // Update the save with the new map
+    activeSave.map = map;
+    await activeSave.save();
+
+    return res.json({
+      success: true,
+      message: 'Map regenerated successfully',
+      mapRows: map.length,
+      cardsPlaced: cardIndex,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to regenerate map' });
   }
 });
 

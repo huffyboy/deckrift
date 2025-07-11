@@ -1534,3 +1534,51 @@ textarea.form-input {
 }
 
 /* ===== GAME CONTAINER ===== */
+
+/* ===== NO GAME SCREEN ===== */
+.no-game-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  padding: 2rem;
+}
+
+.no-game-icon {
+  margin-bottom: 2rem;
+  opacity: 0.6;
+}
+
+.no-game-section h3 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  font-family: 'Cinzel', serif;
+}
+
+.no-game-section h5 {
+  color: #888;
+  margin-bottom: 1.5rem;
+  font-weight: normal;
+}
+
+.no-game-section p {
+  color: #ccc;
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.no-game-section .btn {
+  font-size: 1.2rem;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.no-game-section .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}

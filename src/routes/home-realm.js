@@ -190,11 +190,31 @@ router.post('/new-run', requireAuth, async (req, res) => {
     return res.json({
       success: true,
       saveId: newSave._id,
-      redirect: '/game',
+      redirect: `/game/new?realm=${realmId}&weapon=${startingWeapon}&armor=${startingArmor}`,
     });
   } catch (error) {
     return res.status(500).json({
       error: 'Failed to start new run',
+    });
+  }
+});
+
+// Start new game (GET route for direct access)
+router.get('/start-game', requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.session;
+    const { realm = 1, weapon, armor } = req.query;
+
+    // Deactivate any existing active save
+    await GameSave.updateMany({ userId, isActive: true }, { isActive: false });
+
+    // Redirect to the new game route
+    return res.redirect(
+      `/game/new?realm=${realm}${weapon ? `&weapon=${weapon}` : ''}${armor ? `&armor=${armor}` : ''}`
+    );
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Failed to start new game',
     });
   }
 });
