@@ -2,7 +2,7 @@
 
 import { getCardValue } from './gameUtils.js';
 import { showNotification, showGameMessage, showDeckDrawingAnimation } from './uiUtils.js';
-import { EVENTS, GAME_CONSTANTS, BOONS, ARTIFACTS, CARD_ADDING_EFFECTS } from './gameData.js';
+import { EVENTS, GAME_CONSTANTS, BOONS, BANES, ARTIFACTS, CARD_ADDING_EFFECTS, BANE_AND_BOON_EFFECTS } from './gameData.js';
 import { drawFromPlayerDeck } from '../game.js';
 
 /**
@@ -65,7 +65,7 @@ export function handleCardEncounter(card, gameState, handlers) {
       // Show initial blessing message
       showGameMessage(
         'Blessing',
-        'The fates smile upon you! Draw a card from your deck to receive a blessing.',
+        'The fates smile upon you! Draw a card from your deck to receive a boon.',
         'success',
         '✨',
         null, // No timeout
@@ -78,12 +78,12 @@ export function handleCardEncounter(card, gameState, handlers) {
                 // Process the boon based on the drawn card
                 const boonResult = processBoon(drawnCard, gameState);
 
-                // Show the specific boon result
+                // Show the specific boon result using the header and description from gameData
                 showGameMessage(
-                  'Fortune Revealed',
-                  `You drew ${drawnCard.display} from your deck and gained: ${boonResult.description}`,
+                  boonResult.header,
+                  boonResult.description,
                   'success',
-                  `${drawnCard.value}${drawnCard.suit}`,
+                  `${drawnCard.display} ${boonResult.icon}`,
                   null, // No timeout
                   () => {
                     // Callback when message is dismissed
@@ -103,9 +103,48 @@ export function handleCardEncounter(card, gameState, handlers) {
       );
       break;
     }
-    case 'bane':
-      handlers.handleBane(gameState.playerPosition);
+    case 'bane': {
+      // Show initial misfortune message
+      showGameMessage(
+        'Misfortune',
+        'The fates frown upon you! Draw a card from your deck to receive a bane.',
+        'error',
+        '🌩️',
+        null, // No timeout
+        () => {
+          // Draw from player's deck first
+          drawFromPlayerDeck().then((drawnCard) => {
+            if (drawnCard) {
+              // Show deck drawing animation with the actual drawn card
+              showDeckDrawingAnimation(() => {
+                // Process the bane based on the drawn card
+                const baneResult = processBane(drawnCard, gameState);
+
+                // Show the specific bane result using the header and description from gameData
+                showGameMessage(
+                  baneResult.header,
+                  baneResult.description,
+                  'error',
+                  `${drawnCard.display} ${baneResult.icon}`,
+                  null, // No timeout
+                  () => {
+                    // Callback when message is dismissed
+                    if (handlers.resetBusyState) {
+                      handlers.resetBusyState();
+                      // Re-render the map after resetting busy state
+                      if (handlers.renderOverworldMap) {
+                        handlers.renderOverworldMap();
+                      }
+                    }
+                  }
+                );
+              }, drawnCard);
+            }
+          });
+        }
+      );
       break;
+    }
     case 'nothing':
       showGameMessage(
         'Nothing Happens',
@@ -328,7 +367,7 @@ export function startBossBattle(newPosition, renderBattleInterface) {
  * Process a boon based on the drawn card
  * @param {Object} card - The drawn card
  * @param {Object} gameState - Current game state
- * @returns {Object} - Boon result with description and applied effects
+ * @returns {Object} - Boon result with header, description, icon and applied effects
  */
 function processBoon(card, gameState) {
   const cardValue = getCardValue(card);
@@ -353,8 +392,53 @@ function processBoon(card, gameState) {
   // Apply the boon effect
   const result = applyBoonEffect(boonEffect, card, gameState);
 
+  // Get the proper header and description from BANE_AND_BOON_EFFECTS
+  const effectData = BANE_AND_BOON_EFFECTS[boonEffect?.type] || BANE_AND_BOON_EFFECTS.nothing;
+
   return {
-    description: result.description,
+    header: effectData.header,
+    description: effectData.description,
+    icon: effectData.icon,
+    applied: result.applied
+  };
+}
+
+/**
+ * Process a bane based on the drawn card
+ * @param {Object} card - The drawn card
+ * @param {Object} gameState - Current game state
+ * @returns {Object} - Bane result with header, description, icon and applied effects
+ */
+function processBane(card, gameState) {
+  const cardValue = getCardValue(card);
+  const cardSuit = card.suit;
+  const isRed = cardSuit === 'hearts' || cardSuit === 'diamonds';
+
+  // Get the bane effect based on card value and suit
+  let baneEffect = BANES[cardValue];
+
+  // Handle suit-specific effects (if any)
+  if (baneEffect && typeof baneEffect === 'object' && !baneEffect.type) {
+    // Check for suit-specific effects (like Aces)
+    if (cardSuit && baneEffect[cardSuit]) {
+      baneEffect = baneEffect[cardSuit];
+    } else if (isRed && baneEffect.red) {
+      baneEffect = baneEffect.red;
+    } else if (!isRed && baneEffect.black) {
+      baneEffect = baneEffect.black;
+    }
+  }
+
+  // Apply the bane effect
+  const result = applyBaneEffect(baneEffect, card, gameState);
+
+  // Get the proper header and description from BANE_AND_BOON_EFFECTS
+  const effectData = BANE_AND_BOON_EFFECTS[baneEffect?.type] || BANE_AND_BOON_EFFECTS.nothing;
+
+  return {
+    header: effectData.header,
+    description: effectData.description,
+    icon: effectData.icon,
     applied: result.applied
   };
 }
@@ -468,6 +552,80 @@ function applyBoonEffect(boonEffect, card, gameState) {
     default:
       return {
         description: 'Unknown boon effect',
+        applied: false
+      };
+  }
+}
+
+/**
+ * Apply a bane effect to the game state
+ * @param {Object} baneEffect - The bane effect to apply
+ * @param {Object} card - The drawn card
+ * @param {Object} gameState - Current game state
+ * @returns {Object} - Result with description and applied flag
+ */
+function applyBaneEffect(baneEffect, card, gameState) {
+  if (!baneEffect || baneEffect.type === 'nothing') {
+    return {
+      description: 'Nothing happens',
+      applied: false
+    };
+  }
+
+  switch (baneEffect.type) {
+    case 'loseItem': {
+      // For now, just return the effect description
+      return {
+        description: 'Lose a random item',
+        applied: true
+      };
+    }
+
+    case 'loseStat': {
+      // For now, just return the effect description
+      return {
+        description: 'Lose 1 stat point',
+        applied: true
+      };
+    }
+
+    case 'loseHighCard': {
+      // For now, just return the effect description
+      return {
+        description: 'Lose a high card from your deck',
+        applied: true
+      };
+    }
+
+    case 'loseFaceCard': {
+      // For now, just return the effect description
+      return {
+        description: 'Lose a face card from your deck',
+        applied: true
+      };
+    }
+
+    case 'loseCurrency': {
+      const currencyLoss = getCardValue(card);
+      gameState.currency = Math.max(0, (gameState.currency || 0) - currencyLoss);
+      return {
+        description: `Lose ${currencyLoss} currency`,
+        applied: true
+      };
+    }
+
+    case 'addJoker': {
+      const jokerAmount = baneEffect.amount || 1;
+      // For now, just return the effect description
+      return {
+        description: `Add ${jokerAmount} joker(s) to your deck`,
+        applied: true
+      };
+    }
+
+    default:
+      return {
+        description: 'Unknown bane effect',
         applied: false
       };
   }

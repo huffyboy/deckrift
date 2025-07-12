@@ -60,7 +60,7 @@ router.get('/new', requireAuth, async (req, res) => {
 
     // Generate actual cards for the map (excluding jokers)
     const availableCards = [];
-    const testCardValues = ['J', 'A'];
+    const testCardValues = ['A', '2',];
 
     // Create a deck of cards (excluding jokers)
     MAP_CARD_SUITS.forEach((suit) => {

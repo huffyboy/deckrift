@@ -805,7 +805,7 @@ export const UNLOCK_EQUIPMENT_MAP = {
 export const EVENTS = {
   2: {
     type: 'bane',
-    icon: '🌧️',
+    icon: '🌩️',
     text: 'Misfortune',
     description: 'Negative effects await',
   },
