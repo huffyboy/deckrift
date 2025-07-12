@@ -14,7 +14,6 @@ import {
   generateBossStats as generateBossStatsUtil,
   generateShopItems as generateShopItemsUtil,
   calculateShopCosts as calculateShopCostsUtil,
-  generateBoonOptions as generateBoonOptionsUtil,
   generateBaneEffect as generateBaneEffectUtil,
 } from './modules/gameUtils.js';
 
@@ -148,6 +147,38 @@ async function drawCard() {
   }
 }
 
+/**
+ * Draw a card from the player's deck for boon events
+ * @returns {Promise<Object>} - The drawn card object
+ */
+async function drawFromPlayerDeck() {
+  if (!currentGameState || !currentGameState.deck || currentGameState.deck.length === 0) {
+    // If no player deck, fallback to random card
+    return getRandomCardDisplay();
+  }
+
+  try {
+    // Get a random card from the player's deck
+    const randomIndex = Math.floor(Math.random() * currentGameState.deck.length);
+    const deckCard = currentGameState.deck[randomIndex];
+
+    // Convert to our card format
+    const cardObject = {
+      value: deckCard.value,
+      suit: deckCard.suit,
+      display: `${deckCard.value}${SUIT_SYMBOL_MAP[deckCard.suit.toUpperCase()]}`,
+      code: `${deckCard.value}${deckCard.suit}`,
+    };
+
+    return cardObject;
+  } catch (error) {
+    // Fallback to random card if there's an error
+    return getRandomCardDisplay();
+  }
+}
+
+export { drawFromPlayerDeck };
+
 // Game state generation functions - now using shared gameUtils
 function generateEnemyStats(enemyType) {
   const challengeModifier = currentGameState.challengeModifier || 1;
@@ -168,9 +199,6 @@ function calculateShopCosts() {
   return calculateShopCostsUtil(challengeModifier);
 }
 
-function generateBoonOptions() {
-  return generateBoonOptionsUtil();
-}
 
 function generateBaneEffect() {
   return generateBaneEffectUtil();
@@ -570,30 +598,9 @@ function handleRest(_newPosition) {
 }
 
 function handleBoon(_newPosition) {
-  fetch('/event/start', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      eventType: 'boon',
-      eventData: {
-        card: getRandomCardDisplay(),
-        options: generateBoonOptions(),
-      },
-    }),
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        window.location.href = '/event';
-      } else {
-        // Handle error silently
-      }
-    })
-    .catch((_error) => {
-      // Handle error silently
-    });
+  // The boon is now handled directly in the eventHandler
+  // This function is kept for compatibility but doesn't need to do anything
+  // since the boon processing happens in the eventHandler when the card is drawn
 }
 
 function handleBane(_newPosition) {

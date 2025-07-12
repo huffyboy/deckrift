@@ -1,8 +1,9 @@
 // eventHandler.js - Event processing logic
 
 import { getCardValue } from './gameUtils.js';
-import { showNotification, showGameMessage } from './uiUtils.js';
-import { EVENTS, GAME_CONSTANTS } from './gameData.js';
+import { showNotification, showGameMessage, showDeckDrawingAnimation } from './uiUtils.js';
+import { EVENTS, GAME_CONSTANTS, BOONS, ARTIFACTS, CARD_ADDING_EFFECTS } from './gameData.js';
+import { drawFromPlayerDeck } from '../game.js';
 
 /**
  * Handle card encounter based on card value
@@ -43,7 +44,7 @@ export function handleCardEncounter(card, gameState, handlers) {
         `You rest and recover ${actualHealAmount} health.`,
         'success',
         '🏕️',
-        4000,
+        null, // No timeout
         () => {
           // Callback when message is dismissed (either by timeout or click)
           if (handlers.resetBusyState) {
@@ -60,9 +61,48 @@ export function handleCardEncounter(card, gameState, handlers) {
     case 'shop':
       handlers.startShop(gameState.playerPosition);
       break;
-    case 'boon':
-      handlers.handleBoon(gameState.playerPosition);
+        case 'boon': {
+      // Show initial blessing message
+      showGameMessage(
+        'Blessing',
+        'The fates smile upon you! Draw a card from your deck to receive a blessing.',
+        'success',
+        '✨',
+        null, // No timeout
+        () => {
+          // Draw from player's deck first
+          drawFromPlayerDeck().then((drawnCard) => {
+            if (drawnCard) {
+              // Show deck drawing animation with the actual drawn card
+              showDeckDrawingAnimation(() => {
+                // Process the boon based on the drawn card
+                const boonResult = processBoon(drawnCard, gameState);
+
+                // Show the specific boon result
+                showGameMessage(
+                  'Fortune Revealed',
+                  `You drew ${drawnCard.display} from your deck and gained: ${boonResult.description}`,
+                  'success',
+                  `${drawnCard.value}${drawnCard.suit}`,
+                  null, // No timeout
+                  () => {
+                    // Callback when message is dismissed
+                    if (handlers.resetBusyState) {
+                      handlers.resetBusyState();
+                      // Re-render the map after resetting busy state
+                      if (handlers.renderOverworldMap) {
+                        handlers.renderOverworldMap();
+                      }
+                    }
+                  }
+                );
+              }, drawnCard);
+            }
+          });
+        }
+      );
       break;
+    }
     case 'bane':
       handlers.handleBane(gameState.playerPosition);
       break;
@@ -282,4 +322,153 @@ export function startBossBattle(newPosition, renderBattleInterface) {
 
   // Render battle interface
   renderBattleInterface();
+}
+
+/**
+ * Process a boon based on the drawn card
+ * @param {Object} card - The drawn card
+ * @param {Object} gameState - Current game state
+ * @returns {Object} - Boon result with description and applied effects
+ */
+function processBoon(card, gameState) {
+  const cardValue = getCardValue(card);
+  const cardSuit = card.suit;
+  const isRed = cardSuit === 'hearts' || cardSuit === 'diamonds';
+
+  // Get the boon effect based on card value and suit
+  let boonEffect = BOONS[cardValue];
+
+  // Handle suit-specific effects
+  if (boonEffect && typeof boonEffect === 'object' && !boonEffect.type) {
+    // Check for suit-specific effects (like Aces)
+    if (cardSuit && boonEffect[cardSuit]) {
+      boonEffect = boonEffect[cardSuit];
+    } else if (isRed && boonEffect.red) {
+      boonEffect = boonEffect.red;
+    } else if (!isRed && boonEffect.black) {
+      boonEffect = boonEffect.black;
+    }
+  }
+
+  // Apply the boon effect
+  const result = applyBoonEffect(boonEffect, card, gameState);
+
+  return {
+    description: result.description,
+    applied: result.applied
+  };
+}
+
+/**
+ * Apply a boon effect to the game state
+ * @param {Object} boonEffect - The boon effect to apply
+ * @param {Object} card - The drawn card
+ * @param {Object} gameState - Current game state
+ * @returns {Object} - Result with description and applied flag
+ */
+function applyBoonEffect(boonEffect, card, gameState) {
+  if (!boonEffect || boonEffect.type === 'nothing') {
+    return {
+      description: 'Nothing happens',
+      applied: false
+    };
+  }
+
+  switch (boonEffect.type) {
+    case 'powerPlus':
+    case 'willPlus':
+    case 'craftPlus':
+    case 'controlPlus': {
+      const stat = boonEffect.stat;
+      const value = boonEffect.value || 1;
+      gameState[stat] = (gameState[stat] || 0) + value;
+      return {
+        description: `+${value} to ${stat}`,
+        applied: true
+      };
+    }
+
+    case 'powerPlusTwo':
+    case 'willPlusTwo':
+    case 'craftPlusTwo':
+    case 'controlPlusTwo': {
+      const stat = boonEffect.stat || boonEffect.type.replace('PlusTwo', '');
+      gameState[stat] = (gameState[stat] || 0) + 2;
+      return {
+        description: `+2 to ${stat}`,
+        applied: true
+      };
+    }
+
+    case 'statXpGain': {
+      const xpGain = getCardValue(card);
+      // For now, add to power XP as default
+      gameState.powerXP = (gameState.powerXP || 0) + xpGain;
+      return {
+        description: `+${xpGain} Power XP`,
+        applied: true
+      };
+    }
+
+    case 'currencyGain': {
+      const currencyGain = getCardValue(card);
+      gameState.currency = (gameState.currency || 0) + currencyGain;
+      return {
+        description: `+${currencyGain} currency`,
+        applied: true
+      };
+    }
+
+    case 'artifact': {
+      // Handle artifact based on card value
+      const artifact = ARTIFACTS[getCardValue(card)];
+      if (artifact) {
+        if (artifact.type === 'random' && artifact.pool) {
+          const randomArtifact = artifact.pool[Math.floor(Math.random() * artifact.pool.length)];
+          return {
+            description: `Gained artifact: ${randomArtifact.name}`,
+            applied: true
+          };
+        } else if (artifact.type === 'equipment') {
+          return {
+            description: `Gained equipment: ${artifact.equipmentType}`,
+            applied: true
+          };
+        }
+      }
+      return {
+        description: 'Gained a random artifact',
+        applied: true
+      };
+    }
+
+    case 'addCard':
+    case 'addCards': {
+      // Handle card adding effects
+      const cardEffect = CARD_ADDING_EFFECTS[boonEffect.type];
+      if (cardEffect) {
+        return {
+          description: cardEffect.description,
+          applied: true
+        };
+      }
+      return {
+        description: 'Added cards to your deck',
+        applied: true
+      };
+    }
+
+    case 'removeCard': {
+      return {
+        description: 'Removed a card from your deck',
+        applied: true
+      };
+    }
+
+    default:
+      return {
+        description: 'Unknown boon effect',
+        applied: false
+      };
+  }
 }
