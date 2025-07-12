@@ -64,18 +64,18 @@ export function shuffleArray(array) {
 
 /**
  * Generate enemy stats based on enemy type and challenge modifier
- * @param {string} enemyType - Type of enemy ('power', 'will', 'craft', 'control')
+ * @param {string} enemyType - Type of enemy ('power', 'will', 'craft', 'focus')
  * @param {number} challengeModifier - Current challenge modifier
  * @returns {Object} - Enemy stats object
  */
 export function generateEnemyStats(enemyType, challengeModifier = 1) {
-  const baseStats = { power: 2, will: 2, craft: 2, control: 2 };
+  const baseStats = { power: 2, will: 2, craft: 2, focus: 2 };
 
   // Boost the primary stat based on enemy type
   if (enemyType === 'power') baseStats.power += 1;
   else if (enemyType === 'will') baseStats.will += 1;
   else if (enemyType === 'craft') baseStats.craft += 1;
-  else if (enemyType === 'control') baseStats.control += 1;
+  else if (enemyType === 'focus') baseStats.focus += 1;
 
   // Randomly distribute challenge modifier values across stats
   const stats = Object.keys(baseStats);
@@ -97,7 +97,7 @@ export function generateBossStats(challengeModifier = 1) {
     power: 2 * challengeModifier,
     will: 2 * challengeModifier,
     craft: 2 * challengeModifier,
-    control: 2 * challengeModifier,
+    focus: 2 * challengeModifier,
   };
 }
 

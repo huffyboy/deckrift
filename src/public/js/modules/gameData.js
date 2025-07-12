@@ -239,7 +239,7 @@ export const STARTING_STATS = {
   power: 4,
   will: 4,
   craft: 4,
-  control: 4,
+  focus: 4,
 };
 
 export const LEVELING_THRESHOLDS = {
@@ -267,7 +267,7 @@ export const STAT_EFFECTS = {
     description:
       'Determines number of equipment and artifacts player can carry',
   },
-  control: {
+  focus: {
     handSizePerPoint: 1,
     minHandSize: 2,
     description: 'Hand size',
@@ -709,22 +709,22 @@ export const HOME_REALM_UPGRADES = {
     level: 2,
     unlocked: false,
   },
-  // Control XP boosts
-  controlXpBoost1: {
-    name: 'Control XP Boost 1',
-    description: 'Draw an additional card for Control XP gains.',
+  // Focus XP boosts
+  focusXpBoost1: {
+    name: 'Focus XP Boost 1',
+    description: 'Draw an additional card for Focus XP gains.',
     cost: 50,
     effect: 'xp_boost',
-    stat: 'control',
+    stat: 'focus',
     level: 1,
     unlocked: false,
   },
-  controlXpBoost2: {
-    name: 'Control XP Boost 2',
-    description: 'Draw an additional card for Control XP gains.',
+  focusXpBoost2: {
+    name: 'Focus XP Boost 2',
+    description: 'Draw an additional card for Focus XP gains.',
     cost: 100,
     effect: 'xp_boost',
-    stat: 'control',
+    stat: 'focus',
     level: 2,
     unlocked: false,
   },
@@ -814,28 +814,28 @@ export const EVENTS = {
     enemy: 'power',
     icon: '⚔️',
     text: 'Combat',
-    description: 'Power-focused enemy',
+    description: 'Power-based enemy',
   },
   4: {
     type: 'fight',
     enemy: 'will',
     icon: '⚔️',
     text: 'Combat',
-    description: 'Will-focused enemy',
+    description: 'Will-based enemy',
   },
   5: {
     type: 'fight',
     enemy: 'craft',
     icon: '⚔️',
     text: 'Combat',
-    description: 'Craft-focused enemy',
+    description: 'Craft-based enemy',
   },
   6: {
     type: 'fight',
-    enemy: 'control',
+    enemy: 'focus',
     icon: '⚔️',
     text: 'Combat',
-    description: 'Control-focused enemy',
+    description: 'Focus-based enemy',
   },
   7: {
     type: 'challenge',
@@ -860,10 +860,10 @@ export const EVENTS = {
   },
   10: {
     type: 'challenge',
-    stat: 'control',
+    stat: 'focus',
     icon: '🎲',
     text: 'Challenge',
-    description: 'Control stat challenge',
+    description: 'Focus stat challenge',
   },
   11: {
     type: 'nothing',
@@ -886,7 +886,7 @@ export const EVENTS = {
   14: {
     type: 'boon',
     icon: '🌟',
-    text: 'Blessing',
+    text: 'Fortune',
     description: 'Positive effects await',
   },
   joker: {
@@ -919,8 +919,8 @@ export const BOONS = {
       value: 1,
     },
     club: {
-      type: 'controlPlus',
-      stat: 'control',
+      type: 'focusPlus',
+      stat: 'focus',
       value: 1,
     },
   },
@@ -976,16 +976,16 @@ export const BANES = {
     amount: 3,
   },
   2: {
-    type: 'lostItem',
+    type: 'loseItem',
   },
   3: {
-    type: 'lostStat',
+    type: 'loseStat',
   },
   4: {
-    type: 'lostHighCard',
+    type: 'loseHighCard',
   },
   5: {
-    type: 'lostFaceCard',
+    type: 'loseFaceCard',
   },
   6: {
     type: 'addJoker',
@@ -1019,6 +1019,93 @@ export const BANES = {
   },
   14: {
     type: 'loseCurrency',
+  },
+};
+
+export const BANE_AND_BOON_EFFECTS = {
+  powerPlus: {
+    header: 'You gain a surge of power',
+    description: 'Add 1 to your power for the rest of the run.',
+    stat: 'power',
+    icon: '💪',
+  },
+  willPlus: {
+    header: 'You feel a wave of determination',
+    description: 'Add 1 to your will for the rest of the run.',
+    stat: 'will',
+    icon: '👊',
+  },
+  craftPlus: {
+    header: 'You feel a spark of creativity',
+    description: 'Add 1 to your craft for the rest of the run.',
+    stat: 'craft',
+    icon: '🦾',
+  },
+  focusPlus: {
+    header: 'You gain a burst of clarity',
+    description: 'Add 1 to your focus for the rest of the run.',
+    stat: 'focus',
+    icon: '🧠',
+  },
+  artifact: {
+    header: 'You find an artifact',
+    description: 'Gain 1 artifact card',
+    icon: '🧿',
+  },
+  removeCard: {
+    header: 'You attempt to purge your weakness',
+    description: 'You may remove a card from your deck',
+    icon: '🔥',
+  },
+  addCard: {
+    header: 'You discover new potential',
+    description: 'Add 1 card to your deck',
+    icon: '🎴',
+  },
+  currencyGain: {
+    header: 'You find a bit of treasure',
+    description: 'Draw 1 card worth of treasure',
+    icon: '💎',
+  },
+  nothing: {
+    header: 'Nothing happens',
+    description: 'You were sure something was going to happen.',
+    icon: '🌀',
+  },
+  statXpGain: {
+    header: 'You learn something new',
+    description: 'Draw 1 card worth of experience.',
+    icon: '💪',
+  },
+  loseItem: {
+    header: 'One of your equipment has gone missing',
+    description: 'You lose 1 item you were carrying.',
+    icon: '🕳️',
+  },
+  loseStat: {
+    header: 'You feel a bit weaker',
+    description: 'Lose 1 stat point.',
+    icon: '💔',
+  },
+  loseHighCard: {
+    header: 'You lose some clarity',
+    description: 'Lose 1 high card from your deck.',
+    icon: '🌩️',
+  },
+  loseFaceCard: {
+    header: 'Your luck is fading',
+    description: 'Lose 1 face card from your deck.',
+    icon: '⛈️',
+  },
+  loseCurrency: {
+    header: 'Some treasure has gone missing',
+    description: 'Lose 1 card worth of treasure.',
+    icon: '💸',
+  },
+  addJoker: {
+    header: 'You have been cursed',
+    description: 'Add 1 joker to your deck.',
+    icon: '🃏',
   },
 };
 
@@ -1113,8 +1200,8 @@ export const ARTIFACTS = {
         type: 'craftPlusTwo',
       },
       {
-        name: 'Control Totem',
-        type: 'controlPlusTwo',
+        name: 'Focus Totem',
+        type: 'focusPlusTwo',
       },
     ],
   },
@@ -1134,8 +1221,8 @@ export const ARTIFACTS = {
         type: 'craftPlusTwo',
       },
       {
-        name: 'Control Totem',
-        type: 'controlPlusTwo',
+        name: 'Focus Totem',
+        type: 'focusPlusTwo',
       },
     ],
   },
@@ -1156,8 +1243,8 @@ export const ARTIFACTS = {
           type: 'craftPlusTwo',
         },
         {
-          name: 'Control Totem',
-          type: 'controlPlusTwo',
+          name: 'Focus Totem',
+          type: 'focusPlusTwo',
         },
       ],
     },
@@ -1182,8 +1269,8 @@ export const ARTIFACTS = {
         type: 'craftPlusOne',
       },
       {
-        name: 'Control Charm',
-        type: 'controlPlusOne',
+        name: 'Focus Charm',
+        type: 'focusPlusOne',
       },
     ],
   },
@@ -1429,53 +1516,53 @@ export const MAP_CONSTANTS = {
 export const ENEMIES = {
   regular: {
     power: {
-      name: 'Power-focused Enemy',
+      name: 'Power-based Enemy',
       type: 'power',
       weapon: ['sword'],
-      baseStats: { power: 3, will: 2, craft: 2, control: 2 },
+      baseStats: { power: 3, will: 2, craft: 2, focus: 2 },
     },
     will: {
-      name: 'Will-focused Enemy',
+      name: 'Will-based Enemy',
       type: 'will',
       weapon: ['staff'],
-      baseStats: { power: 2, will: 3, craft: 2, control: 2 },
+      baseStats: { power: 2, will: 3, craft: 2, focus: 2 },
     },
     craft: {
-      name: 'Craft-focused Enemy',
+      name: 'Craft-based Enemy',
       type: 'craft',
       weapon: ['sword', 'staff', 'hammer'],
-      baseStats: { power: 2, will: 2, craft: 3, control: 2 },
+      baseStats: { power: 2, will: 2, craft: 3, focus: 2 },
     },
-    control: {
-      name: 'Control-focused Enemy',
-      type: 'control',
+    focus: {
+      name: 'Focus-based Enemy',
+      type: 'focus',
       weapon: ['hammer'],
-      baseStats: { power: 2, will: 2, craft: 2, control: 3 },
+      baseStats: { power: 2, will: 2, craft: 2, focus: 3 },
     },
   },
   bosses: {
     1: {
       name: 'Jack of Steel',
       realm: 'steel',
-      baseStats: { power: 8, will: 8, craft: 8, control: 8 },
+      baseStats: { power: 8, will: 8, craft: 8, focus: 8 },
       weapon: ['sword'],
     },
     2: {
       name: 'Queen of Blood',
       realm: 'blood',
-      baseStats: { power: 10, will: 10, craft: 10, control: 10 },
+      baseStats: { power: 10, will: 10, craft: 10, focus: 10 },
       weapon: ['staff'],
     },
     3: {
       name: 'King of Ash',
       realm: 'ash',
-      baseStats: { power: 12, will: 12, craft: 12, control: 12 },
+      baseStats: { power: 12, will: 12, craft: 12, focus: 12 },
       weapon: ['hammer'],
     },
     4: {
       name: 'Ace of Speed',
       realm: 'speed',
-      baseStats: { power: 14, will: 14, craft: 14, control: 14 },
+      baseStats: { power: 14, will: 14, craft: 14, focus: 14 },
       weapon: ['bow', 'sword'],
       multiWield: true,
     },

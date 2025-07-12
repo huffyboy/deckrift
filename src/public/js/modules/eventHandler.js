@@ -378,7 +378,7 @@ function applyBoonEffect(boonEffect, card, gameState) {
     case 'powerPlus':
     case 'willPlus':
     case 'craftPlus':
-    case 'controlPlus': {
+    case 'focusPlus': {
       const stat = boonEffect.stat;
       const value = boonEffect.value || 1;
       gameState[stat] = (gameState[stat] || 0) + value;
@@ -391,7 +391,7 @@ function applyBoonEffect(boonEffect, card, gameState) {
     case 'powerPlusTwo':
     case 'willPlusTwo':
     case 'craftPlusTwo':
-    case 'controlPlusTwo': {
+    case 'focusPlusTwo': {
       const stat = boonEffect.stat || boonEffect.type.replace('PlusTwo', '');
       gameState[stat] = (gameState[stat] || 0) + 2;
       return {

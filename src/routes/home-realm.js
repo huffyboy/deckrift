@@ -168,13 +168,13 @@ router.post('/new-run', requireAuth, async (req, res) => {
         power: 4,
         will: 4,
         craft: 4,
-        control: 4,
+        focus: 4,
       },
       statXP: {
         power: 0,
         will: 0,
         craft: 0,
-        control: 0,
+        focus: 0,
       },
       health: 40, // Will stat * 10 = 4 * 10 = 40
       maxHealth: 40, // Will stat * 10 = 4 * 10 = 40

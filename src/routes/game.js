@@ -154,7 +154,7 @@ router.get('/new', requireAuth, async (req, res) => {
       maxHealth: calculatedMaxHealth,
       currency: user.currency || 0,
       stats: STARTING_STATS,
-      statXP: { power: 0, will: 0, craft: 0, control: 0 },
+      statXP: { power: 0, will: 0, craft: 0, focus: 0 },
       map,
       playerPosition: { x: 0, y: 0 },
       isActive: true,

@@ -31,7 +31,7 @@ You were once an adventurer, until you vanished into a realm all your own. Immor
 | **Power**   | +1 damage per point                                           |
 | **Will**    | +10 max HP per point (healing = stat gain × 10)               |
 | **Craft**   | Determines number of equipment and artifacts player can carry |
-| **Control** | Hand size (number of cards drawn per round)                   |
+| **Focus**   | Hand size (number of cards drawn per round)                   |
 
 ### Starting Configuration
 
@@ -95,10 +95,10 @@ You were once an adventurer, until you vanished into a realm all your own. Immor
 - **Craft XP Boost 1**: Draw an additional card for Craft XP gains (50 currency)
 - **Craft XP Boost 2**: Draw an additional card for Craft XP gains (100 currency)
 
-#### Control XP Boosts
+#### Focus XP Boosts
 
-- **Control XP Boost 1**: Draw an additional card for Control XP gains (50 currency)
-- **Control XP Boost 2**: Draw an additional card for Control XP gains (100 currency)
+- **Focus XP Boost 1**: Draw an additional card for focus XP gains (50 currency)
+- **Focus XP Boost 2**: Draw an additional card for focus XP gains (100 currency)
 
 ### Currency Boost Upgrades
 
@@ -231,10 +231,10 @@ This two-step timing sequence ensures players can clearly see:
 
 - **4 cards [2]**: Bane - draw a bane card
 - **12 cards [3,4,5,6]**: Fight - enemy encounter
-  - **3**: Power-focused enemy (sword)
-  - **4**: Will-focused enemy (staff)
-  - **5**: Craft-focused enemy (random weapon: sword/staff/hammer)
-  - **6**: Control-focused enemy (hammer)
+  - **3**: Power-based enemy (sword)
+  - **4**: Will-based enemy (staff)
+  - **5**: Craft-based enemy (random weapon: sword/staff/hammer)
+  - **6**: Focus-based enemy (hammer)
 - **12 cards [7,8,9,10]**: Stat challenge
   - You must hit number via stat + card drawn or draw A
   - Standard challenge is to get 12 + 1 per challenge modifier
@@ -264,10 +264,10 @@ This two-step timing sequence ensures players can clearly see:
 
 | Card  | Enemy Type      | Core Stat | Weapon                      |
 | ----- | --------------- | --------- | --------------------------- |
-| **3** | Power-focused   | Power     | Sword                       |
-| **4** | Will-focused    | Will      | Staff                       |
-| **5** | Craft-focused   | Craft     | Random (sword/staff/hammer) |
-| **6** | Control-focused | Control   | Hammer                      |
+| **3** | Power-based     | Power     | Sword                       |
+| **4** | Will-based      | Will      | Staff                       |
+| **5** | Craft-based     | Craft     | Random (sword/staff/hammer) |
+| **6** | Focus-based     | Focus     | Hammer                      |
 
 **Reward**: When you defeat an enemy you get a boon
 

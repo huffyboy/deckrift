@@ -52,13 +52,13 @@ const gameSaveSchema = new mongoose.Schema(
       power: { type: Number, default: 4 },
       will: { type: Number, default: 4 },
       craft: { type: Number, default: 4 },
-      control: { type: Number, default: 4 },
+      focus: { type: Number, default: 4 },
     },
     statXP: {
       power: { type: Number, default: 0 },
       will: { type: Number, default: 0 },
       craft: { type: Number, default: 0 },
-      control: { type: Number, default: 0 },
+      focus: { type: Number, default: 0 },
     },
     // Equipment
     equipment: {

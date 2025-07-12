@@ -39,7 +39,7 @@ const profileSchema = new mongoose.Schema(
       type: Number,
       default: 4,
     },
-    control: {
+    focus: {
       type: Number,
       default: 4,
     },
@@ -56,7 +56,7 @@ const profileSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    controlXP: {
+    focusXP: {
       type: Number,
       default: 0,
     },

@@ -22,6 +22,6 @@ export function calculateAllXPThresholds(profile) {
     power: calculateXPThreshold(profile.power || 4),
     will: calculateXPThreshold(profile.will || 4),
     craft: calculateXPThreshold(profile.craft || 4),
-    control: calculateXPThreshold(profile.control || 4),
+    focus: calculateXPThreshold(profile.focus || 4),
   };
 }
