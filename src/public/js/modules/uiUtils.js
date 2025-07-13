@@ -170,7 +170,11 @@ export function showGameInterface() {
  * @param {Object} drawnCard - The card that was drawn (optional)
  * @param {number} delayAfterAnimation - Delay in milliseconds after animation completes (default: 1000)
  */
-export function showDeckDrawingAnimation(onComplete, drawnCard = null, delayAfterAnimation = 1000) {
+export function showDeckDrawingAnimation(
+  onComplete,
+  drawnCard = null,
+  delayAfterAnimation = 1000
+) {
   // Get the player's actual deck size (default to 52 if not available)
   const deckSize = window.currentGameState?.deck?.length || 52;
 
@@ -267,32 +271,35 @@ export function showDeckDrawingAnimation(onComplete, drawnCard = null, delayAfte
   });
 
   // Flip the last card after all fades complete
-  setTimeout(() => {
-    const lastCard = cards[cards.length - 1];
+  setTimeout(
+    () => {
+      const lastCard = cards[cards.length - 1];
 
-    // Get card display info
-    const cardValue = drawnCard?.value || 'A';
-    const cardSuit = drawnCard?.suit || '♥️';
+      // Get card display info
+      const cardValue = drawnCard?.value || 'A';
+      const cardSuit = drawnCard?.suit || '♥️';
 
-    // Step 1: Squash the card (make it invisible)
-    lastCard.style.transform = `translate(260px, 260px) scaleX(0)`;
-    lastCard.style.transition = 'transform 0.4s ease-in-out';
+      // Step 1: Squash the card (make it invisible)
+      lastCard.style.transform = `translate(260px, 260px) scaleX(0)`;
+      lastCard.style.transition = 'transform 0.4s ease-in-out';
 
-    // Step 2: After squash completes, switch to front and stretch back
-    setTimeout(() => {
-      lastCard.textContent = `${cardValue}${cardSuit}`;
-      lastCard.style.background = 'linear-gradient(135deg, #2d1b69, #4a2c8f)'; // Purple gradient
-      lastCard.style.color = '#e0e0e0'; // White text
-      lastCard.style.fontSize = '1.5rem';
-      lastCard.style.transform = `translate(260px, 260px) scaleX(1)`;
-
-      // Step 3: Wait for delay, then remove overlay and call onComplete
+      // Step 2: After squash completes, switch to front and stretch back
       setTimeout(() => {
-        overlay.remove();
-        if (onComplete) {
-          onComplete();
-        }
-      }, delayAfterAnimation);
-    }, FLIP_SQUASH_DURATION);
-  }, allButLast.length * FADE_DELAY + FADE_WAIT_AFTER);
+        lastCard.textContent = `${cardValue}${cardSuit}`;
+        lastCard.style.background = 'linear-gradient(135deg, #2d1b69, #4a2c8f)'; // Purple gradient
+        lastCard.style.color = '#e0e0e0'; // White text
+        lastCard.style.fontSize = '1.5rem';
+        lastCard.style.transform = `translate(260px, 260px) scaleX(1)`;
+
+        // Step 3: Wait for delay, then remove overlay and call onComplete
+        setTimeout(() => {
+          overlay.remove();
+          if (onComplete) {
+            onComplete();
+          }
+        }, delayAfterAnimation);
+      }, FLIP_SQUASH_DURATION);
+    },
+    allButLast.length * FADE_DELAY + FADE_WAIT_AFTER
+  );
 }

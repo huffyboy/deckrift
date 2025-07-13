@@ -1,6 +1,13 @@
 // home-realm.js - Page-specific logic for Home Realm
 
-import { showError } from './modules/uiUtils.js';
+// Simple error notification function
+function showError(message) {
+  if (window.showNotification) {
+    window.showNotification('Error', message, 'error');
+  } else {
+    alert('Error: ' + message);
+  }
+}
 
 function resumeRun() {
   fetch('/home-realm/resume-run', {

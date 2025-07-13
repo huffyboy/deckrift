@@ -125,8 +125,8 @@ router.post('/new-run', requireAuth, async (req, res) => {
       });
     }
 
-    // Deactivate any existing active save
-    await GameSave.updateMany({ userId, isActive: true }, { isActive: false });
+    // Delete any existing active save
+    await GameSave.deleteMany({ userId, isActive: true });
 
     // Get current profile
     let currentProfile = await Profile.findOne({
@@ -152,6 +152,21 @@ router.post('/new-run', requireAuth, async (req, res) => {
       }
     }
 
+    // Initialize starting equipment based on user's starting equipment
+    const startingEquipment = [];
+
+    // Add starting weapon
+    startingEquipment.push({
+      key: startingWeapon,
+      type: 'weapon',
+    });
+
+    // Add starting armor
+    startingEquipment.push({
+      key: startingArmor,
+      type: 'armor',
+    });
+
     // Create new game save
     const newSave = new GameSave({
       userId,
@@ -160,10 +175,7 @@ router.post('/new-run', requireAuth, async (req, res) => {
       realm: parseInt(realmId, 10),
       level: 1,
       playerPosition: 0,
-      equipment: {
-        weapon: startingWeapon,
-        armor: startingArmor,
-      },
+      equipment: startingEquipment, // Use new unified equipment array
       stats: {
         power: 4,
         will: 4,
@@ -205,8 +217,8 @@ router.get('/start-game', requireAuth, async (req, res) => {
     const { userId } = req.session;
     const { realm = 1, weapon, armor } = req.query;
 
-    // Deactivate any existing active save
-    await GameSave.updateMany({ userId, isActive: true }, { isActive: false });
+    // Delete any existing active save
+    await GameSave.deleteMany({ userId, isActive: true });
 
     // Redirect to the new game route
     return res.redirect(

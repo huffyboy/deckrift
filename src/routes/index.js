@@ -45,6 +45,13 @@ router.get('/profile', async (req, res) => {
       return res.redirect('/');
     }
 
+    // Get active game save for navbar
+    const GameSave = (await import('../models/GameSave.js')).default;
+    const activeSave = await GameSave.findOne({
+      userId: req.session.userId,
+      isActive: true,
+    });
+
     return res.render('profile', {
       title: 'Profile - Deckrift',
       user: {
@@ -52,6 +59,7 @@ router.get('/profile', async (req, res) => {
         email: user.email,
         createdAt: user.createdAt,
       },
+      gameSave: activeSave, // Add gameSave data for navbar
       profile: {
         displayName: user.displayName || '',
         bio: user.bio || '',

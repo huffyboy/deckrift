@@ -73,11 +73,11 @@ export async function loadGameOverData() {
 }
 
 /**
- * Load stats data
- * @returns {Promise<Object>} - Stats data
+ * Load status data
+ * @returns {Promise<Object>} - Status data
  */
-export async function loadStatsData() {
-  return loadData('/api/stats/data', 'Failed to load stats data');
+export async function loadStatusData() {
+  return loadData('/api/status/data', 'Failed to load status data');
 }
 
 /**
@@ -105,9 +105,9 @@ export async function loadShopItems() {
 }
 
 /**
- * Load stats
- * @returns {Promise<Object>} - Stats data
+ * Load status
+ * @returns {Promise<Object>} - Status data
  */
-export async function loadStats() {
-  return loadData('/api/stats', 'Failed to load stats');
+export async function loadStatus() {
+  return loadData('/api/status', 'Failed to load status');
 }

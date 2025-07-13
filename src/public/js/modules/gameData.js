@@ -20,7 +20,7 @@ export const CARD_VALUES = {
   4: 4,
   3: 3,
   2: 2,
-  joker: 'joker',
+  𝕁: 0,
 };
 
 // Card color mappings
@@ -154,7 +154,7 @@ export const UNICODE_TO_VALUE_MAP = {
   '🂾': 'K',
   '🃎': 'K',
   '🃞': 'K',
-  '🃟': 'joker',
+  '🃟': '𝕁',
 };
 
 // Red card Unicode symbols (hearts and diamonds)
@@ -202,6 +202,7 @@ export const TEXT_TO_VALUE_MAP = {
   4: 4,
   3: 3,
   2: 2,
+  '𝕁': 0, // Joker value
 };
 
 // Card ranges for easier validation
@@ -217,7 +218,7 @@ export const CARD_RANGES = {
 // King can be represented as 13, K, or king
 // Queen can be represented as 12, Q, or queen
 // Jack can be represented as 11, J, or jack
-// Joker are represented as joker
+// Joker are represented as 𝕁
 export const FACE_CARDS = [11, 12, 13];
 export const ACE = 14;
 export const CARD_SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
@@ -661,6 +662,7 @@ export const HOME_REALM_UPGRADES = {
     stat: 'power',
     level: 1,
     unlocked: false,
+    icon: '💪',
   },
   powerXpBoost2: {
     name: 'Power XP Boost 2',
@@ -670,6 +672,7 @@ export const HOME_REALM_UPGRADES = {
     stat: 'power',
     level: 2,
     unlocked: false,
+    icon: '💪',
   },
   // Will XP boosts
   willXpBoost1: {
@@ -680,6 +683,7 @@ export const HOME_REALM_UPGRADES = {
     stat: 'will',
     level: 1,
     unlocked: false,
+    icon: '👊',
   },
   willXpBoost2: {
     name: 'Will XP Boost 2',
@@ -689,6 +693,7 @@ export const HOME_REALM_UPGRADES = {
     stat: 'will',
     level: 2,
     unlocked: false,
+    icon: '👊',
   },
   // Craft XP boosts
   craftXpBoost1: {
@@ -699,6 +704,7 @@ export const HOME_REALM_UPGRADES = {
     stat: 'craft',
     level: 1,
     unlocked: false,
+    icon: '🦾',
   },
   craftXpBoost2: {
     name: 'Craft XP Boost 2',
@@ -708,6 +714,7 @@ export const HOME_REALM_UPGRADES = {
     stat: 'craft',
     level: 2,
     unlocked: false,
+    icon: '🦾',
   },
   // Focus XP boosts
   focusXpBoost1: {
@@ -718,6 +725,7 @@ export const HOME_REALM_UPGRADES = {
     stat: 'focus',
     level: 1,
     unlocked: false,
+    icon: '🧠',
   },
   focusXpBoost2: {
     name: 'Focus XP Boost 2',
@@ -727,6 +735,7 @@ export const HOME_REALM_UPGRADES = {
     stat: 'focus',
     level: 2,
     unlocked: false,
+    icon: '🧠',
   },
   // Currency boost
   currencyBoost: {
@@ -736,6 +745,7 @@ export const HOME_REALM_UPGRADES = {
     effect: 'currency_boost',
     level: 1,
     unlocked: false,
+    icon: '💎',
   },
   // Equipment unlocks
   dagger: {
@@ -745,6 +755,7 @@ export const HOME_REALM_UPGRADES = {
     effect: 'unlock_dagger',
     level: 1,
     unlocked: false,
+    icon: '🗡️',
   },
   bow: {
     name: 'Unlock Bow',
@@ -753,6 +764,7 @@ export const HOME_REALM_UPGRADES = {
     effect: 'unlock_bow',
     level: 1,
     unlocked: false,
+    icon: '🏹',
   },
   staff: {
     name: 'Unlock Staff',
@@ -761,6 +773,7 @@ export const HOME_REALM_UPGRADES = {
     effect: 'unlock_staff',
     level: 1,
     unlocked: false,
+    icon: '🦯',
   },
   hammer: {
     name: 'Unlock Hammer',
@@ -769,6 +782,7 @@ export const HOME_REALM_UPGRADES = {
     effect: 'unlock_hammer',
     level: 1,
     unlocked: false,
+    icon: '🔨',
   },
   medium: {
     name: 'Unlock Medium Armor',
@@ -777,6 +791,7 @@ export const HOME_REALM_UPGRADES = {
     effect: 'unlock_medium_armor',
     level: 1,
     unlocked: false,
+    icon: '🛡️',
   },
   heavy: {
     name: 'Unlock Heavy Armor',
@@ -785,6 +800,7 @@ export const HOME_REALM_UPGRADES = {
     effect: 'unlock_heavy_armor',
     level: 1,
     unlocked: false,
+    icon: '🛡️',
   },
 };
 
@@ -889,7 +905,7 @@ export const EVENTS = {
     text: 'Fortune',
     description: 'Positive effects await',
   },
-  joker: {
+  '𝕁': {
     type: 'boss',
     icon: '🃏',
     text: 'Boss',
@@ -965,13 +981,13 @@ export const BOONS = {
   2: {
     type: 'currencyGain',
   },
-  joker: {
+  '𝕁': {
     type: 'nothing',
   },
 };
 
 export const BANES = {
-  joker: {
+  '𝕁': {
     type: 'addJoker',
     amount: 3,
   },
@@ -1440,6 +1456,7 @@ export const CARD_DISPLAY_SYMBOLS = [
   { value: 'Q', suit: '♣️', display: 'Q♣️' },
   { value: 'K', suit: '♣️', display: 'K♣️' },
   { value: 'A', suit: '♣️', display: 'A♣️' },
+  { value: '𝕁', suit: '🃏', display: '𝕁🃏' },
 ];
 
 // Suit symbol mapping for API conversion
@@ -1448,6 +1465,23 @@ export const SUIT_SYMBOL_MAP = {
   DIAMONDS: '♦️',
   CLUBS: '♣️',
   SPADES: '♠️',
+};
+
+// Suit symbol to emoji mapping for display
+export const SUIT_TO_EMOJI_MAP = {
+  '♠': '♠️',
+  '♥': '♥️',
+  '♦': '♦️',
+  '♣': '♣️',
+  '🃏': '🃏', // Joker suit
+};
+
+// Suit order for sorting (spades, hearts, diamonds, clubs)
+export const SUIT_ORDER = {
+  '♠': 0,
+  '♥': 1,
+  '♦': 2,
+  '♣': 3,
 };
 
 // Internal suit to API suit mapping
@@ -1583,6 +1617,22 @@ export const SHOP_PRICES = {
 };
 
 // ============================================================================
+// EFFECT MAPPINGS
+// ============================================================================
+
+// Map effect strings to damage multipliers
+export const EFFECT_TO_MULTIPLIER = {
+  fullDamage: 1.0,
+  halfDamage: 0.5,
+  doubleDamage: 2.0,
+  quarterDamage: 0.25,
+  threeQuarterDamage: 0.75,
+  noDamage: 0.0,
+  instantKill: 0.0, // Special case
+  healSelf: 1.0, // Special case for staff
+};
+
+// ============================================================================
 // DEFAULT EXPORT
 // ============================================================================
 
@@ -1636,8 +1686,13 @@ export default {
   // Economy & Shopping
   SHOP_PRICES,
 
+  // Effect Mappings
+  EFFECT_TO_MULTIPLIER,
+
   // Suit Symbol Mapping
   SUIT_SYMBOL_MAP,
+  SUIT_TO_EMOJI_MAP,
+  SUIT_ORDER,
 
   // Map Generation
   MAP_CARD_VALUES,

@@ -1,3 +1,5 @@
+import logger from '../config/logger.js';
+
 /**
  * Custom error class for API errors
  */
@@ -21,27 +23,14 @@ export const notFound = (req, res) => {
 };
 
 export const createErrorHandler =
-  (defaultMessage, isDevelopment) => (err, req, res) => {
-    const status = err.status || 500;
-    const message = err.message || defaultMessage;
+  (_defaultMessage, _isDevelopment) => (err, req, res, _next) => {
+    // Log the error
+    logger.error('Error:', err);
 
-    res.status(status);
-
-    // For API routes, send JSON response
-    if (req.path.startsWith('/api/')) {
-      return res.json({
-        error: message,
-        status,
-        ...(isDevelopment && { stack: err.stack }),
-      });
-    }
-
-    // For regular routes, render error page
-    res.render('errors/error', {
-      title: `${status} Error - Deckrift`,
-      message,
-      error: isDevelopment ? err : undefined,
-      user: req.session?.userId ? { username: req.session.username } : null,
+    // Send error response
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Something went wrong',
     });
   };
 

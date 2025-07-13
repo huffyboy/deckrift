@@ -1,7 +1,7 @@
 // game.js - Page-specific logic for Game
 
 // Import game data constants
-import { EVENTS, SUIT_SYMBOL_MAP } from './modules/gameData.js';
+import { EVENTS, SUIT_TO_EMOJI_MAP } from './modules/gameData.js';
 
 // Import game utility functions
 import {
@@ -132,7 +132,7 @@ async function drawCard() {
       const cardObject = {
         value: convertApiValueToInternal(card.value),
         suit: card.suit.toLowerCase(),
-        display: `${convertApiValueToInternal(card.value)}${SUIT_SYMBOL_MAP[card.suit]}`,
+        display: `${convertApiValueToInternal(card.value)}${SUIT_TO_EMOJI_MAP[card.suit.toLowerCase()] || card.suit}`,
         code: card.code,
       };
 
@@ -148,25 +148,60 @@ async function drawCard() {
 }
 
 /**
+ * Save the current player deck to the server
+ * @param {Array} deck - The current player deck
+ */
+async function savePlayerDeck(deck) {
+  try {
+    const response = await fetch('/game/update-deck', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deck }),
+    });
+
+    const data = await response.json();
+    if (!data.success) {
+      // Failed to save player deck
+    }
+  } catch (error) {
+    // Error saving player deck
+  }
+}
+
+/**
  * Draw a card from the player's deck for boon events
  * @returns {Promise<Object>} - The drawn card object
  */
 async function drawFromPlayerDeck() {
-  if (!currentGameState || !currentGameState.deck || currentGameState.deck.length === 0) {
+  if (
+    !currentGameState ||
+    !currentGameState.deck ||
+    currentGameState.deck.length === 0
+  ) {
     // If no player deck, fallback to random card
     return getRandomCardDisplay();
   }
 
   try {
     // Get a random card from the player's deck
-    const randomIndex = Math.floor(Math.random() * currentGameState.deck.length);
+    const randomIndex = Math.floor(
+      Math.random() * currentGameState.deck.length
+    );
     const deckCard = currentGameState.deck[randomIndex];
+
+    // Remove the drawn card from the deck
+    currentGameState.deck.splice(randomIndex, 1);
+
+    // Save the updated deck to the server
+    await savePlayerDeck(currentGameState.deck);
 
     // Convert to our card format
     const cardObject = {
       value: deckCard.value,
       suit: deckCard.suit,
-      display: `${deckCard.value}${SUIT_SYMBOL_MAP[deckCard.suit.toUpperCase()]}`,
+      display: `${deckCard.value}${SUIT_TO_EMOJI_MAP[deckCard.suit] || deckCard.suit}`,
       code: `${deckCard.value}${deckCard.suit}`,
     };
 
@@ -198,7 +233,6 @@ function calculateShopCosts() {
   const challengeModifier = currentGameState.challengeModifier || 1;
   return calculateShopCostsUtil(challengeModifier);
 }
-
 
 function generateBaneEffect() {
   return generateBaneEffectUtil();
@@ -322,7 +356,7 @@ function renderOverworldMap() {
             break;
 
           case 'joker': {
-            const jokerEvent = EVENTS.joker;
+            const jokerEvent = EVENTS['𝕁'];
             cardDiv.innerHTML = `<div style="text-align: center;">
               <span style="font-size: 4em; display: block; margin-bottom: 10px;">${jokerEvent.icon}</span>
             </div>`;

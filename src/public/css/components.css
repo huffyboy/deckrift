@@ -1054,47 +1054,78 @@
 }
 
 .deck-cards {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   gap: 0.5rem;
   justify-content: center;
+  padding: 1rem;
 }
 
 .deck-card {
-  width: 40px;
-  height: 60px;
-  background: linear-gradient(135deg, #ffffff, #f0f0f0);
-  border: 1px solid #2d1b69;
-  border-radius: 4px;
+  width: 80px;
+  height: 120px;
+  background: linear-gradient(135deg, #4a2c8f, #2d1b69);
+  border: 2px solid #4a2c8f;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  font-family: 'Cinzel', serif;
-  font-size: 0.8rem;
-  color: #0a0a0a;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  margin: 0.25rem;
+}
+
+.deck-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  border-color: #d4af37;
 }
 
 .deck-card .card-value {
-  font-size: 0.7rem;
-  margin-bottom: 0.1rem;
+  font-weight: bold;
+  color: #d4af37;
+  font-size: 1.2rem;
+  margin-bottom: 0.2rem;
 }
 
 .deck-card .card-suit {
-  font-size: 0.9rem;
+  font-size: 1.5rem;
+  margin-top: 0.2rem;
+}
+
+.deck-card[data-suit='♥'] .card-suit,
+.deck-card[data-suit='♦'] .card-suit {
+  color: #ff6b6b;
+}
+
+.deck-card[data-suit='♠'] .card-suit,
+.deck-card[data-suit='♣'] .card-suit {
+  color: #e0e0e0;
 }
 
 .deck-more {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 60px;
+  width: 120px;
+  height: 180px;
   background: linear-gradient(135deg, #4a2c8f, #2d1b69);
   color: #e0e0e0;
-  border-radius: 4px;
+  border-radius: 8px;
   font-family: 'Cardo', serif;
-  font-size: 0.8rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.deck-more:hover {
+  border-color: #d4af37;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
 .equipment-item,
@@ -1167,13 +1198,13 @@
   }
 
   .deck-card {
-    width: 35px;
-    height: 52px;
+    width: 80px;
+    height: 120px;
   }
 
   .deck-more {
-    width: 35px;
-    height: 52px;
+    width: 80px;
+    height: 120px;
   }
 }
 

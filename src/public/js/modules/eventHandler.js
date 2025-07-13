@@ -1,9 +1,44 @@
 // eventHandler.js - Event processing logic
 
 import { getCardValue } from './gameUtils.js';
-import { showNotification, showGameMessage, showDeckDrawingAnimation } from './uiUtils.js';
-import { EVENTS, GAME_CONSTANTS, BOONS, BANES, ARTIFACTS, CARD_ADDING_EFFECTS, BANE_AND_BOON_EFFECTS } from './gameData.js';
+import {
+  showNotification,
+  showGameMessage,
+  showDeckDrawingAnimation,
+} from './uiUtils.js';
+import {
+  EVENTS,
+  GAME_CONSTANTS,
+  BOONS,
+  BANES,
+  ARTIFACTS,
+  CARD_ADDING_EFFECTS,
+  BANE_AND_BOON_EFFECTS,
+} from './gameData.js';
 import { drawFromPlayerDeck } from '../game.js';
+
+/**
+ * Save the current player deck to the server
+ * @param {Array} deck - The current player deck
+ */
+async function savePlayerDeck(deck) {
+  try {
+    const response = await fetch('/game/update-deck', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deck }),
+    });
+
+    const data = await response.json();
+    if (!data.success) {
+      // Failed to save player deck
+    }
+  } catch (error) {
+    // Error saving player deck
+  }
+}
 
 /**
  * Handle card encounter based on card value
@@ -61,7 +96,7 @@ export function handleCardEncounter(card, gameState, handlers) {
     case 'shop':
       handlers.startShop(gameState.playerPosition);
       break;
-        case 'boon': {
+    case 'boon': {
       // Show initial blessing message
       showGameMessage(
         'Blessing',
@@ -76,26 +111,26 @@ export function handleCardEncounter(card, gameState, handlers) {
               // Show deck drawing animation with the actual drawn card
               showDeckDrawingAnimation(() => {
                 // Process the boon based on the drawn card
-                const boonResult = processBoon(drawnCard, gameState);
-
-                // Show the specific boon result using the header and description from gameData
-                showGameMessage(
-                  boonResult.header,
-                  boonResult.description,
-                  'success',
-                  `${drawnCard.display} ${boonResult.icon}`,
-                  null, // No timeout
-                  () => {
-                    // Callback when message is dismissed
-                    if (handlers.resetBusyState) {
-                      handlers.resetBusyState();
-                      // Re-render the map after resetting busy state
-                      if (handlers.renderOverworldMap) {
-                        handlers.renderOverworldMap();
+                processBoon(drawnCard, gameState).then((boonResult) => {
+                  // Show the specific boon result using the header and description from gameData
+                  showGameMessage(
+                    boonResult.header,
+                    boonResult.description,
+                    'success',
+                    `${drawnCard.display} ${boonResult.icon}`,
+                    null, // No timeout
+                    () => {
+                      // Callback when message is dismissed
+                      if (handlers.resetBusyState) {
+                        handlers.resetBusyState();
+                        // Re-render the map after resetting busy state
+                        if (handlers.renderOverworldMap) {
+                          handlers.renderOverworldMap();
+                        }
                       }
                     }
-                  }
-                );
+                  );
+                });
               }, drawnCard);
             }
           });
@@ -118,26 +153,26 @@ export function handleCardEncounter(card, gameState, handlers) {
               // Show deck drawing animation with the actual drawn card
               showDeckDrawingAnimation(() => {
                 // Process the bane based on the drawn card
-                const baneResult = processBane(drawnCard, gameState);
-
-                // Show the specific bane result using the header and description from gameData
-                showGameMessage(
-                  baneResult.header,
-                  baneResult.description,
-                  'error',
-                  `${drawnCard.display} ${baneResult.icon}`,
-                  null, // No timeout
-                  () => {
-                    // Callback when message is dismissed
-                    if (handlers.resetBusyState) {
-                      handlers.resetBusyState();
-                      // Re-render the map after resetting busy state
-                      if (handlers.renderOverworldMap) {
-                        handlers.renderOverworldMap();
+                processBane(drawnCard, gameState).then((baneResult) => {
+                  // Show the specific bane result using the header and description from gameData
+                  showGameMessage(
+                    baneResult.header,
+                    baneResult.description,
+                    'error',
+                    `${drawnCard.display} ${baneResult.icon}`,
+                    null, // No timeout
+                    () => {
+                      // Callback when message is dismissed
+                      if (handlers.resetBusyState) {
+                        handlers.resetBusyState();
+                        // Re-render the map after resetting busy state
+                        if (handlers.renderOverworldMap) {
+                          handlers.renderOverworldMap();
+                        }
                       }
                     }
-                  }
-                );
+                  );
+                });
               }, drawnCard);
             }
           });
@@ -369,10 +404,19 @@ export function startBossBattle(newPosition, renderBattleInterface) {
  * @param {Object} gameState - Current game state
  * @returns {Object} - Boon result with header, description, icon and applied effects
  */
-function processBoon(card, gameState) {
+async function processBoon(card, gameState) {
   const cardValue = getCardValue(card);
   const cardSuit = card.suit;
-  const isRed = cardSuit === 'hearts' || cardSuit === 'diamonds';
+
+  // Convert suit symbols to suit names for BOONS lookup
+  const suitSymbolToName = {
+    '♠': 'spade',
+    '♥': 'heart',
+    '♦': 'diamond',
+    '♣': 'club',
+  };
+  const cardSuitName = suitSymbolToName[cardSuit];
+  const isRed = cardSuit === '♥' || cardSuit === '♦';
 
   // Get the boon effect based on card value and suit
   let boonEffect = BOONS[cardValue];
@@ -380,8 +424,8 @@ function processBoon(card, gameState) {
   // Handle suit-specific effects
   if (boonEffect && typeof boonEffect === 'object' && !boonEffect.type) {
     // Check for suit-specific effects (like Aces)
-    if (cardSuit && boonEffect[cardSuit]) {
-      boonEffect = boonEffect[cardSuit];
+    if (cardSuitName && boonEffect[cardSuitName]) {
+      boonEffect = boonEffect[cardSuitName];
     } else if (isRed && boonEffect.red) {
       boonEffect = boonEffect.red;
     } else if (!isRed && boonEffect.black) {
@@ -390,16 +434,17 @@ function processBoon(card, gameState) {
   }
 
   // Apply the boon effect
-  const result = applyBoonEffect(boonEffect, card, gameState);
+  const result = await applyBoonEffect(boonEffect, card, gameState);
 
   // Get the proper header and description from BANE_AND_BOON_EFFECTS
-  const effectData = BANE_AND_BOON_EFFECTS[boonEffect?.type] || BANE_AND_BOON_EFFECTS.nothing;
+  const effectData =
+    BANE_AND_BOON_EFFECTS[boonEffect?.type] || BANE_AND_BOON_EFFECTS.nothing;
 
   return {
     header: effectData.header,
     description: effectData.description,
     icon: effectData.icon,
-    applied: result.applied
+    applied: result.applied,
   };
 }
 
@@ -409,7 +454,7 @@ function processBoon(card, gameState) {
  * @param {Object} gameState - Current game state
  * @returns {Object} - Bane result with header, description, icon and applied effects
  */
-function processBane(card, gameState) {
+async function processBane(card, gameState) {
   const cardValue = getCardValue(card);
   const cardSuit = card.suit;
   const isRed = cardSuit === 'hearts' || cardSuit === 'diamonds';
@@ -430,16 +475,17 @@ function processBane(card, gameState) {
   }
 
   // Apply the bane effect
-  const result = applyBaneEffect(baneEffect, card, gameState);
+  const result = await applyBaneEffect(baneEffect, card, gameState);
 
   // Get the proper header and description from BANE_AND_BOON_EFFECTS
-  const effectData = BANE_AND_BOON_EFFECTS[baneEffect?.type] || BANE_AND_BOON_EFFECTS.nothing;
+  const effectData =
+    BANE_AND_BOON_EFFECTS[baneEffect?.type] || BANE_AND_BOON_EFFECTS.nothing;
 
   return {
     header: effectData.header,
     description: effectData.description,
     icon: effectData.icon,
-    applied: result.applied
+    applied: result.applied,
   };
 }
 
@@ -450,11 +496,11 @@ function processBane(card, gameState) {
  * @param {Object} gameState - Current game state
  * @returns {Object} - Result with description and applied flag
  */
-function applyBoonEffect(boonEffect, card, gameState) {
+async function applyBoonEffect(boonEffect, card, gameState) {
   if (!boonEffect || boonEffect.type === 'nothing') {
     return {
       description: 'Nothing happens',
-      applied: false
+      applied: false,
     };
   }
 
@@ -468,7 +514,7 @@ function applyBoonEffect(boonEffect, card, gameState) {
       gameState[stat] = (gameState[stat] || 0) + value;
       return {
         description: `+${value} to ${stat}`,
-        applied: true
+        applied: true,
       };
     }
 
@@ -480,7 +526,7 @@ function applyBoonEffect(boonEffect, card, gameState) {
       gameState[stat] = (gameState[stat] || 0) + 2;
       return {
         description: `+2 to ${stat}`,
-        applied: true
+        applied: true,
       };
     }
 
@@ -490,7 +536,7 @@ function applyBoonEffect(boonEffect, card, gameState) {
       gameState.powerXP = (gameState.powerXP || 0) + xpGain;
       return {
         description: `+${xpGain} Power XP`,
-        applied: true
+        applied: true,
       };
     }
 
@@ -499,30 +545,32 @@ function applyBoonEffect(boonEffect, card, gameState) {
       gameState.currency = (gameState.currency || 0) + currencyGain;
       return {
         description: `+${currencyGain} currency`,
-        applied: true
+        applied: true,
       };
     }
 
     case 'artifact': {
-      // Handle artifact based on card value
-      const artifact = ARTIFACTS[getCardValue(card)];
+      // Handle artifact based on card value string (not numeric value)
+      const cardValueString = card.value; // Use the card's value string ('K', 'Q', etc.)
+      const artifact = ARTIFACTS[cardValueString];
       if (artifact) {
         if (artifact.type === 'random' && artifact.pool) {
-          const randomArtifact = artifact.pool[Math.floor(Math.random() * artifact.pool.length)];
+          const randomArtifact =
+            artifact.pool[Math.floor(Math.random() * artifact.pool.length)];
           return {
             description: `Gained artifact: ${randomArtifact.name}`,
-            applied: true
+            applied: true,
           };
         } else if (artifact.type === 'equipment') {
           return {
             description: `Gained equipment: ${artifact.equipmentType}`,
-            applied: true
+            applied: true,
           };
         }
       }
       return {
         description: 'Gained a random artifact',
-        applied: true
+        applied: true,
       };
     }
 
@@ -531,28 +579,54 @@ function applyBoonEffect(boonEffect, card, gameState) {
       // Handle card adding effects
       const cardEffect = CARD_ADDING_EFFECTS[boonEffect.type];
       if (cardEffect) {
+        // Add the specific cards to the player's deck
+        if (gameState.deck && cardEffect.cards) {
+          cardEffect.cards.forEach((cardStr) => {
+            // Parse card string (e.g., "K♥", "A♠")
+            let value, suit;
+            if (cardStr.length === 2) {
+              value = cardStr[0];
+              suit = cardStr[1];
+            } else if (cardStr.length === 3) {
+              value = cardStr.substring(0, 2); // "10"
+              suit = cardStr[2];
+            } else {
+              value = '?';
+              suit = '?';
+            }
+
+            gameState.deck.push({
+              value,
+              suit,
+              display: cardStr,
+              code: cardStr,
+            });
+          });
+          // Save the updated deck to the server
+          await savePlayerDeck(gameState.deck);
+        }
         return {
           description: cardEffect.description,
-          applied: true
+          applied: true,
         };
       }
       return {
         description: 'Added cards to your deck',
-        applied: true
+        applied: true,
       };
     }
 
     case 'removeCard': {
       return {
         description: 'Removed a card from your deck',
-        applied: true
+        applied: true,
       };
     }
 
     default:
       return {
         description: 'Unknown boon effect',
-        applied: false
+        applied: false,
       };
   }
 }
@@ -564,11 +638,11 @@ function applyBoonEffect(boonEffect, card, gameState) {
  * @param {Object} gameState - Current game state
  * @returns {Object} - Result with description and applied flag
  */
-function applyBaneEffect(baneEffect, card, gameState) {
+async function applyBaneEffect(baneEffect, card, gameState) {
   if (!baneEffect || baneEffect.type === 'nothing') {
     return {
       description: 'Nothing happens',
-      applied: false
+      applied: false,
     };
   }
 
@@ -577,7 +651,7 @@ function applyBaneEffect(baneEffect, card, gameState) {
       // For now, just return the effect description
       return {
         description: 'Lose a random item',
-        applied: true
+        applied: true,
       };
     }
 
@@ -585,7 +659,7 @@ function applyBaneEffect(baneEffect, card, gameState) {
       // For now, just return the effect description
       return {
         description: 'Lose 1 stat point',
-        applied: true
+        applied: true,
       };
     }
 
@@ -593,7 +667,7 @@ function applyBaneEffect(baneEffect, card, gameState) {
       // For now, just return the effect description
       return {
         description: 'Lose a high card from your deck',
-        applied: true
+        applied: true,
       };
     }
 
@@ -601,32 +675,47 @@ function applyBaneEffect(baneEffect, card, gameState) {
       // For now, just return the effect description
       return {
         description: 'Lose a face card from your deck',
-        applied: true
+        applied: true,
       };
     }
 
     case 'loseCurrency': {
       const currencyLoss = getCardValue(card);
-      gameState.currency = Math.max(0, (gameState.currency || 0) - currencyLoss);
+      gameState.currency = Math.max(
+        0,
+        (gameState.currency || 0) - currencyLoss
+      );
       return {
         description: `Lose ${currencyLoss} currency`,
-        applied: true
+        applied: true,
       };
     }
 
     case 'addJoker': {
       const jokerAmount = baneEffect.amount || 1;
-      // For now, just return the effect description
+      // Add jokers to the player's deck
+      if (gameState.deck) {
+        for (let i = 0; i < jokerAmount; i++) {
+          gameState.deck.push({
+            value: '𝕁',
+            suit: '🃏',
+            display: '𝕁🃏',
+            code: '𝕁',
+          });
+        }
+        // Save the updated deck to the server
+        await savePlayerDeck(gameState.deck);
+      }
       return {
         description: `Add ${jokerAmount} joker(s) to your deck`,
-        applied: true
+        applied: true,
       };
     }
 
     default:
       return {
         description: 'Unknown bane effect',
-        applied: false
+        applied: false,
       };
   }
 }

@@ -170,3 +170,115 @@ export function convertInternalValueToApi(internalValue) {
 export function convertInternalSuitToApi(internalSuit) {
   return INTERNAL_SUIT_TO_API_MAP[internalSuit] || internalSuit;
 }
+
+/**
+ * Generate a standard 52-card deck with 4 jokers
+ * @returns {Array} - Array of card objects with value, suit, and display properties
+ */
+export function generateStandardDeck() {
+  const deck = [];
+  const suits = ['♠', '♥', '♦', '♣'];
+  const values = [
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '10',
+    'J',
+    'Q',
+    'K',
+    'A',
+  ];
+
+  // Generate standard 52-card deck
+  for (const suit of suits) {
+    for (const value of values) {
+      deck.push({
+        value,
+        suit,
+        display: `${value}${suit}`,
+        code: `${value}${suit}`,
+      });
+    }
+  }
+
+  // Add 4 jokers
+  for (let i = 0; i < 4; i++) {
+    deck.push({
+      value: '𝕁',
+      suit: '🃏',
+      display: '𝕁🃏',
+      code: '𝕁',
+    });
+  }
+
+  return deck;
+}
+
+/**
+ * Shuffle an array of cards
+ * @param {Array} deck - Array of card objects
+ * @returns {Array} - Shuffled array of card objects
+ */
+export function shuffleDeck(deck) {
+  const shuffled = [...deck];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+/**
+ * Add cards to the player's deck
+ * @param {Array} playerDeck - Current player deck
+ * @param {Array} cardsToAdd - Array of card objects to add
+ * @returns {Array} - Updated player deck
+ */
+export function addCardsToDeck(playerDeck, cardsToAdd) {
+  return [...playerDeck, ...cardsToAdd];
+}
+
+/**
+ * Remove a card from the player's deck
+ * @param {Array} playerDeck - Current player deck
+ * @param {Object} cardToRemove - Card object to remove
+ * @returns {Array} - Updated player deck
+ */
+export function removeCardFromDeck(playerDeck, cardToRemove) {
+  const index = playerDeck.findIndex(
+    (card) =>
+      card.value === cardToRemove.value && card.suit === cardToRemove.suit
+  );
+
+  if (index !== -1) {
+    const updatedDeck = [...playerDeck];
+    updatedDeck.splice(index, 1);
+    return updatedDeck;
+  }
+
+  return playerDeck;
+}
+
+/**
+ * Add jokers to the player's deck
+ * @param {Array} playerDeck - Current player deck
+ * @param {number} count - Number of jokers to add
+ * @returns {Array} - Updated player deck
+ */
+export function addJokersToDeck(playerDeck, count) {
+  const jokers = [];
+  for (let i = 0; i < count; i++) {
+    jokers.push({
+      value: '𝕁',
+      suit: '🃏',
+      display: '𝕁🃏',
+      code: '𝕁',
+    });
+  }
+  return addCardsToDeck(playerDeck, jokers);
+}

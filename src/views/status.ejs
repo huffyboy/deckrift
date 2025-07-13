@@ -1,0 +1,168 @@
+<% var pageScript = '/js/status.js'; var page = 'status'; %>
+<script>console.log('Status page - pageScript:', '<%= pageScript %>');</script>
+<div class="status-container">
+    <!-- Status Header -->
+    <div class="status-header">
+        <h1>Status</h1>
+        <p class="status-subtitle">View your current deck, equipment, and upgrades.</p>
+    </div>
+
+    <!-- Current Deck Section -->
+    <div class="deck-section">
+        <h2>Current Deck</h2>
+        <div class="deck-info">
+            <p><strong>Deck Size:</strong> <span id="deck-size"><%= deckSize %></span> cards</p>
+            <button id="sort-toggle" class="sort-button">Sort by Suit</button>
+        </div>
+        
+        <div class="status-deck-display" id="deck-display">
+            <!-- Deck cards will be displayed here -->
+        </div>
+    </div>
+
+    <!-- Current Equipment Section -->
+    <div class="current-equipment-section">
+        <h2>Current Equipment</h2>
+        <div class="current-equipment-grid">
+            <!-- Current Weapon -->
+            <div class="current-equipment-item">
+                <div class="equipment-icon">
+                    <span class="equipment-symbol">⚔️</span>
+                </div>
+                <div class="equipment-info">
+                    <h4><%= currentEquipment.weapon.displayName %></h4>
+                    <p class="equipment-description">Currently equipped weapon</p>
+                    <% if (currentEquipment.weapon.stats) { %>
+                        <div class="equipment-stats">
+                            <span class="stat">Hit Rate: <strong><%= currentEquipment.weapon.stats.calculatedHitRate || currentEquipment.weapon.stats.baseHitRate %></strong></span>
+                            <span class="stat">Damage Rate: <strong><%= currentEquipment.weapon.stats.calculatedDamageOutput || currentEquipment.weapon.stats.baseDamageOutput %></strong></span>
+                            <span class="stat">Condition: <strong><%= currentEquipment.weapon.stats.cardCondition %></strong></span>
+                        </div>
+                    <% } %>
+                </div>
+                <div class="equipment-status">
+                    <span class="status-badge equipped">Equipped</span>
+                </div>
+            </div>
+            
+            <!-- Current Armor -->
+            <div class="current-equipment-item">
+                <div class="equipment-icon">
+                    <span class="equipment-symbol">🛡️</span>
+                </div>
+                <div class="equipment-info">
+                    <h4><%= currentEquipment.armor.displayName %></h4>
+                    <p class="equipment-description">Currently equipped armor</p>
+                    <% if (currentEquipment.armor.stats) { %>
+                        <div class="equipment-stats">
+                            <span class="stat">Trigger Rate: <strong><%= currentEquipment.armor.stats.calculatedHitRate || currentEquipment.armor.stats.triggerRate %></strong></span>
+                            <span class="stat">Mitigation: <strong><%= currentEquipment.armor.stats.calculatedMitigation || currentEquipment.armor.stats.damageMitigation %></strong></span>
+                            <span class="stat">Condition: <strong><%= currentEquipment.armor.stats.cardCondition %></strong></span>
+                        </div>
+                    <% } %>
+                </div>
+                <div class="equipment-status">
+                    <span class="status-badge equipped">Equipped</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Equipment Collection Section -->
+    <div class="equipment-section">
+        <h2>Equipment Collection</h2>
+        
+        <!-- Weapons -->
+        <div class="equipment-category">
+            <h3>Weapons</h3>
+            <div class="equipment-grid" id="weapons-grid">
+                <% equipmentCollection.weapons.forEach(weapon => { %>
+                <div class="equipment-item <%= weapon.owned ? 'owned' : 'locked' %>">
+                    <div class="equipment-icon">
+                        <span class="equipment-symbol">⚔️</span>
+                    </div>
+                    <div class="equipment-info">
+                        <h4><%= weapon.name %></h4>
+                        <p class="equipment-description"><%= weapon.description %></p>
+                    </div>
+                    <div class="equipment-status">
+                        <% if (weapon.owned) { %>
+                            <span class="status-badge owned">Owned</span>
+                        <% } else { %>
+                            <span class="status-badge locked">Locked</span>
+                        <% } %>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+        </div>
+        
+        <!-- Armor -->
+        <div class="equipment-category">
+            <h3>Armor</h3>
+            <div class="equipment-grid" id="armor-grid">
+                <% equipmentCollection.armor.forEach(armor => { %>
+                <div class="equipment-item <%= armor.owned ? 'owned' : 'locked' %>">
+                    <div class="equipment-icon">
+                        <span class="equipment-symbol">🛡️</span>
+                    </div>
+                    <div class="equipment-info">
+                        <h4><%= armor.name %></h4>
+                        <p class="equipment-description"><%= armor.description %></p>
+                    </div>
+                    <div class="equipment-status">
+                        <% if (armor.owned) { %>
+                            <span class="status-badge owned">Owned</span>
+                        <% } else { %>
+                            <span class="status-badge locked">Locked</span>
+                        <% } %>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upgrades Section -->
+    <div class="upgrades-section">
+        <h2>Purchased Upgrades</h2>
+        <div class="upgrades-grid" id="upgrades-grid">
+            <% purchasedUpgrades.forEach(upgrade => { %>
+            <div class="upgrade-item">
+                <div class="upgrade-icon">
+                    <span class="upgrade-symbol"><%= upgrade.icon %></span>
+                </div>
+                <div class="upgrade-info">
+                    <h4><%= upgrade.name %></h4>
+                    <p class="upgrade-description"><%= upgrade.description %></p>
+                    <div class="upgrade-cost">
+                        <span class="cost-label">Cost:</span>
+                        <span class="cost-value"><%= upgrade.cost %> currency</span>
+                    </div>
+                </div>
+                <div class="upgrade-status">
+                    <span class="status-badge purchased">Purchased</span>
+                </div>
+            </div>
+            <% }); %>
+            
+            <% if (purchasedUpgrades.length === 0) { %>
+            <div class="no-upgrades">
+                <p>No upgrades purchased yet.</p>
+                <p>Visit the Home Realm to purchase upgrades with your currency.</p>
+            </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<script>
+// Pass data from server to client-side JavaScript
+window.currentDeck = <%- JSON.stringify(currentDeck) %>;
+window.equipmentCollection = <%- JSON.stringify(equipmentCollection) %>;
+window.currentEquipment = <%- JSON.stringify(currentEquipment) %>;
+window.purchasedUpgrades = <%- JSON.stringify(purchasedUpgrades) %>;
+</script>
+
+<!-- Explicitly load status.js -->
+<script src="/js/status.js"></script> 

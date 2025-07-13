@@ -14,7 +14,7 @@ const requireAuth = (req, res, next) => {
 };
 
 // Start a new game
-router.get('/new', requireAuth, async (req, res) => {
+router.get('/new', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
     const { realm = 1, level = 1 } = req.query; // Default to realm 1, level 1
@@ -42,14 +42,23 @@ router.get('/new', requireAuth, async (req, res) => {
       STARTING_STATS,
     } = await import('../public/js/modules/gameData.js');
 
-    // Import utility functions from gameUtils.js
-    const { getChallengeModifier } = await import(
-      '../public/js/modules/gameUtils.js'
-    );
+    // Import utility functions from server-side gameUtils.js
+    const { getChallengeModifier, generateStandardDeck, shuffleDeck } =
+      await import('../services/gameUtils.js');
 
     // Calculate health based on Will stat (10 HP per Will point)
     const willStat = STARTING_STATS.will;
     const calculatedMaxHealth = willStat * 10;
+
+    // Initialize player deck - standard 52-card deck
+    const rawPlayerDeck = shuffleDeck(generateStandardDeck());
+
+    // Convert deck to match database schema (suit, value, type)
+    const playerDeck = rawPlayerDeck.map((card) => ({
+      suit: card.suit,
+      value: card.value,
+      type: 'standard',
+    }));
 
     // Generate basic overworld map
     const challengeModifier = getChallengeModifier(realm, level);
@@ -143,8 +152,25 @@ router.get('/new', requireAuth, async (req, res) => {
       map.push(mapRow);
     }
 
+    // Initialize starting equipment based on user's starting equipment
+    const startingEquipment = [];
+
+    // Add starting weapon (default to sword)
+    const startingWeapon = user.startingWeapon || 'sword';
+    startingEquipment.push({
+      key: startingWeapon,
+      type: 'weapon',
+    });
+
+    // Add starting armor (default to light)
+    const startingArmor = user.startingArmor || 'light';
+    startingEquipment.push({
+      key: startingArmor,
+      type: 'armor',
+    });
+
     // Create new game save
-    const newGameSave = new GameSave({
+    const saveData = {
       userId,
       profileId: userId, // Use userId as profileId for now
       saveName: `Realm ${realm} - Level ${level}`, // Generate a save name
@@ -159,7 +185,11 @@ router.get('/new', requireAuth, async (req, res) => {
       playerPosition: { x: 0, y: 0 },
       isActive: true,
       startedAt: new Date(),
-    });
+      deck: playerDeck, // Save deck to the database
+      equipment: startingEquipment, // Initialize with starting equipment
+    };
+
+    const newGameSave = new GameSave(saveData);
 
     await newGameSave.save();
 
@@ -177,6 +207,7 @@ router.get('/new', requireAuth, async (req, res) => {
       playerPosition: { x: 0, y: 0 },
       enemy: {},
       event: {},
+      deck: playerDeck, // Add player deck to game state
       shop: {
         healCost: SHOP_PRICES.basicHeal,
         cardRemovalCost: SHOP_PRICES.cardRemoval,
@@ -197,16 +228,13 @@ router.get('/new', requireAuth, async (req, res) => {
       xpThresholds,
     });
   } catch (error) {
-    return res.status(500).render('errors/error', {
-      title: 'Error - Deckrift',
-      message: 'Failed to start new game',
-      error,
-    });
+    // Let the global error handler deal with it
+    return next(error);
   }
 });
 
 // Continue existing game (or show message if no active game)
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
 
@@ -277,6 +305,7 @@ router.get('/', requireAuth, async (req, res) => {
       playerPosition: activeSave.playerPosition || { x: 0, y: 0 },
       enemy: activeSave.battleState?.enemy || {},
       event: activeSave.currentEvent || {},
+      deck: activeSave.playerDeck || [], // Add player deck to game state
       shop: {
         healCost: SHOP_PRICES.basicHeal,
         cardRemovalCost: SHOP_PRICES.cardRemoval,
@@ -297,16 +326,12 @@ router.get('/', requireAuth, async (req, res) => {
       xpThresholds,
     });
   } catch (error) {
-    return res.status(500).render('errors/error', {
-      title: 'Error - Deckrift',
-      message: 'Failed to load game',
-      error,
-    });
+    return next(error);
   }
 });
 
 // API endpoint to get current game state
-router.get('/state', requireAuth, async (req, res) => {
+router.get('/state', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
 
@@ -324,12 +349,12 @@ router.get('/state', requireAuth, async (req, res) => {
       gameState: activeSave,
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to get game state' });
+    return next(error);
   }
 });
 
 // API endpoint to update game state
-router.post('/state', requireAuth, async (req, res) => {
+router.post('/state', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
     const { gameState } = req.body;
@@ -352,12 +377,12 @@ router.post('/state', requireAuth, async (req, res) => {
       message: 'Game state updated',
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to update game state' });
+    return next(error);
   }
 });
 
 // API endpoint to end current run
-router.post('/end-run', requireAuth, async (req, res) => {
+router.post('/end-run', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
     const { reason, finalStats } = req.body;
@@ -393,12 +418,12 @@ router.post('/end-run', requireAuth, async (req, res) => {
       redirect: '/game-over',
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to end run' });
+    return next(error);
   }
 });
 
 // API endpoint to save game progress
-router.post('/save', requireAuth, async (req, res) => {
+router.post('/save', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
     const { gameState } = req.body;
@@ -422,12 +447,40 @@ router.post('/save', requireAuth, async (req, res) => {
       message: 'Game saved successfully',
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to save game' });
+    return next(error);
+  }
+});
+
+// API endpoint to update player deck
+router.post('/update-deck', requireAuth, async (req, res, next) => {
+  try {
+    const { userId } = req.session;
+    const { deck } = req.body;
+
+    const activeSave = await GameSave.findOne({
+      userId,
+      isActive: true,
+    });
+
+    if (!activeSave) {
+      return res.status(404).json({ error: 'No active game found' });
+    }
+
+    // Update the player deck
+    activeSave.playerDeck = deck;
+    await activeSave.save();
+
+    return res.json({
+      success: true,
+      message: 'Player deck updated successfully',
+    });
+  } catch (error) {
+    return next(error);
   }
 });
 
 // Temporary route to clear game saves for testing
-router.post('/clear-saves', requireAuth, async (req, res) => {
+router.post('/clear-saves', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
 
@@ -435,12 +488,12 @@ router.post('/clear-saves', requireAuth, async (req, res) => {
 
     return res.json({ success: true, deletedCount: result.deletedCount });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to clear saves' });
+    return next(error);
   }
 });
 
 // Temporary route to regenerate map for current game
-router.post('/regenerate-map', requireAuth, async (req, res) => {
+router.post('/regenerate-map', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
 
@@ -458,10 +511,8 @@ router.post('/regenerate-map', requireAuth, async (req, res) => {
       '../public/js/modules/gameData.js'
     );
 
-    // Import utility functions from gameUtils.js
-    const { getChallengeModifier } = await import(
-      '../public/js/modules/gameUtils.js'
-    );
+    // Import utility functions from server-side gameUtils.js
+    const { getChallengeModifier } = await import('../services/gameUtils.js');
 
     // Generate basic overworld map
     const challengeModifier = getChallengeModifier(
@@ -567,7 +618,7 @@ router.post('/regenerate-map', requireAuth, async (req, res) => {
       cardsPlaced: cardIndex,
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to regenerate map' });
+    return next(error);
   }
 });
 

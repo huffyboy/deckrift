@@ -26,12 +26,12 @@ You were once an adventurer, until you vanished into a realm all your own. Immor
 
 ## Player Attributes & Stats
 
-| Stat        | Effect                                                        |
-| ----------- | ------------------------------------------------------------- |
-| **Power**   | +1 damage per point                                           |
-| **Will**    | +10 max HP per point (healing = stat gain × 10)               |
-| **Craft**   | Determines number of equipment and artifacts player can carry |
-| **Focus**   | Hand size (number of cards drawn per round)                   |
+| Stat      | Effect                                                        |
+| --------- | ------------------------------------------------------------- |
+| **Power** | +1 damage per point                                           |
+| **Will**  | +10 max HP per point (healing = stat gain × 10)               |
+| **Craft** | Determines number of equipment and artifacts player can carry |
+| **Focus** | Hand size (number of cards drawn per round)                   |
 
 ### Starting Configuration
 
@@ -262,12 +262,12 @@ This two-step timing sequence ensures players can clearly see:
 
 #### Enemy Types by Card
 
-| Card  | Enemy Type      | Core Stat | Weapon                      |
-| ----- | --------------- | --------- | --------------------------- |
-| **3** | Power-based     | Power     | Sword                       |
-| **4** | Will-based      | Will      | Staff                       |
-| **5** | Craft-based     | Craft     | Random (sword/staff/hammer) |
-| **6** | Focus-based     | Focus     | Hammer                      |
+| Card  | Enemy Type  | Core Stat | Weapon                      |
+| ----- | ----------- | --------- | --------------------------- |
+| **3** | Power-based | Power     | Sword                       |
+| **4** | Will-based  | Will      | Staff                       |
+| **5** | Craft-based | Craft     | Random (sword/staff/hammer) |
+| **6** | Focus-based | Focus     | Hammer                      |
 
 **Reward**: When you defeat an enemy you get a boon
 

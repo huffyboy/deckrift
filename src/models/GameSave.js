@@ -60,11 +60,30 @@ const gameSaveSchema = new mongoose.Schema(
       craft: { type: Number, default: 0 },
       focus: { type: Number, default: 0 },
     },
-    // Equipment
-    equipment: {
+    // Equipment - simplified array of equipment key names
+    equipment: [
+      {
+        key: { type: String, required: true }, // e.g., 'sword', 'light', 'artifact_power_totem'
+        type: {
+          type: String,
+          required: true,
+          enum: ['weapon', 'armor', 'artifact'],
+        },
+      },
+    ],
+    // Legacy equipment fields for backward compatibility (deprecated)
+    legacyEquipment: {
       weapon: { type: String, default: 'sword' },
       armor: { type: String, default: 'light' },
     },
+    // Legacy artifacts field for backward compatibility (deprecated)
+    legacyArtifacts: [
+      {
+        name: String,
+        effect: String,
+        description: String,
+      },
+    ],
     // Health and currency
     health: {
       type: Number,
@@ -79,13 +98,16 @@ const gameSaveSchema = new mongoose.Schema(
       default: 0,
     },
     // Deck and artifacts
-    deck: [
-      {
-        suit: String,
-        value: String,
-        type: String,
-      },
-    ],
+    deck: {
+      type: [
+        {
+          suit: { type: String, required: true },
+          value: { type: String, required: true },
+          type: { type: String, required: true },
+        },
+      ],
+      default: [],
+    },
     artifacts: [
       {
         name: String,

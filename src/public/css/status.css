@@ -1,0 +1,429 @@
+/* Status Page Specific Styles */
+
+/* Status Container */
+.status-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.status-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.status-header h1 {
+  color: #d4af37;
+  margin-bottom: 0.5rem;
+}
+
+.status-subtitle {
+  color: #8b8b8b;
+  font-size: 1.1rem;
+}
+
+/* Deck Section */
+.deck-section {
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+  border: 2px solid #4a2c8f;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.deck-section h2 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.deck-info {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(74, 44, 143, 0.1);
+  border-radius: 8px;
+}
+
+.deck-info p {
+  margin: 0;
+  color: #e0e0e0;
+}
+
+.deck-info strong {
+  color: #d4af37;
+}
+
+.sort-button {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 2px solid #4a2c8f;
+  border-radius: 6px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #2d1b69, #4a2c8f);
+  color: #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.sort-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  border-color: #d4af37;
+  background: linear-gradient(135deg, #4a2c8f, #2d1b69);
+}
+
+.sort-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Status Page Specific Deck Display */
+.status-deck-display {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.5rem;
+  padding: 1rem;
+  min-height: 200px;
+}
+
+/* Status Page Specific Card Styles */
+.status-deck-card {
+  width: 80px;
+  height: 120px;
+  background: linear-gradient(135deg, #4a2c8f, #2d1b69);
+  border: 2px solid #4a2c8f;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  margin: 0.25rem;
+}
+
+.status-deck-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  border-color: #d4af37;
+}
+
+.status-deck-card .card-value {
+  font-weight: bold;
+  color: #d4af37;
+  font-size: 1.2rem;
+  margin-bottom: 0.2rem;
+}
+
+.status-deck-card .card-suit {
+  font-size: 1.5rem;
+  margin-top: 0.2rem;
+}
+
+.status-deck-card[data-suit='♥'] .card-suit,
+.status-deck-card[data-suit='♦'] .card-suit {
+  color: #ff6b6b;
+}
+
+.status-deck-card[data-suit='♠'] .card-suit,
+.status-deck-card[data-suit='♣'] .card-suit {
+  color: #e0e0e0;
+}
+
+/* Current Equipment Section */
+.current-equipment-section {
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+  border: 2px solid #4a2c8f;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.current-equipment-section h2 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.current-equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.current-equipment-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(74, 44, 143, 0.1);
+  border-radius: 8px;
+  border: 1px solid #4a2c8f;
+  transition: all 0.2s ease;
+}
+
+.current-equipment-item:hover {
+  border-color: #d4af37;
+  background: rgba(74, 44, 143, 0.2);
+}
+
+.equipment-icon {
+  margin-right: 1rem;
+}
+
+.equipment-symbol {
+  font-size: 2rem;
+}
+
+.equipment-info {
+  flex: 1;
+}
+
+.equipment-info h4 {
+  color: #d4af37;
+  margin: 0 0 0.5rem 0;
+}
+
+.equipment-description {
+  color: #8b8b8b;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.equipment-status {
+  margin-left: 1rem;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.status-badge.equipped {
+  background: linear-gradient(135deg, #32cd32, #228b22);
+  color: #0a0a0a;
+}
+
+/* Equipment Collection Section */
+.equipment-section {
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+  border: 2px solid #4a2c8f;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.equipment-section h2 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.equipment-category {
+  margin-bottom: 2rem;
+}
+
+.equipment-category h3 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.equipment-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(74, 44, 143, 0.1);
+  border-radius: 8px;
+  border: 1px solid #4a2c8f;
+  transition: all 0.2s ease;
+}
+
+.equipment-item:hover {
+  border-color: #d4af37;
+  background: rgba(74, 44, 143, 0.2);
+}
+
+.equipment-item.owned {
+  border-color: #32cd32;
+}
+
+.equipment-item.locked {
+  opacity: 0.6;
+}
+
+.equipment-info h4 {
+  color: #d4af37;
+  margin: 0 0 0.5rem 0;
+}
+
+.equipment-description {
+  color: #8b8b8b;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.equipment-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.equipment-stats .stat {
+  color: #e0e0e0;
+  font-size: 0.8rem;
+}
+
+.equipment-stats .stat strong {
+  color: #d4af37;
+  font-weight: bold;
+}
+
+.status-badge.owned {
+  background: linear-gradient(135deg, #32cd32, #228b22);
+  color: #0a0a0a;
+}
+
+.status-badge.locked {
+  background: linear-gradient(135deg, #8b8b8b, #696969);
+  color: #e0e0e0;
+}
+
+/* Upgrades Section */
+.upgrades-section {
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+  border: 2px solid #4a2c8f;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.upgrades-section h2 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.upgrades-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.upgrade-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(74, 44, 143, 0.1);
+  border-radius: 8px;
+  border: 1px solid #4a2c8f;
+  transition: all 0.2s ease;
+}
+
+.upgrade-item:hover {
+  border-color: #d4af37;
+  background: rgba(74, 44, 143, 0.2);
+}
+
+.upgrade-icon {
+  margin-right: 1rem;
+}
+
+.upgrade-symbol {
+  font-size: 2rem;
+}
+
+.upgrade-info {
+  flex: 1;
+}
+
+.upgrade-info h4 {
+  color: #d4af37;
+  margin: 0 0 0.5rem 0;
+}
+
+.upgrade-description {
+  color: #8b8b8b;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.upgrade-cost {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cost-label {
+  color: #8b8b8b;
+  font-size: 0.8rem;
+}
+
+.cost-value {
+  color: #d4af37;
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+
+.status-badge.purchased {
+  background: linear-gradient(135deg, #d4af37, #b8860b);
+  color: #0a0a0a;
+}
+
+.no-upgrades {
+  text-align: center;
+  padding: 2rem;
+  color: #8b8b8b;
+}
+
+.no-upgrades p {
+  margin: 0.5rem 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .status-container {
+    padding: 1rem;
+  }
+
+  .deck-section,
+  .current-equipment-section,
+  .equipment-section,
+  .upgrades-section {
+    padding: 1rem;
+  }
+
+  .current-equipment-grid,
+  .equipment-grid,
+  .upgrades-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .status-deck-card {
+    width: 60px;
+    height: 90px;
+  }
+
+  .status-deck-card .card-value {
+    font-size: 1rem;
+  }
+
+  .status-deck-card .card-suit {
+    font-size: 1.2rem;
+  }
+}

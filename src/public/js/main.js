@@ -1,26 +1,8 @@
 // Main Game Controller - Multi-Page Version
 // This file now handles basic initialization and page-specific functionality
 
-import {
-  showError as showErrorUtil,
-  showSuccess as showSuccessUtil,
-  showWarning as showWarningUtil,
-  showInfo as showInfoUtil,
-  showNotification as showNotificationUtil,
-  toggleLoadingScreen,
-  showGameInterface as showGameInterfaceUtil,
-} from './modules/uiUtils.js';
-
-import {
-  loadHomeRealmData as loadHomeRealmDataUtil,
-  loadGameState as loadGameStateUtil,
-  loadBattleState as loadBattleStateUtil,
-  loadEventData as loadEventDataUtil,
-  loadShopData as loadShopDataUtil,
-  loadGameOverData as loadGameOverDataUtil,
-  loadStatsData as loadStatsDataUtil,
-  loadProfileData as loadProfileDataUtil,
-} from './modules/dataLoader.js';
+// Remove ES6 imports and make it work without modules
+// The functions will be available globally if needed
 
 class DeckriftGame {
   constructor() {
@@ -54,7 +36,7 @@ class DeckriftGame {
     if (path.startsWith('/event')) return 'event';
     if (path.startsWith('/shop')) return 'shop';
     if (path.startsWith('/game-over')) return 'game-over';
-    if (path.startsWith('/stats')) return 'stats';
+    if (path.startsWith('/status')) return 'status';
     if (path.startsWith('/profile')) return 'profile';
     return 'home';
   }
@@ -85,8 +67,8 @@ class DeckriftGame {
       case 'game-over':
         this.initializeGameOverPage();
         break;
-      case 'stats':
-        this.initializeStatsPage();
+      case 'status':
+        this.initializeStatusPage();
         break;
       case 'profile':
         this.initializeProfilePage();
@@ -102,42 +84,42 @@ class DeckriftGame {
 
   initializeHomeRealmPage() {
     // Home realm page specific initialization
-    this.loadHomeRealmData();
+    // Data loading handled by server-side rendering
   }
 
   initializeGamePage() {
     // Game page specific initialization
-    this.loadGameState();
+    // Data loading handled by server-side rendering
   }
 
   initializeBattlePage() {
     // Battle page specific initialization
-    this.loadBattleState();
+    // Data loading handled by server-side rendering
   }
 
   initializeEventPage() {
     // Event page specific initialization
-    this.loadEventData();
+    // Data loading handled by server-side rendering
   }
 
   initializeShopPage() {
     // Shop page specific initialization
-    this.loadShopData();
+    // Data loading handled by server-side rendering
   }
 
   initializeGameOverPage() {
     // Game over page specific initialization
-    this.loadGameOverData();
+    // Data loading handled by server-side rendering
   }
 
-  initializeStatsPage() {
-    // Stats page specific initialization
-    this.loadStatsData();
+  initializeStatusPage() {
+    // Status page specific initialization
+    // Data loading handled by server-side rendering
   }
 
   initializeProfilePage() {
     // Profile page specific initialization
-    this.loadProfileData();
+    // Data loading handled by server-side rendering
   }
 
   setupGlobalEventListeners() {
@@ -191,144 +173,55 @@ class DeckriftGame {
     }
   }
 
-  // Page-specific data loading methods - now using shared dataLoader
-  async loadHomeRealmData() {
-    try {
-      const data = await loadHomeRealmDataUtil();
-      this.updateHomeRealmInterface(data);
-    } catch (error) {
-      // Error already handled by dataLoader
-    }
-  }
+  // Page-specific data loading methods - now using server-side rendering
+  // No client-side data loading needed for most pages
 
-  async loadGameState() {
-    try {
-      const gameState = await loadGameStateUtil();
-      this.updateGameInterface(gameState);
-    } catch (error) {
-      // Error already handled by dataLoader
-    }
-  }
-
-  async loadBattleState() {
-    try {
-      const battleState = await loadBattleStateUtil();
-      this.updateBattleInterface(battleState);
-    } catch (error) {
-      // Error already handled by dataLoader
-    }
-  }
-
-  async loadEventData() {
-    try {
-      const eventData = await loadEventDataUtil();
-      this.updateEventInterface(eventData);
-    } catch (error) {
-      // Error already handled by dataLoader
-    }
-  }
-
-  async loadShopData() {
-    try {
-      const shopData = await loadShopDataUtil();
-      this.updateShopInterface(shopData);
-    } catch (error) {
-      // Error already handled by dataLoader
-    }
-  }
-
-  async loadGameOverData() {
-    try {
-      const runResult = await loadGameOverDataUtil();
-      this.updateGameOverInterface(runResult);
-    } catch (error) {
-      // Error already handled by dataLoader
-    }
-  }
-
-  async loadStatsData() {
-    try {
-      const statsData = await loadStatsDataUtil();
-      this.updateStatsInterface(statsData);
-    } catch (error) {
-      // Error already handled by dataLoader
-    }
-  }
-
-  async loadProfileData() {
-    try {
-      const profileData = await loadProfileDataUtil();
-      this.updateProfileInterface(profileData);
-    } catch (error) {
-      // Error already handled by dataLoader
-    }
-  }
-
-  // Interface update methods (to be implemented by page-specific scripts)
-  updateHomeRealmInterface(_data) {
-    // Update home realm interface with data
-  }
-
-  updateGameInterface(_gameState) {
-    // Update game interface with state
-  }
-
-  updateBattleInterface(_battleState) {
-    // Update battle interface with state
-  }
-
-  updateEventInterface(_eventData) {
-    // Update event interface with data
-  }
-
-  updateShopInterface(_shopData) {
-    // Update shop interface with data
-  }
-
-  updateGameOverInterface(_runResult) {
-    // Update game over interface with result
-  }
-
-  updateStatsInterface(_statsData) {
-    // Update stats interface with data
-  }
-
-  updateProfileInterface(_profileData) {
-    // Update profile interface with data
-  }
-
-  // Utility methods - now using shared uiUtils
   showError(message) {
-    showErrorUtil(message);
+    if (window.showNotification) {
+      window.showNotification('Error', message, 'error');
+    }
   }
 
   showSuccess(message) {
-    showSuccessUtil(message);
+    if (window.showNotification) {
+      window.showNotification('Success', message, 'success');
+    }
   }
 
   showWarning(message) {
-    showWarningUtil(message);
+    if (window.showNotification) {
+      window.showNotification('Warning', message, 'warning');
+    }
   }
 
   showInfo(message) {
-    showInfoUtil(message);
+    if (window.showNotification) {
+      window.showNotification('Info', message, 'info');
+    }
   }
 
   showNotification(title, message, type = 'info') {
-    showNotificationUtil(title, message, type);
+    if (window.showNotification) {
+      window.showNotification(title, message, type);
+    }
   }
 
   hideLoadingScreen() {
-    toggleLoadingScreen(false);
+    const loadingScreen = document.querySelector('.loading-screen');
+    if (loadingScreen) {
+      loadingScreen.style.display = 'none';
+    }
   }
 
   showGameInterface() {
-    showGameInterfaceUtil();
+    const gameInterface = document.querySelector('.game-interface');
+    if (gameInterface) {
+      gameInterface.style.display = 'block';
+    }
   }
 }
 
 // Initialize the game when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  const game = new DeckriftGame();
-  game.init();
+  window.game = new DeckriftGame();
 });

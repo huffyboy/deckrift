@@ -12,7 +12,7 @@ import battleRouter from './routes/battle.js';
 import eventRouter from './routes/event.js';
 import shopRouter from './routes/shop.js';
 import gameOverRouter from './routes/game-over.js';
-import statsRouter from './routes/stats.js';
+import statusRouter from './routes/status.js';
 import upgradesRouter from './routes/upgrades.js';
 
 import connectDB from './config/database.js';
@@ -87,11 +87,13 @@ app.use('/battle', battleRouter);
 app.use('/event', eventRouter);
 app.use('/shop', shopRouter);
 app.use('/game-over', gameOverRouter);
-app.use('/stats', statsRouter);
+app.use('/status', statusRouter);
 app.use('/upgrades', upgradesRouter);
 
-// Error handling middleware
+// Error handling middleware - 404 handler must come after all routes
 app.use(notFound);
+
+// Global error handler
 app.use(handleGlobalErrors);
 
 // Start server
