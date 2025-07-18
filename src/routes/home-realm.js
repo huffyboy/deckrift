@@ -157,7 +157,7 @@ router.get('/', requireAuth, async (req, res) => {
         displayName: user.displayName || 'Rift Walker',
       },
       activeSave,
-      gameSave: activeSave, // Add this for navbar consistency
+      gameSave: activeSave ? { ...activeSave, isActive: true } : null, // Add isActive property for navbar
       unlockedUpgrades,
       unlockedRealms,
       currency: activeSave ? activeSave.gameData.currency : user.currency || 0,
@@ -260,7 +260,7 @@ router.post('/new-run', requireAuth, async (req, res) => {
 
       // Generate actual cards for the map (excluding jokers)
       const availableCards = [];
-      const testCardValues = ['A', '2'];
+      const testCardValues = ['J', '2'];
 
       // Create a deck of cards (excluding jokers)
       MAP_CARD_SUITS.forEach((suit) => {
@@ -430,29 +430,53 @@ router.get('/start-game', requireAuth, async (req, res) => {
   }
 });
 
-// Resume existing run
-router.post('/resume-run', requireAuth, async (req, res) => {
+// Shared function to handle continuing/resuming a run
+async function handleContinueRun(userId, responseType = 'json') {
   try {
-    const { userId } = req.session;
-
     const saveResult = await saveService.loadSave(userId);
 
     if (!saveResult.success) {
-      return res.status(404).json({
-        error: 'No active run found',
-      });
+      if (responseType === 'redirect') {
+        return { success: false, redirect: '/home-realm' };
+      }
+      return { success: false, error: 'No active run found' };
     }
 
-    return res.json({
+    if (responseType === 'redirect') {
+      return { success: true, redirect: '/game' };
+    }
+
+    return {
       success: true,
       saveId: saveResult.saveData._id || saveResult.saveData.id || null,
       redirect: '/game',
-    });
+    };
   } catch (error) {
-    return res.status(500).json({
-      error: 'Failed to resume run',
-    });
+    if (responseType === 'redirect') {
+      return { success: false, redirect: '/home-realm' };
+    }
+    return { success: false, error: 'Failed to resume run' };
   }
+}
+
+// Resume existing run (POST for AJAX calls)
+router.post('/resume-run', requireAuth, async (req, res) => {
+  const { userId } = req.session;
+  const result = await handleContinueRun(userId, 'json');
+
+  if (result.success) {
+    return res.json(result);
+  } else {
+    return res.status(404).json({ error: result.error });
+  }
+});
+
+// Continue run (GET route for direct navigation)
+router.get('/continue', requireAuth, async (req, res) => {
+  const { userId } = req.session;
+  const result = await handleContinueRun(userId, 'redirect');
+
+  return res.redirect(result.redirect);
 });
 
 // Purchase upgrade

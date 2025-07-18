@@ -306,7 +306,7 @@ router.get('/', requireAuth, async (req, res) => {
     const renderData = {
       title: 'Status - Deckrift',
       user: { username: req.session.username },
-      gameSave: activeSave, // Add gameSave data for navbar
+      gameSave: activeSave ? { ...activeSave, isActive: true } : null, // Add isActive property for navbar
       currentDeck: currentDeck || [],
       deckSize: deckSize || 52,
       equipmentCollection: equipmentCollection || {

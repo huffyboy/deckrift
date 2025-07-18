@@ -68,7 +68,7 @@ router.get('/', requireAuth, async (req, res) => {
     return res.render('event', {
       title: 'Event - Deckrift',
       user: { username: req.session.username },
-      gameSave: activeSave,
+      gameSave: activeSave ? { ...activeSave, isActive: true } : null,
       event: activeSave.runData.eventStatus.currentEvent,
     });
   } catch (error) {

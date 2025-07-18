@@ -29,6 +29,7 @@ import {
 let currentGameState = null;
 let currentDeck = null; // Store the current deck state
 let isCardSequenceInProgress = false; // Track if card flip/movement is happening
+let playerDirection = 'right'; // Track player direction: 'left' or 'right'
 
 // Deck management functions
 async function initializeDeck(customCards = null) {
@@ -374,7 +375,7 @@ function renderOverworldMap() {
           case 'player-start':
             cardContent = `<div style="text-align: center;">
               <span style="font-size: 4em; display: block; margin-bottom: 5px; opacity: 0.3;">🌀</span>
-              <div style="font-size: 0.9em; color: #111; font-weight: bold;">Portal</div>
+              <div style="font-size: 0.9em; color: #666; font-weight: bold;">Portal</div>
             </div>`;
             break;
 
@@ -431,7 +432,7 @@ function renderOverworldMap() {
             } else if (hasBeenVisited) {
               // Past traveled: faded (including when player is on it)
               opacity = '0.3';
-              textColor = '#111';
+              textColor = '#666';
               backgroundColor = '#d0d0d0';
             } else {
               // Fallback
@@ -481,7 +482,8 @@ function renderOverworldMap() {
         // Overlay player token if player is at this position
         if (isPlayerPosition) {
           cardDiv.style.position = 'relative';
-          cardDiv.innerHTML += `<span style="font-size: 4em; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.8));">🚶‍➡️</span>`;
+          const playerIcon = playerDirection === 'left' ? '🚶‍' : '🚶‍➡️';
+          cardDiv.innerHTML += `<span style="font-size: 4em; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.8));">${playerIcon}</span>`;
           cardDiv.style.border = '3px solid #d4af37';
         }
 
@@ -496,6 +498,12 @@ function renderOverworldMap() {
           // Special case for portal (first joker) - just move there, no events
           if (mapCell.type === 'joker' && col === 0 && row === 0) {
             cardDiv.onclick = () => {
+              // Update player direction based on movement
+              if (col < currentGameState.runData.location.mapX) {
+                playerDirection = 'left';
+              } else if (col > currentGameState.runData.location.mapX) {
+                playerDirection = 'right';
+              }
               currentGameState.runData.location.mapX = col;
               currentGameState.runData.location.mapY = row;
               isCardSequenceInProgress = false; // Reset busy state immediately
@@ -504,6 +512,12 @@ function renderOverworldMap() {
           } else if (!mapCell.revealed) {
             // Unrevealed card - flip it and move there
             cardDiv.onclick = () => {
+              // Update player direction based on movement
+              if (col < currentGameState.runData.location.mapX) {
+                playerDirection = 'left';
+              } else if (col > currentGameState.runData.location.mapX) {
+                playerDirection = 'right';
+              }
               isCardSequenceInProgress = true; // Set busy state
               handleCardFlip(mapCell, { x: col, y: row });
             };
@@ -512,6 +526,12 @@ function renderOverworldMap() {
             cardDiv.onclick = () => {
               // Don't trigger event if already visited
               if (mapCell.visited) {
+                // Update player direction based on movement
+                if (col < currentGameState.runData.location.mapX) {
+                  playerDirection = 'left';
+                } else if (col > currentGameState.runData.location.mapX) {
+                  playerDirection = 'right';
+                }
                 // Just move player to the position without triggering event
                 currentGameState.runData.location.mapX = col;
                 currentGameState.runData.location.mapY = row;
@@ -520,6 +540,12 @@ function renderOverworldMap() {
                 return;
               }
 
+              // Update player direction based on movement
+              if (col < currentGameState.runData.location.mapX) {
+                playerDirection = 'left';
+              } else if (col > currentGameState.runData.location.mapX) {
+                playerDirection = 'right';
+              }
               isCardSequenceInProgress = true; // Set busy state
               // Mark this card as visited when player moves to it
               mapCell.visited = true;

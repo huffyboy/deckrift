@@ -56,7 +56,7 @@ router.get('/', requireAuth, async (req, res) => {
     return res.render('battle', {
       title: 'Battle - Deckrift',
       user: { username: req.session.username },
-      gameSave: activeSave,
+      gameSave: activeSave ? { ...activeSave, isActive: true } : null,
       battle: activeSave.runData.fightStatus,
     });
   } catch (error) {

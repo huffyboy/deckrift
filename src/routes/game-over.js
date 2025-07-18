@@ -109,7 +109,7 @@ router.get('/', requireAuth, async (req, res) => {
     return res.render('game-over', {
       title: 'Game Over - Deckrift',
       user: { username: req.session.username },
-      gameSave: saveData,
+      gameSave: saveData ? { ...saveData, isActive: true } : null,
       runStats,
     });
   } catch (error) {

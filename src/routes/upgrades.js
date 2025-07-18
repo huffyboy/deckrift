@@ -65,6 +65,7 @@ router.get('/', requireAuth, async (req, res) => {
     return res.render('upgrades', {
       title: 'Upgrades - Deckrift',
       user: { username: req.session.username },
+      gameSave: currentSave ? { ...currentSave, isActive: true } : null,
       currentSave,
       unlockedUpgrades,
       availableUpgrades,

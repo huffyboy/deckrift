@@ -278,7 +278,7 @@ router.get('/new', requireAuth, async (req, res, next) => {
     return res.render('game', {
       title: 'Game - Deckrift',
       user: { username: req.session.username },
-      gameSave: saveResult.saveData,
+      gameSave: saveResult.saveData ? { ...saveResult.saveData, isActive: true } : null,
       unlockedUpgrades,
       currency: user.currency || 0,
       xpThresholds,
@@ -334,7 +334,7 @@ router.get('/', requireAuth, async (req, res, next) => {
     return res.render('game', {
       title: 'Game - Deckrift',
       user: { username: req.session.username },
-      gameSave: saveData,
+      gameSave: saveData ? { ...saveData, isActive: true } : null,
       unlockedUpgrades,
       currency: user.currency || 0,
       xpThresholds,

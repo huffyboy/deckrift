@@ -120,7 +120,7 @@ router.get('/', requireAuth, async (req, res) => {
     return res.render('shop', {
       title: 'Shop - Deckrift',
       user: { username: req.session.username },
-      gameSave: activeSave,
+      gameSave: activeSave ? { ...activeSave, isActive: true } : null,
       shopCosts,
       availableItems: generateShopItems(),
     });
