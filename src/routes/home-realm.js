@@ -1,29 +1,127 @@
 import express from 'express';
 import User from '../models/User.js';
-import Profile from '../models/Profile.js';
-import GameSave from '../models/GameSave.js';
 import { requireAuth } from '../middlewares/auth.js';
 import { calculateAllXPThresholds } from '../services/gameUtils.js';
+import SaveService from '../services/saveService.js';
+import migrationService from '../services/migrationService.js';
+import {
+  createDefaultSaveData,
+  SAVE_VERSION,
+} from '../services/saveSchemas.js';
 
 const router = express.Router();
 
-// Helper function to update existing saves with correct health values
-async function updateSaveHealth(save) {
-  if (save.health === 100 && save.maxHealth === 100) {
-    // Update to correct health based on Will stat
-    const willStat = save.stats?.will || 4;
-    const correctHealth = willStat * 10;
-    const updatedSave = save;
-    updatedSave.health = correctHealth;
-    updatedSave.maxHealth = correctHealth;
-    await updatedSave.save();
+// Create save service instance
+const saveService = new SaveService();
+
+/**
+ * Determine unlocked realms based on user progress
+ * @param {Object} user - User object with completion data
+ * @returns {Array} Array of unlocked realm IDs
+ */
+function determineUnlockedRealms(user) {
+  const unlockedRealms = user.unlockedRealms || [1]; // Start with first realm
+  const completedRealms = user.completedRealms || [];
+
+  // Ensure realm 1 is always unlocked
+  if (!unlockedRealms.includes(1)) {
+    unlockedRealms.push(1);
+  }
+
+  // Check for newly completed realms and unlock next ones
+  const maxCompletedRealm = Math.max(...completedRealms, 0);
+  const nextRealmToUnlock = maxCompletedRealm + 1;
+
+  // Unlock next realm if it exists and isn't already unlocked
+  if (nextRealmToUnlock <= 4 && !unlockedRealms.includes(nextRealmToUnlock)) {
+    unlockedRealms.push(nextRealmToUnlock);
+  }
+
+  // Sort realms in ascending order
+  return unlockedRealms.sort((a, b) => a - b);
+}
+
+/**
+ * Mark a realm as completed and unlock the next one
+ * @param {String} userId - User ID
+ * @param {Number} realmId - Realm ID that was completed
+ * @returns {Object} Result with success status and updated realms
+ */
+async function markRealmCompleted(userId, realmId) {
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    const completedRealms = user.completedRealms || [];
+    const unlockedRealms = user.unlockedRealms || [1];
+
+    // Add realm to completed list if not already there
+    if (!completedRealms.includes(realmId)) {
+      completedRealms.push(realmId);
+    }
+
+    // Unlock next realm if it exists
+    const nextRealmToUnlock = realmId + 1;
+    if (nextRealmToUnlock <= 4 && !unlockedRealms.includes(nextRealmToUnlock)) {
+      unlockedRealms.push(nextRealmToUnlock);
+    }
+
+    // Update user
+    user.completedRealms = completedRealms;
+    user.unlockedRealms = unlockedRealms;
+    await user.save();
+
+    return {
+      success: true,
+      completedRealms,
+      unlockedRealms: unlockedRealms.sort((a, b) => a - b),
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 }
+
+// API endpoint to mark realm as completed
+router.post('/complete-realm', requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.session;
+    const { realmId } = req.body;
+
+    if (!realmId) {
+      return res.status(400).json({
+        error: 'Realm ID is required',
+      });
+    }
+
+    const result = await markRealmCompleted(userId, realmId);
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to mark realm as completed',
+    });
+  }
+});
 
 // Home Realm page - Main game hub
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
+
+    // Check if migration is needed
+    const migrationCheck = await migrationService.checkMigrationNeeded(userId);
+    if (migrationCheck.needsMigration) {
+      await migrationService.performMigration(
+        userId,
+        migrationCheck.migrationType
+      );
+    }
 
     // Get user's current profile
     const user = await User.findById(userId);
@@ -31,75 +129,38 @@ router.get('/', requireAuth, async (req, res) => {
       return res.redirect('/');
     }
 
-    // Get current profile
-    let currentProfile = await Profile.findOne({
-      userId,
-      isActive: true,
-    });
+    // Get current save data from database
+    const saveResult = await saveService.loadSave(userId);
+    const activeSave = saveResult.success ? saveResult.saveData : null;
 
-    // If no active profile, get the first profile or create a default one
-    if (!currentProfile) {
-      currentProfile = await Profile.findOne({ userId });
-      if (!currentProfile) {
-        // Create a default profile
-        currentProfile = new Profile({
-          userId,
-          profileName: 'Default Profile',
-          isActive: true,
-        });
-        await currentProfile.save();
-      } else {
-        // Set the first profile as active
-        currentProfile.isActive = true;
-        await currentProfile.save();
-      }
-    }
-
-    // Get active game save (if any)
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    // Update save health if needed
-    if (activeSave) {
-      await updateSaveHealth(activeSave);
-    }
-
-    // Get user's statistics
-    const statistics = {
-      totalRuns: user.totalRuns || 0,
-      bestScore: user.bestScore || 0,
-      totalPlaytime: user.totalPlaytime || 0,
-      currency: user.currency || 0,
-    };
-
-    // Get unlocked upgrades
-    const unlockedUpgrades = user.upgrades || [];
+    // Get unlocked upgrades from save data or user
+    const unlockedUpgrades = activeSave
+      ? activeSave.gameData.unlockedUpgrades
+      : user.upgrades || [];
 
     // Import realm data from gameData.js
     const { REALMS } = await import('../public/js/modules/gameData.js');
 
-    // Determine unlocked realms (only first realm unlocked initially)
-    const unlockedRealms = [1]; // Only Steel Realm is unlocked initially
-    // TODO: Add logic to unlock realms based on user progress
-    // Realm 2 unlocked when user beats Realm 1
-    // Realm 3 unlocked when user beats Realm 2
-    // Realm 4 unlocked when user beats Realm 3
+    // Determine unlocked realms based on user progress
+    const unlockedRealms = determineUnlockedRealms(user);
 
     // Calculate XP thresholds for each stat
-    const xpThresholds = calculateAllXPThresholds(currentProfile || {});
+    const stats = activeSave
+      ? activeSave.gameData.stats
+      : { power: 4, will: 4, craft: 4, focus: 4 };
+    const xpThresholds = calculateAllXPThresholds(stats);
 
     return res.render('home-realm', {
       title: 'Home Realm - Deckrift',
       user: { username: req.session.username },
-      currentProfile,
+      currentUser: {
+        displayName: user.displayName || 'Rift Walker',
+      },
       activeSave,
       gameSave: activeSave, // Add this for navbar consistency
-      statistics,
       unlockedUpgrades,
       unlockedRealms,
-      currency: user.currency || 0,
+      currency: activeSave ? activeSave.gameData.currency : user.currency || 0,
       xpThresholds,
       REALMS, // Pass realm data to template
     });
@@ -125,87 +186,229 @@ router.post('/new-run', requireAuth, async (req, res) => {
       });
     }
 
-    // Delete any existing active save
-    await GameSave.deleteMany({ userId, isActive: true });
+    // Get current save data from database
+    const existingSaveResult = await saveService.loadSave(userId);
+    let activeSave = existingSaveResult.success
+      ? existingSaveResult.saveData
+      : null;
 
-    // Get current profile
-    let currentProfile = await Profile.findOne({
-      userId,
-      isActive: true,
-    });
+    // If no save exists, create a new one
+    if (!activeSave) {
+      // Import game data constants
+      const { STARTING_STATS } = await import(
+        '../public/js/modules/gameData.js'
+      );
 
-    // If no active profile, get the first profile or create a default one
-    if (!currentProfile) {
-      currentProfile = await Profile.findOne({ userId });
-      if (!currentProfile) {
-        // Create a default profile
-        currentProfile = new Profile({
-          userId,
-          profileName: 'Default Profile',
-          isActive: true,
+      // Create initial save data using helper function
+      const initialSaveData = createDefaultSaveData('Rift Walker');
+
+      // Customize the save data for this specific run
+      initialSaveData.runData.location.realm = parseInt(realmId, 10);
+      initialSaveData.runData.location.level = 1;
+      initialSaveData.runData.equipment = [
+        {
+          type: 'weapon',
+          value: startingWeapon,
+          equipped: true,
+        },
+        {
+          type: 'armor',
+          value: startingArmor,
+          equipped: true,
+        },
+      ];
+
+      // Ensure game data is properly initialized
+      initialSaveData.gameData = {
+        version: SAVE_VERSION,
+        timestamp: Date.now(),
+        health: STARTING_STATS.will * 10, // 10 HP per Will point
+        maxHealth: STARTING_STATS.will * 10,
+        currency: 0,
+        stats: STARTING_STATS,
+        statXP: { power: 0, will: 0, craft: 0, focus: 0 },
+        unlockedUpgrades: [],
+        unlockedEquipment: ['sword', 'light'],
+      };
+
+      // Create new save using save service
+      const saveResult = await saveService.createNewSave(
+        userId,
+        initialSaveData
+      );
+      if (!saveResult.success) {
+        return res.status(500).json({
+          error: 'Failed to create new save',
         });
-        await currentProfile.save();
-      } else {
-        // Set the first profile as active
-        currentProfile.isActive = true;
-        await currentProfile.save();
+      }
+
+      activeSave = saveResult.saveData;
+    } else {
+      // Import utility functions and game data
+      const { getChallengeModifier, generateStandardDeck, shuffleDeck } =
+        await import('../services/gameUtils.js');
+      const { MAP_CARD_SUITS } = await import(
+        '../public/js/modules/gameData.js'
+      );
+
+      // Generate basic overworld map
+      const challengeModifier = getChallengeModifier(parseInt(realmId, 10), 1);
+      const rows = challengeModifier;
+
+      // Create a grid-based map structure
+      const mapTiles = [];
+
+      // Generate actual cards for the map (excluding jokers)
+      const availableCards = [];
+      const testCardValues = ['A', '2'];
+
+      // Create a deck of cards (excluding jokers)
+      MAP_CARD_SUITS.forEach((suit) => {
+        testCardValues.forEach((value) => {
+          availableCards.push({ value, suit });
+        });
+      });
+
+      // Shuffle the cards
+      for (let i = availableCards.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [availableCards[i], availableCards[j]] = [
+          availableCards[j],
+          availableCards[i],
+        ];
+      }
+
+      let cardIndex = 0;
+
+      for (let row = 0; row < rows; row += 1) {
+        const isFirstRow = row === 0;
+        const isLastRow = row === rows - 1;
+
+        for (let col = 0; col < 7; col += 1) {
+          // 7 columns: 0-6
+          const isPlayerStart = isFirstRow && col === 0;
+          const isJokerPosition = isLastRow && col === 6;
+          const isCardPosition = col >= 1 && col <= 5;
+
+          if (isPlayerStart) {
+            mapTiles.push({
+              x: col,
+              y: row,
+              visited: true, // Player starts here, so it's visited
+              revealed: true, // Portal is always visible
+              suit: 'joker',
+              value: '𝕁',
+              type: 'joker', // Changed from 'player-start' to 'joker'
+            });
+          } else if (isJokerPosition) {
+            mapTiles.push({
+              x: col,
+              y: row,
+              visited: false,
+              suit: 'joker',
+              value: '𝕁',
+              type: 'joker',
+            });
+          } else if (isCardPosition) {
+            const actualCard = availableCards[cardIndex] || {
+              value: 'A',
+              suit: 'hearts',
+            };
+
+            mapTiles.push({
+              x: col,
+              y: row,
+              visited: false,
+              suit: actualCard.suit,
+              value: actualCard.value,
+              type: 'unknown',
+            });
+            cardIndex += 1;
+          }
+          // Skip empty spaces for non-first/last rows
+        }
+      }
+
+      // Initialize player deck - standard 52-card deck
+      const rawPlayerDeck = shuffleDeck(generateStandardDeck());
+
+      // Convert deck to match database schema (suit, value, type)
+      const playerDeck = rawPlayerDeck.map((card) => ({
+        suit: card.suit,
+        value: card.value,
+        type: 'standard',
+      }));
+
+      // Clear run data but preserve game data and generate new map
+      activeSave.runData = {
+        version: SAVE_VERSION,
+        timestamp: Date.now(),
+        map: {
+          tiles: mapTiles,
+          width: 7,
+          height: rows,
+        },
+        location: {
+          realm: parseInt(realmId, 10),
+          level: 1,
+          mapX: 0,
+          mapY: 0,
+        },
+        fightStatus: {
+          inBattle: false,
+          playerHand: [],
+          playerDeck: playerDeck,
+          enemyHand: [],
+          enemyDeck: [],
+          enemyStats: {},
+          enemyHealth: 0,
+          enemyMaxHealth: 0,
+          turn: 'player',
+        },
+        eventStatus: {
+          currentEvent: null,
+          drawnCards: [],
+          eventStep: 0,
+          eventPhase: 'start',
+        },
+        statModifiers: {
+          power: 0,
+          will: 0,
+          craft: 0,
+          focus: 0,
+        },
+        equipment: [
+          {
+            type: 'weapon',
+            value: startingWeapon,
+            equipped: true,
+          },
+          {
+            type: 'armor',
+            value: startingArmor,
+            equipped: true,
+          },
+        ],
+      };
+
+      // Update save in database
+      const updateResult = await saveService.updateSave(userId, activeSave);
+      if (!updateResult.success) {
+        return res.status(500).json({
+          error: 'Failed to update save',
+        });
       }
     }
 
-    // Initialize starting equipment based on user's starting equipment
-    const startingEquipment = [];
-
-    // Add starting weapon
-    startingEquipment.push({
-      key: startingWeapon,
-      type: 'weapon',
-    });
-
-    // Add starting armor
-    startingEquipment.push({
-      key: startingArmor,
-      type: 'armor',
-    });
-
-    // Create new game save
-    const newSave = new GameSave({
-      userId,
-      profileId: currentProfile._id,
-      saveName: `Run ${Date.now()}`,
-      realm: parseInt(realmId, 10),
-      level: 1,
-      playerPosition: 0,
-      equipment: startingEquipment, // Use new unified equipment array
-      stats: {
-        power: 4,
-        will: 4,
-        craft: 4,
-        focus: 4,
-      },
-      statXP: {
-        power: 0,
-        will: 0,
-        craft: 0,
-        focus: 0,
-      },
-      health: 40, // Will stat * 10 = 4 * 10 = 40
-      maxHealth: 40, // Will stat * 10 = 4 * 10 = 40
-      currency: 0,
-      deck: [],
-      artifacts: [],
-      isActive: true,
-      createdAt: new Date(),
-    });
-
-    await newSave.save();
-
-    return res.json({
+    // Redirect to game page
+    res.json({
       success: true,
-      saveId: newSave._id,
-      redirect: `/game/new?realm=${realmId}&weapon=${startingWeapon}&armor=${startingArmor}`,
+      message: 'New run started successfully',
+      saveId: activeSave._id || activeSave.id || null,
+      redirect: '/game',
     });
   } catch (error) {
-    return res.status(500).json({
+    res.status(500).json({
       error: 'Failed to start new run',
     });
   }
@@ -214,11 +417,7 @@ router.post('/new-run', requireAuth, async (req, res) => {
 // Start new game (GET route for direct access)
 router.get('/start-game', requireAuth, async (req, res) => {
   try {
-    const { userId } = req.session;
     const { realm = 1, weapon, armor } = req.query;
-
-    // Delete any existing active save
-    await GameSave.deleteMany({ userId, isActive: true });
 
     // Redirect to the new game route
     return res.redirect(
@@ -236,12 +435,9 @@ router.post('/resume-run', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
+    const saveResult = await saveService.loadSave(userId);
 
-    if (!activeSave) {
+    if (!saveResult.success) {
       return res.status(404).json({
         error: 'No active run found',
       });
@@ -249,7 +445,7 @@ router.post('/resume-run', requireAuth, async (req, res) => {
 
     return res.json({
       success: true,
-      saveId: activeSave._id,
+      saveId: saveResult.saveData._id || saveResult.saveData.id || null,
       redirect: '/game',
     });
   } catch (error) {

@@ -55,7 +55,7 @@ deckrift/
 │   ├── models/
 │   │   ├── GameSave.js           # Game save data model
 │   │   ├── Profile.js            # User profile model
-│   │   ├── Statistics.js         # Game statistics model
+
 │   │   └── User.js               # User account model
 │   ├── public/
 │   │   ├── css/                  # Stylesheets

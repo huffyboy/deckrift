@@ -6,27 +6,27 @@
                 <div class="game-stat">
                     <h5>Health</h5>
                     <div class="health-bar">
-                        <div class="health-fill" style="width: <%= (gameState.health / gameState.maxHealth) * 100 %>%"></div>
+                        <div class="health-fill" style="width: <%= (gameSave.gameData.health / gameSave.gameData.maxHealth) * 100 %>%"></div>
                     </div>
-                    <span><%= gameState.health %>/<%= gameState.maxHealth %></span>
+                    <span><%= gameSave.gameData.health %>/<%= gameSave.gameData.maxHealth %></span>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="game-stat">
                     <h5>Currency</h5>
-                    <span class="currency-value"><%= gameState.currency %></span>
+                    <span class="currency-value"><%= gameSave.gameData.currency %></span>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="game-stat">
                     <h5>Realm</h5>
-                    <span><%= gameState.realmName %></span>
+                    <span><%= REALMS[gameSave.runData.location.realm]?.name || `Realm ${gameSave.runData.location.realm}` %></span>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="game-stat">
                     <h5>Level</h5>
-                    <span><%= gameState.level %></span>
+                    <span><%= gameSave.runData.location.level %></span>
                 </div>
             </div>
         </div>
@@ -34,24 +34,24 @@
 
     <!-- Game Content -->
     <div class="game-content">
-        <% if (gameState.currentScreen === 'no-game') { %>
+        <% if (gameSave.runData.currentScreen === 'no-game') { %>
             <!-- No Active Game Message -->
             <div class="no-game-section">
                 <div class="text-center">
                     <div class="no-game-icon">
                         <span style="font-size: 4em; color: #666;">🌀</span>
                     </div>
-                    <h3><%= gameState.message.title %></h3>
-                    <h5 class="text-muted"><%= gameState.message.subtitle %></h5>
-                    <p class="mt-3"><%= gameState.message.description %></p>
+                    <h3>No Active Game</h3>
+                    <h5 class="text-muted">Start a new adventure</h5>
+                    <p class="mt-3">Begin your journey through the realms of Deckrift</p>
                     <div class="mt-4">
-                        <a href="<%= gameState.message.action.url %>" class="btn btn-primary btn-lg">
-                            <%= gameState.message.action.text %>
+                        <a href="/home-realm" class="btn btn-primary btn-lg">
+                            Start New Game
                         </a>
                     </div>
                 </div>
             </div>
-        <% } else if (gameState.currentScreen === 'overworld') { %>
+        <% } else if (gameSave.runData.currentScreen === 'overworld' || !gameSave.runData.currentScreen) { %>
             <!-- Overworld Map -->
             <div class="overworld-section">
                 <h3>Overworld Map</h3>
@@ -61,16 +61,16 @@
                     </div>
                 </div>
             </div>
-        <% } else if (gameState.currentScreen === 'battle') { %>
+        <% } else if (gameSave.runData.currentScreen === 'battle') { %>
             <!-- Battle Interface -->
             <div class="battle-section">
                 <h3>Battle</h3>
                 <div class="battle-container">
                     <div class="enemy-info">
-                        <h4><%= gameState.enemy.name %></h4>
+                        <h4><%= gameSave.runData.fightStatus.enemyStats?.name || 'Enemy' %></h4>
                         <div class="enemy-stats">
-                            <p><strong>Health:</strong> <%= gameState.enemy.health %>/<%= gameState.enemy.maxHealth %></p>
-                            <p><strong>Weapon:</strong> <%= gameState.enemy.weapon %></p>
+                            <p><strong>Health:</strong> <%= gameSave.runData.fightStatus.enemyHealth %>/<%= gameSave.runData.fightStatus.enemyMaxHealth %></p>
+                            <p><strong>Weapon:</strong> <%= gameSave.runData.fightStatus.enemyStats?.weapon || 'Unknown' %></p>
                         </div>
                     </div>
                     <div class="battle-actions">
@@ -82,40 +82,42 @@
                     </div>
                 </div>
             </div>
-        <% } else if (gameState.currentScreen === 'event') { %>
+        <% } else if (gameSave.runData.currentScreen === 'event') { %>
             <!-- Event Interface -->
             <div class="event-section">
-                <h3><%= gameState.event.title %></h3>
+                <h3><%= gameSave.runData.eventStatus.currentEvent?.title || 'Event' %></h3>
                 <div class="event-description">
-                    <p><%= gameState.event.description %></p>
+                    <p><%= gameSave.runData.eventStatus.currentEvent?.description || 'An event has occurred...' %></p>
                 </div>
                 <div class="event-actions">
                     <button class="btn btn-primary" onclick="resolveEvent()">Continue</button>
                 </div>
             </div>
-        <% } else if (gameState.currentScreen === 'shop') { %>
+        <% } else if (gameSave.runData.currentScreen === 'shop') { %>
             <!-- Shop Interface -->
             <div class="shop-section">
                 <h3>Shop</h3>
                 <div class="shop-items">
                     <div class="shop-item">
                         <h5>Heal (10 HP)</h5>
-                        <p>Cost: <%= gameState.shop.healCost %> currency</p>
+                        <p>Cost: <%= SHOP_PRICES.basicHeal %> currency</p>
                         <button class="btn btn-primary" onclick="purchaseHeal()">Purchase</button>
                     </div>
                     <div class="shop-item">
                         <h5>Remove Card</h5>
-                        <p>Cost: <%= gameState.shop.cardRemovalCost %> currency</p>
+                        <p>Cost: <%= SHOP_PRICES.cardRemoval %> currency</p>
                         <button class="btn btn-primary" onclick="purchaseCardRemoval()">Purchase</button>
                     </div>
-                    <% gameState.shop.equipment.forEach(item => { %>
-                    <div class="shop-item">
-                        <h5><%= item.name %></h5>
-                        <p><%= item.description %></p>
-                        <p>Cost: <%= item.cost %> currency</p>
-                        <button class="btn btn-primary" onclick="purchaseEquipment('<%= item.id %>')">Purchase</button>
-                    </div>
-                    <% }); %>
+                    <% if (gameSave.runData.shop?.equipment) { %>
+                        <% gameSave.runData.shop.equipment.forEach(item => { %>
+                            <div class="shop-item">
+                                <h5><%= item.name %></h5>
+                                <p><%= item.description %></p>
+                                <p>Cost: <%= item.cost %> currency</p>
+                                <button class="btn btn-primary" onclick="purchaseEquipment('<%= item.id %>')">Purchase</button>
+                            </div>
+                        <% }); %>
+                    <% } %>
                 </div>
                 <div class="shop-actions">
                     <button class="btn btn-secondary" onclick="leaveShop()">Leave Shop</button>
@@ -176,10 +178,14 @@
         </div>
     </div>
 </div>
+
 <!-- Notification Container -->
 <div id="notification-container" class="notification-container"></div>
 
 <script>
-window.gameState = <%- JSON.stringify(gameState) %>;
+window.gameSave = <%- JSON.stringify(gameSave) %>;
+window.REALMS = <%- JSON.stringify(REALMS) %>;
+window.MAP_CONSTANTS = <%- JSON.stringify(MAP_CONSTANTS) %>;
+window.SHOP_PRICES = <%- JSON.stringify(SHOP_PRICES) %>;
 </script>
 <script type="module" src="/js/game.js"></script> 

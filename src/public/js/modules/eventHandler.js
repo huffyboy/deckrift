@@ -41,6 +41,29 @@ async function savePlayerDeck(deck) {
 }
 
 /**
+ * Save the current game state to the server
+ * @param {Object} gameState - The current game state
+ */
+async function saveGameState(gameState) {
+  try {
+    const response = await fetch('/game/update-game-state', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(gameState),
+    });
+
+    const data = await response.json();
+    if (!data.success) {
+      // Failed to save game state
+    }
+  } catch (error) {
+    // Error saving game state
+  }
+}
+
+/**
  * Handle card encounter based on card value
  * @param {Object} card - Card object
  * @param {Object} gameState - Current game state
@@ -49,6 +72,28 @@ async function savePlayerDeck(deck) {
 export function handleCardEncounter(card, gameState, handlers) {
   const cardValue = getCardValue(card);
   const event = EVENTS[cardValue];
+
+  // Default to 'nothing' event if no event is found for this card value
+  if (!event) {
+    showGameMessage(
+      'Nothing Happens',
+      'You find nothing of interest in this place.',
+      'nothing',
+      '🍂',
+      4000,
+      () => {
+        // Callback when message is dismissed (either by timeout or click)
+        if (handlers.resetBusyState) {
+          handlers.resetBusyState();
+          // Re-render the map after resetting busy state
+          if (handlers.renderOverworldMap) {
+            handlers.renderOverworldMap();
+          }
+        }
+      }
+    );
+    return;
+  }
 
   switch (event.type) {
     case 'fight':
@@ -216,12 +261,22 @@ export function handleCardFlip(mapCell, newPosition, gameState, handlers) {
   // Create a new object instead of mutating the parameter
   const updatedMapCell = { ...mapCell, revealed: true, justRevealed: true };
 
-  // Use the existing card from the map cell instead of drawing a new one
-  if (updatedMapCell.card) {
+  // Check if the map cell has card data (value and suit properties)
+  if (updatedMapCell.value && updatedMapCell.suit) {
     // Update the map in the game state
     const { x, y } = newPosition;
-    if (gameState.map[y] && gameState.map[y][x]) {
-      gameState.map[y][x] = updatedMapCell;
+    if (
+      gameState.runData &&
+      gameState.runData.map &&
+      gameState.runData.map.tiles
+    ) {
+      // Find and update the tile in the tiles array
+      const tileIndex = gameState.runData.map.tiles.findIndex(
+        (tile) => tile.x === x && tile.y === y
+      );
+      if (tileIndex !== -1) {
+        gameState.runData.map.tiles[tileIndex] = updatedMapCell;
+      }
     }
 
     // Update the map display to show the revealed card (player still on old position)
@@ -230,7 +285,13 @@ export function handleCardFlip(mapCell, newPosition, gameState, handlers) {
     // Wait 0.5 seconds for player to see the revealed card
     setTimeout(() => {
       // Move player to the revealed card position
-      gameState.playerPosition = newPosition;
+      if (gameState.runData && gameState.runData.location) {
+        gameState.runData.location.mapX = x;
+        gameState.runData.location.mapY = y;
+      }
+
+      // Save the updated game state to the server
+      saveGameState(gameState);
 
       // Update the map display to show player on new position
       handlers.renderOverworldMap();
@@ -257,16 +318,37 @@ export function handleCardEvent(mapCell, newPosition, gameState, handlers) {
 
   // Update the map in the game state
   const { x, y } = newPosition;
-  if (gameState.map[y] && gameState.map[y][x]) {
-    gameState.map[y][x] = updatedMapCell;
+  if (
+    gameState.runData &&
+    gameState.runData.map &&
+    gameState.runData.map.tiles
+  ) {
+    // Find and update the tile in the tiles array
+    const tileIndex = gameState.runData.map.tiles.findIndex(
+      (tile) => tile.x === x && tile.y === y
+    );
+    if (tileIndex !== -1) {
+      gameState.runData.map.tiles[tileIndex] = updatedMapCell;
+    }
   }
 
   // Update player position
-  gameState.playerPosition = newPosition;
+  if (gameState.runData && gameState.runData.location) {
+    gameState.runData.location.mapX = x;
+    gameState.runData.location.mapY = y;
+  }
+
+  // Save the updated game state to the server
+  saveGameState(gameState);
 
   // Handle the encounter for the card (with null check)
-  if (updatedMapCell.card) {
-    handleCardEncounter(updatedMapCell.card, gameState, handlers);
+  if (updatedMapCell.value && updatedMapCell.suit) {
+    const cardObject = {
+      value: updatedMapCell.value,
+      suit: updatedMapCell.suit,
+      display: `${updatedMapCell.value}${updatedMapCell.suit}`,
+    };
+    handleCardEncounter(cardObject, gameState, handlers);
   }
 }
 
@@ -357,8 +439,8 @@ export function handleBoon(newPosition, gameState, renderOverworldMap) {
     4000
   );
 
-  // TODO: Implement boon logic
-  // This would involve drawing a boon card and applying its effect
+  // Boon logic is implemented in handleCardEncounter for 'boon' events
+  // This function is kept for compatibility but the main logic is elsewhere
 
   // Update the map display
   renderOverworldMap();
@@ -379,8 +461,8 @@ export function handleBane(newPosition, gameState, renderOverworldMap) {
     4000
   );
 
-  // TODO: Implement bane logic
-  // This would involve drawing a bane card and applying its effect
+  // Bane logic is implemented in handleCardEncounter for 'bane' events
+  // This function is kept for compatibility but the main logic is elsewhere
 
   // Update the map display
   renderOverworldMap();
@@ -580,7 +662,12 @@ async function applyBoonEffect(boonEffect, card, gameState) {
       const cardEffect = CARD_ADDING_EFFECTS[boonEffect.type];
       if (cardEffect) {
         // Add the specific cards to the player's deck
-        if (gameState.deck && cardEffect.cards) {
+        if (
+          gameState.runData &&
+          gameState.runData.fightStatus &&
+          gameState.runData.fightStatus.playerDeck &&
+          cardEffect.cards
+        ) {
           cardEffect.cards.forEach((cardStr) => {
             // Parse card string (e.g., "K♥", "A♠")
             let value, suit;
@@ -595,15 +682,14 @@ async function applyBoonEffect(boonEffect, card, gameState) {
               suit = '?';
             }
 
-            gameState.deck.push({
+            gameState.runData.fightStatus.playerDeck.push({
               value,
               suit,
-              display: cardStr,
-              code: cardStr,
+              type: 'standard',
             });
           });
           // Save the updated deck to the server
-          await savePlayerDeck(gameState.deck);
+          await savePlayerDeck(gameState.runData.fightStatus.playerDeck);
         }
         return {
           description: cardEffect.description,
@@ -694,17 +780,20 @@ async function applyBaneEffect(baneEffect, card, gameState) {
     case 'addJoker': {
       const jokerAmount = baneEffect.amount || 1;
       // Add jokers to the player's deck
-      if (gameState.deck) {
+      if (
+        gameState.runData &&
+        gameState.runData.fightStatus &&
+        gameState.runData.fightStatus.playerDeck
+      ) {
         for (let i = 0; i < jokerAmount; i++) {
-          gameState.deck.push({
+          gameState.runData.fightStatus.playerDeck.push({
             value: '𝕁',
             suit: '🃏',
-            display: '𝕁🃏',
-            code: '𝕁',
+            type: 'joker',
           });
         }
         // Save the updated deck to the server
-        await savePlayerDeck(gameState.deck);
+        await savePlayerDeck(gameState.runData.fightStatus.playerDeck);
       }
       return {
         description: `Add ${jokerAmount} joker(s) to your deck`,

@@ -1,12 +1,9 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
-import Profile from '../models/Profile.js';
-import Statistics from '../models/Statistics.js';
-import GameSave from '../models/GameSave.js';
 
 /**
  * Auth Controller
- * Handles user authentication and profile management
+ * Handles user authentication and settings management
  */
 
 // User registration endpoint
@@ -40,22 +37,6 @@ export const registerUser = async (req, res) => {
     });
 
     await user.save();
-
-    // Create default profile
-    const profile = new Profile({
-      userId: user._id,
-      profileName: 'Default Profile',
-    });
-
-    await profile.save();
-
-    // Create statistics record
-    const statistics = new Statistics({
-      userId: user._id,
-      profileId: profile._id,
-    });
-
-    await statistics.save();
 
     // Set session
     req.session.userId = user._id;
@@ -120,8 +101,8 @@ export const logoutUser = (req, res) => {
   }
 };
 
-// Get user profile endpoint
-export const getUserProfile = async (req, res) => {
+// Get user settings endpoint
+export const getUserSettings = async (req, res) => {
   try {
     const { userId } = req.session;
     if (!userId) {
@@ -133,19 +114,11 @@ export const getUserProfile = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Get user's profiles
-    const profiles = await Profile.find({ userId }).sort({ lastPlayed: -1 });
-
-    // Get statistics
-    const statistics = await Statistics.find({ userId });
-
     res.json({
       user,
-      profiles,
-      statistics,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get profile' });
+    res.status(500).json({ error: 'Failed to get settings' });
   }
 };
 
@@ -183,11 +156,7 @@ export const getDashboard = async (req, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const user = await User.findById(userId).populate('profile');
-    const gameSaves = await GameSave.find({ userId })
-      .sort({ updatedAt: -1 })
-      .limit(5);
-    const stats = await Statistics.findOne({ userId });
+    const user = await User.findById(userId);
 
     res.json({
       user: {
@@ -195,33 +164,29 @@ export const getDashboard = async (req, res) => {
         email: user.email,
         createdAt: user.createdAt,
       },
-      profile: user.profile || {},
-      recentSaves: gameSaves,
-      statistics: stats || {},
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to load dashboard' });
   }
 };
 
-// Update user profile
-export const updateProfile = async (req, res) => {
+// Update user settings
+export const updateSettings = async (req, res) => {
   try {
     const { userId } = req.session;
     if (!userId) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const { displayName, bio, preferences } = req.body;
+    const { displayName, preferences } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Update user profile fields
+    // Update user settings fields
     if (displayName !== undefined) user.displayName = displayName;
-    if (bio !== undefined) user.bio = bio;
     if (preferences) {
       user.preferences = { ...user.preferences, ...preferences };
     }
@@ -230,20 +195,19 @@ export const updateProfile = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Profile updated successfully',
+      message: 'Settings saved successfully',
       user: {
         displayName: user.displayName,
-        bio: user.bio,
         preferences: user.preferences,
       },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update profile' });
+    res.status(500).json({ error: 'Failed to save settings' });
   }
 };
 
-// Get user profile
-export const getProfile = async (req, res) => {
+// Get user settings
+export const getSettings = async (req, res) => {
   try {
     const { userId } = req.session;
     if (!userId) {
@@ -258,7 +222,6 @@ export const getProfile = async (req, res) => {
     res.json({
       profile: {
         displayName: user.displayName || '',
-        bio: user.bio || '',
         preferences: user.preferences || {
           autoSave: true,
           soundEnabled: true,
@@ -266,6 +229,6 @@ export const getProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to load profile' });
+    res.status(500).json({ error: 'Failed to load settings' });
   }
 };

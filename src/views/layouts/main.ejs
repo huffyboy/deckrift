@@ -37,6 +37,9 @@
     <!-- Load gameData.js as a module and make it globally available -->
     <script type="module" src="/js/loadGameData.js"></script>
     
+    <!-- Save Manager -->
+    <script type="module" src="/js/modules/saveManager.js"></script>
+    
     <!-- Global notification function -->
     <script>
     // Global notification function that can be used from any page
@@ -88,7 +91,7 @@
     <!-- Page-specific JS -->
     <% if (typeof pageScript !== 'undefined' && pageScript) { %>
       <script>console.log('Loading pageScript:', '<%= pageScript %>');</script>
-      <script src="<%= pageScript %>"></script>
+      <script type="module" src="<%= pageScript %>"></script>
     <% } else if (typeof page !== 'undefined' && page === 'home') { %>
       <script type="module" src="/js/main.js"></script>
     <% } %>

@@ -66,6 +66,15 @@ const userSchema = new mongoose.Schema(
         type: String,
       },
     ],
+    // Realm completion tracking
+    completedRealms: {
+      type: [Number],
+      default: [],
+    },
+    unlockedRealms: {
+      type: [Number],
+      default: [1], // Start with first realm unlocked
+    },
     createdAt: {
       type: Date,
       default: Date.now,

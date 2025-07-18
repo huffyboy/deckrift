@@ -1,7 +1,10 @@
 import express from 'express';
-import GameSave from '../models/GameSave.js';
+import SaveService from '../services/saveService.js';
 
 const router = express.Router();
+
+// Create save service instance
+const saveService = new SaveService();
 
 // Helper functions for event logic
 function generateBoon() {
@@ -49,19 +52,16 @@ const requireAuth = (req, res, next) => {
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
-
     // Get active game save
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
       return res.redirect('/home-realm');
     }
 
+    const activeSave = saveResult.saveData;
+
     // Check if we're in an event
-    if (!activeSave.currentEvent) {
+    if (!activeSave.runData.eventStatus.currentEvent) {
       return res.redirect('/game');
     }
 
@@ -69,7 +69,7 @@ router.get('/', requireAuth, async (req, res) => {
       title: 'Event - Deckrift',
       user: { username: req.session.username },
       gameSave: activeSave,
-      event: activeSave.currentEvent,
+      event: activeSave.runData.eventStatus.currentEvent,
     });
   } catch (error) {
     return res.status(500).render('errors/error', {
@@ -86,14 +86,12 @@ router.post('/start', requireAuth, async (req, res) => {
     const { userId } = req.session;
     const { eventType, eventData } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
+
+    const activeSave = saveResult.saveData;
 
     // Create event state
     const event = {
@@ -142,8 +140,8 @@ router.post('/start', requireAuth, async (req, res) => {
     }
 
     // Update game save with event
-    activeSave.currentEvent = event;
-    await activeSave.save();
+    activeSave.runData.eventStatus.currentEvent = event;
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
@@ -161,16 +159,17 @@ router.post('/challenge', requireAuth, async (req, res) => {
     const { userId } = req.session;
     const { cardValue, statValue } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave || !activeSave.currentEvent) {
+    const saveResult = await saveService.loadSave(userId);
+    if (
+      !saveResult.success ||
+      !saveResult.saveData.runData.eventStatus.currentEvent
+    ) {
       return res.status(404).json({ error: 'No active event found' });
     }
 
-    const event = activeSave.currentEvent;
+    const activeSave = saveResult.saveData;
+    const event = activeSave.runData.eventStatus.currentEvent;
+
     if (event.type !== 'challenge') {
       return res.status(400).json({ error: 'Not a challenge event' });
     }
@@ -183,7 +182,8 @@ router.post('/challenge', requireAuth, async (req, res) => {
     if (success) {
       // Gain XP in the challenged stat
       const { stat } = event.challenge;
-      activeSave.statXP[stat] = (activeSave.statXP[stat] || 0) + cardValue;
+      activeSave.gameData.statXP[stat] =
+        (activeSave.gameData.statXP[stat] || 0) + cardValue;
 
       // Gain a boon
       event.result = {
@@ -200,8 +200,8 @@ router.post('/challenge', requireAuth, async (req, res) => {
     }
 
     event.status = 'completed';
-    activeSave.currentEvent = event;
-    await activeSave.save();
+    activeSave.runData.eventStatus.currentEvent = event;
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
@@ -219,16 +219,17 @@ router.post('/boon', requireAuth, async (req, res) => {
     const { userId } = req.session;
     const { choice } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave || !activeSave.currentEvent) {
+    const saveResult = await saveService.loadSave(userId);
+    if (
+      !saveResult.success ||
+      !saveResult.saveData.runData.eventStatus.currentEvent
+    ) {
       return res.status(404).json({ error: 'No active event found' });
     }
 
-    const event = activeSave.currentEvent;
+    const activeSave = saveResult.saveData;
+    const event = activeSave.runData.eventStatus.currentEvent;
+
     if (event.type !== 'boon') {
       return res.status(400).json({ error: 'Not a boon event' });
     }
@@ -243,8 +244,8 @@ router.post('/boon', requireAuth, async (req, res) => {
     };
     event.status = 'completed';
 
-    activeSave.currentEvent = event;
-    await activeSave.save();
+    activeSave.runData.eventStatus.currentEvent = event;
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
@@ -260,17 +261,17 @@ router.post('/boon', requireAuth, async (req, res) => {
 router.post('/bane', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
-
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave || !activeSave.currentEvent) {
+    const saveResult = await saveService.loadSave(userId);
+    if (
+      !saveResult.success ||
+      !saveResult.saveData.runData.eventStatus.currentEvent
+    ) {
       return res.status(404).json({ error: 'No active event found' });
     }
 
-    const event = activeSave.currentEvent;
+    const activeSave = saveResult.saveData;
+    const event = activeSave.runData.eventStatus.currentEvent;
+
     if (event.type !== 'bane') {
       return res.status(400).json({ error: 'Not a bane event' });
     }
@@ -284,8 +285,8 @@ router.post('/bane', requireAuth, async (req, res) => {
     };
     event.status = 'completed';
 
-    activeSave.currentEvent = event;
-    await activeSave.save();
+    activeSave.runData.eventStatus.currentEvent = event;
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,

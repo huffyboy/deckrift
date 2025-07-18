@@ -1,7 +1,10 @@
 import express from 'express';
-import GameSave from '../models/GameSave.js';
+import SaveService from '../services/saveService.js';
 
 const router = express.Router();
+
+// Create save service instance
+const saveService = new SaveService();
 
 // Helper function to calculate challenge modifier
 function calculateChallengeModifier(realm, level) {
@@ -83,26 +86,26 @@ const requireAuth = (req, res, next) => {
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
-
     // Get active game save
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
       return res.redirect('/home-realm');
     }
 
+    const activeSave = saveResult.saveData;
+
     // Check if we're in a shop event
-    if (!activeSave.currentEvent || activeSave.currentEvent.type !== 'shop') {
+    if (
+      !activeSave.runData.eventStatus.currentEvent ||
+      activeSave.runData.eventStatus.currentEvent.type !== 'shop'
+    ) {
       return res.redirect('/game');
     }
 
     // Calculate shop costs based on challenge modifier
     const challengeModifier = calculateChallengeModifier(
-      activeSave.realm,
-      activeSave.level
+      activeSave.runData.location.realm,
+      activeSave.runData.location.level
     );
     const shopCosts = {
       heal: 10 + challengeModifier,
@@ -134,37 +137,38 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/heal', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
-
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
+    const activeSave = saveResult.saveData;
+
     const healCost =
-      10 + calculateChallengeModifier(activeSave.realm, activeSave.level);
+      10 +
+      calculateChallengeModifier(
+        activeSave.runData.location.realm,
+        activeSave.runData.location.level
+      );
     const healAmount = 10;
 
     // Check if player can afford it
-    if (activeSave.currency < healCost) {
+    if (activeSave.gameData.currency < healCost) {
       return res.status(400).json({ error: 'Insufficient currency' });
     }
 
     // Apply healing
-    activeSave.currency -= healCost;
-    activeSave.health = Math.min(
-      activeSave.maxHealth,
-      activeSave.health + healAmount
+    activeSave.gameData.currency -= healCost;
+    activeSave.gameData.health = Math.min(
+      activeSave.gameData.maxHealth,
+      activeSave.gameData.health + healAmount
     );
-    await activeSave.save();
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
-      newHealth: activeSave.health,
-      newCurrency: activeSave.currency,
+      newHealth: activeSave.gameData.health,
+      newCurrency: activeSave.gameData.currency,
       message: `Healed for ${healAmount} HP`,
     });
   } catch (error) {
@@ -178,17 +182,15 @@ router.post('/equipment', requireAuth, async (req, res) => {
     const { userId } = req.session;
     const { equipmentId, cost } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
+    const activeSave = saveResult.saveData;
+
     // Check if player can afford it
-    if (activeSave.currency < cost) {
+    if (activeSave.gameData.currency < cost) {
       return res.status(400).json({ error: 'Insufficient currency' });
     }
 
@@ -199,14 +201,18 @@ router.post('/equipment', requireAuth, async (req, res) => {
     }
 
     // Purchase equipment
-    activeSave.currency -= cost;
-    if (!activeSave.equipment) activeSave.equipment = [];
-    activeSave.equipment.push(equipment);
-    await activeSave.save();
+    activeSave.gameData.currency -= cost;
+    if (!activeSave.runData.equipment) activeSave.runData.equipment = [];
+    activeSave.runData.equipment.push({
+      type: equipment.type,
+      value: equipment.id,
+      equipped: false,
+    });
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
-      newCurrency: activeSave.currency,
+      newCurrency: activeSave.gameData.currency,
       equipment,
       message: `Purchased ${equipment.name}`,
     });
@@ -221,36 +227,44 @@ router.post('/remove-card', requireAuth, async (req, res) => {
     const { userId } = req.session;
     const { cardIndex } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
+    const activeSave = saveResult.saveData;
+
     const cardRemovalCost =
-      25 + calculateChallengeModifier(activeSave.realm, activeSave.level);
+      25 +
+      calculateChallengeModifier(
+        activeSave.runData.location.realm,
+        activeSave.runData.location.level
+      );
 
     // Check if player can afford it
-    if (activeSave.currency < cardRemovalCost) {
+    if (activeSave.gameData.currency < cardRemovalCost) {
       return res.status(400).json({ error: 'Insufficient currency' });
     }
 
     // Check if card exists
-    if (!activeSave.deck || cardIndex >= activeSave.deck.length) {
+    if (
+      !activeSave.runData.fightStatus.playerDeck ||
+      cardIndex >= activeSave.runData.fightStatus.playerDeck.length
+    ) {
       return res.status(400).json({ error: 'Invalid card index' });
     }
 
     // Remove card
-    const removedCard = activeSave.deck.splice(cardIndex, 1)[0];
-    activeSave.currency -= cardRemovalCost;
-    await activeSave.save();
+    const removedCard = activeSave.runData.fightStatus.playerDeck.splice(
+      cardIndex,
+      1
+    )[0];
+    activeSave.gameData.currency -= cardRemovalCost;
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
-      newCurrency: activeSave.currency,
+      newCurrency: activeSave.gameData.currency,
       removedCard,
       message: `Removed ${removedCard.value} of ${removedCard.suit}`,
     });
@@ -263,20 +277,20 @@ router.post('/remove-card', requireAuth, async (req, res) => {
 router.post('/leave', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
-
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
+    const activeSave = saveResult.saveData;
+
     // Clear shop event
-    if (activeSave.currentEvent && activeSave.currentEvent.type === 'shop') {
-      activeSave.currentEvent = null;
-      await activeSave.save();
+    if (
+      activeSave.runData.eventStatus.currentEvent &&
+      activeSave.runData.eventStatus.currentEvent.type === 'shop'
+    ) {
+      activeSave.runData.eventStatus.currentEvent = null;
+      await saveService.updateSave(userId, activeSave);
     }
 
     return res.json({

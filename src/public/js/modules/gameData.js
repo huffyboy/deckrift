@@ -1469,19 +1469,34 @@ export const SUIT_SYMBOL_MAP = {
 
 // Suit symbol to emoji mapping for display
 export const SUIT_TO_EMOJI_MAP = {
+  // Unicode symbols
   '♠': '♠️',
   '♥': '♥️',
   '♦': '♦️',
   '♣': '♣️',
   '🃏': '🃏', // Joker suit
+
+  // String suit names (for database compatibility)
+  spades: '♠️',
+  hearts: '♥️',
+  diamonds: '♦️',
+  clubs: '♣️',
+  joker: '🃏',
 };
 
 // Suit order for sorting (spades, hearts, diamonds, clubs)
 export const SUIT_ORDER = {
+  // Unicode symbols
   '♠': 0,
   '♥': 1,
   '♦': 2,
   '♣': 3,
+
+  // String suit names (for database compatibility)
+  spades: 0,
+  hearts: 1,
+  diamonds: 2,
+  clubs: 3,
 };
 
 // Internal suit to API suit mapping
@@ -1531,7 +1546,7 @@ export const MAP_CARD_VALUES = [
 ];
 
 // Card suits for map generation
-export const MAP_CARD_SUITS = ['♠', '♥', '♦', '♣'];
+export const MAP_CARD_SUITS = ['spades', 'hearts', 'diamonds', 'clubs'];
 
 // Map generation constants
 export const MAP_CONSTANTS = {

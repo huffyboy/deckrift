@@ -1,8 +1,11 @@
 import express from 'express';
-import GameSave from '../models/GameSave.js';
+import SaveService from '../services/saveService.js';
 import { requireAuth } from '../middlewares/auth.js';
 
 const router = express.Router();
+
+// Create save service instance
+const saveService = new SaveService();
 
 // Helper functions for battle logic
 function processAttack(battle, _cardIndex, _target) {
@@ -37,19 +40,16 @@ function processWeaponSwitch(battle, weaponId) {
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
-
     // Get active game save
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
       return res.redirect('/home-realm');
     }
 
+    const activeSave = saveResult.saveData;
+
     // Check if we're in a battle
-    if (!activeSave.currentBattle) {
+    if (!activeSave.runData.fightStatus.inBattle) {
       return res.redirect('/game');
     }
 
@@ -57,7 +57,7 @@ router.get('/', requireAuth, async (req, res) => {
       title: 'Battle - Deckrift',
       user: { username: req.session.username },
       gameSave: activeSave,
-      battle: activeSave.currentBattle,
+      battle: activeSave.runData.fightStatus,
     });
   } catch (error) {
     return res.status(500).render('errors/error', {
@@ -72,35 +72,29 @@ router.get('/', requireAuth, async (req, res) => {
 router.post('/start', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
-    const { enemyType, enemyStats } = req.body;
+    const { enemyStats } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
+    const activeSave = saveResult.saveData;
+
     // Create battle state
     const battle = {
-      enemy: {
-        type: enemyType,
-        stats: enemyStats,
-        health: enemyStats.hp || 10,
-        maxHealth: enemyStats.maxHp || 10,
-      },
-      round: 1,
+      inBattle: true,
+      enemyStats: enemyStats,
+      enemyHealth: enemyStats.hp || 10,
+      enemyMaxHealth: enemyStats.maxHp || 10,
       playerHand: [],
       enemyHand: [],
-      battleLog: [],
-      status: 'active',
+      turn: 'player',
     };
 
     // Update game save with battle
-    activeSave.currentBattle = battle;
-    await activeSave.save();
+    activeSave.runData.fightStatus = battle;
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
@@ -118,16 +112,16 @@ router.post('/move', requireAuth, async (req, res) => {
     const { userId } = req.session;
     const { action, cardIndex, target } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave || !activeSave.currentBattle) {
+    const saveResult = await saveService.loadSave(userId);
+    if (
+      !saveResult.success ||
+      !saveResult.saveData.runData.fightStatus.inBattle
+    ) {
       return res.status(404).json({ error: 'No active battle found' });
     }
 
-    const battle = activeSave.currentBattle;
+    const activeSave = saveResult.saveData;
+    const battle = activeSave.runData.fightStatus;
 
     // Process the move based on action type
     let result;
@@ -147,8 +141,8 @@ router.post('/move', requireAuth, async (req, res) => {
 
     // Update battle state
     Object.assign(battle, result);
-    activeSave.currentBattle = battle;
-    await activeSave.save();
+    activeSave.runData.fightStatus = battle;
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
@@ -166,35 +160,40 @@ router.post('/end', requireAuth, async (req, res) => {
     const { userId } = req.session;
     const { result, rewards } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
-
-    if (!activeSave || !activeSave.currentBattle) {
+    const saveResult = await saveService.loadSave(userId);
+    if (
+      !saveResult.success ||
+      !saveResult.saveData.runData.fightStatus.inBattle
+    ) {
       return res.status(404).json({ error: 'No active battle found' });
     }
 
+    const activeSave = saveResult.saveData;
+
     // Clear battle state
-    activeSave.currentBattle = null;
+    activeSave.runData.fightStatus.inBattle = false;
 
     // Apply rewards if victory
     if (result === 'victory' && rewards) {
       if (rewards.xp) {
         Object.keys(rewards.xp).forEach((stat) => {
-          activeSave.statXP[stat] =
-            (activeSave.statXP[stat] || 0) + rewards.xp[stat];
+          activeSave.gameData.statXP[stat] =
+            (activeSave.gameData.statXP[stat] || 0) + rewards.xp[stat];
         });
       }
       if (rewards.currency) {
-        activeSave.currency = (activeSave.currency || 0) + rewards.currency;
+        activeSave.gameData.currency =
+          (activeSave.gameData.currency || 0) + rewards.currency;
       }
       if (rewards.cards) {
-        activeSave.deck = [...(activeSave.deck || []), ...rewards.cards];
+        activeSave.runData.fightStatus.playerDeck = [
+          ...(activeSave.runData.fightStatus.playerDeck || []),
+          ...rewards.cards,
+        ];
       }
     }
 
-    await activeSave.save();
+    await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,

@@ -206,15 +206,16 @@ export function generateStandardDeck() {
     }
   }
 
-  // Add 4 jokers
-  for (let i = 0; i < 4; i++) {
-    deck.push({
-      value: '𝕁',
-      suit: '🃏',
-      display: '𝕁🃏',
-      code: '𝕁',
-    });
-  }
+  // For Testing
+  // // Add 4 jokers
+  // for (let i = 0; i < 4; i++) {
+  //   deck.push({
+  //     value: '𝕁',
+  //     suit: '🃏',
+  //     display: '𝕁🃏',
+  //     code: '𝕁',
+  //   });
+  // }
 
   return deck;
 }

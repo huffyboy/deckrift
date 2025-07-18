@@ -216,12 +216,12 @@ export { drawFromPlayerDeck };
 
 // Game state generation functions - now using shared gameUtils
 function generateEnemyStats(enemyType) {
-  const challengeModifier = currentGameState.challengeModifier || 1;
+  const challengeModifier = currentGameState.runData?.location?.level || 1;
   return generateEnemyStatsUtil(enemyType, challengeModifier);
 }
 
 function generateBossStats() {
-  const challengeModifier = currentGameState.challengeModifier || 1;
+  const challengeModifier = currentGameState.runData?.location?.level || 1;
   return generateBossStatsUtil(challengeModifier);
 }
 
@@ -230,7 +230,7 @@ function generateShopItems() {
 }
 
 function calculateShopCosts() {
-  const challengeModifier = currentGameState.challengeModifier || 1;
+  const challengeModifier = currentGameState.runData?.location?.level || 1;
   return calculateShopCostsUtil(challengeModifier);
 }
 
@@ -282,13 +282,36 @@ function renderOverworldMap() {
 
   mapGrid.innerHTML = '';
 
-  const rows = currentGameState.challengeModifier;
-  const { map } = currentGameState;
+  // Get map data from the new structure
+  const mapData = currentGameState.runData?.map;
+  if (!mapData || !mapData.tiles) {
+    return;
+  }
+
+  // Convert tiles array to 2D grid for easier access
+  const mapGrid2D = [];
+  const maxRows = Math.max(...mapData.tiles.map((tile) => tile.y)) + 1;
+  const maxCols = 7; // Fixed width of 7 columns
+
+  // Initialize 2D grid
+  for (let row = 0; row < maxRows; row++) {
+    mapGrid2D[row] = [];
+    for (let col = 0; col < maxCols; col++) {
+      mapGrid2D[row][col] = null;
+    }
+  }
+
+  // Populate grid with tiles
+  mapData.tiles.forEach((tile) => {
+    mapGrid2D[tile.y][tile.x] = tile;
+  });
+
+  const rows = maxRows;
 
   // Player position (default to 0,0 if not set)
-  const playerPos = currentGameState.playerPosition || { x: 0, y: 0 };
-  const playerX = playerPos.x || 0;
-  const playerY = playerPos.y || 0;
+  const playerPos = currentGameState.runData?.location || { mapX: 0, mapY: 0 };
+  const playerX = playerPos.mapX || 0;
+  const playerY = playerPos.mapY || 0;
 
   for (let row = 0; row < rows; row += 1) {
     const rowDiv = document.createElement('div');
@@ -299,7 +322,7 @@ function renderOverworldMap() {
 
     for (let col = 0; col < 7; col += 1) {
       // 7 columns: 0-6
-      const mapCell = map[row] ? map[row][col] : null;
+      const mapCell = mapGrid2D[row] ? mapGrid2D[row][col] : null;
 
       if (!mapCell) {
         // Empty space - add invisible placeholder to maintain grid
@@ -326,54 +349,69 @@ function renderOverworldMap() {
 
         // Determine card type and render accordingly
         const isPlayerPosition = playerX === col && playerY === row;
+        const isFirstJoker = col === 0 && row === 0; // First joker position
         let cardType;
 
-        if (isPlayerPosition) {
-          cardType = 'player';
-        } else if (mapCell && mapCell.type === 'player-start') {
+        if (mapCell && mapCell.type === 'joker' && isFirstJoker) {
+          // First joker tile - show portal (regardless of player position or revealed status)
           cardType = 'player-start';
         } else if (mapCell && mapCell.type === 'joker') {
+          // Other joker tiles - show joker
           cardType = 'joker';
         } else if (mapCell && mapCell.revealed) {
+          // Revealed cards - show their content (player will be overlaid if present)
           cardType = 'revealed';
         } else {
+          // Unrevealed cards
           cardType = 'unrevealed';
         }
 
-        switch (cardType) {
-          case 'player':
-            cardDiv.innerHTML = '<span style="font-size:4em">🚶‍➡️</span>';
-            cardDiv.style.backgroundColor = '#d4af37';
-            cardDiv.style.border = '3px solid #d4af37';
-            break;
+        // Always show the card content first, then overlay player if needed
+        let cardContent = '';
+        let backgroundColor = '#d0d0d0';
 
+        switch (cardType) {
           case 'player-start':
-            cardDiv.innerHTML = `<div style="text-align: center;">
+            cardContent = `<div style="text-align: center;">
               <span style="font-size: 4em; display: block; margin-bottom: 5px; opacity: 0.3;">🌀</span>
               <div style="font-size: 0.9em; color: #111; font-weight: bold;">Portal</div>
             </div>`;
-            cardDiv.style.backgroundColor = '#d0d0d0';
             break;
 
           case 'joker': {
-            const jokerEvent = EVENTS['𝕁'];
-            cardDiv.innerHTML = `<div style="text-align: center;">
-              <span style="font-size: 4em; display: block; margin-bottom: 10px;">${jokerEvent.icon}</span>
-            </div>`;
-            cardDiv.style.backgroundColor = '#9c27b0';
+            const jokerEvent = EVENTS['𝕁'] || { icon: '🃏', text: 'Joker' };
+            const isLastJoker = col === 6; // Last column, bottom row
+
+            if (isLastJoker) {
+              // Last joker - show as portal
+              cardContent = `<div style="text-align: center;">
+                <span style="font-size: 4em; display: block; margin-bottom: 10px;">🌀</span>
+                <div style="font-size: 0.9em; color: #fff; font-weight: bold;">Portal</div>
+              </div>`;
+              backgroundColor = '#9c27b0';
+            } else {
+              // Other jokers - show as joker
+              cardContent = `<div style="text-align: center;">
+                <span style="font-size: 4em; display: block; margin-bottom: 10px;">${jokerEvent.icon}</span>
+              </div>`;
+              backgroundColor = '#9c27b0';
+            }
             break;
           }
 
           case 'revealed': {
-            const cardObject = mapCell.card || {
-              value: ' ',
-              suit: ' ',
-              display: ' ',
+            const cardObject = {
+              value: mapCell.value || ' ',
+              suit: mapCell.suit || ' ',
+              display: `${mapCell.value || ' '}${SUIT_TO_EMOJI_MAP[mapCell.suit] || mapCell.suit || ' '}`,
             };
 
             // Get the card value for event lookup
             const cardValue = getCardValue(cardObject);
-            const eventInfo = EVENTS[cardValue] || EVENTS[11]; // Default to nothing
+            const eventInfo = EVENTS[cardValue] || {
+              icon: '❓',
+              text: 'Unknown Event',
+            }; // Default to unknown event
 
             // Always show the playing card representation at the top
             const cardRepresentation = cardObject.display;
@@ -383,20 +421,15 @@ function renderOverworldMap() {
             const hasBeenVisited = mapCell.visited || false;
 
             // Set visual styles based on state
-            let opacity, textColor, backgroundColor;
+            let opacity, textColor;
 
-            if (isPlayerPosition) {
-              // Current position: bright and prominent
-              opacity = '1.0';
-              textColor = '#fff';
-              backgroundColor = '#d4af37';
-            } else if (justRevealed) {
+            if (justRevealed) {
               // Just revealed: bright but not gold
               opacity = '1.0';
               textColor = '#fff';
               backgroundColor = '#fff';
             } else if (hasBeenVisited) {
-              // Past traveled: faded
+              // Past traveled: faded (including when player is on it)
               opacity = '0.3';
               textColor = '#111';
               backgroundColor = '#d0d0d0';
@@ -407,7 +440,6 @@ function renderOverworldMap() {
               backgroundColor = '#fff';
             }
 
-            let cardContent;
             if (eventInfo.icon) {
               cardContent = `<div style="text-align: center;">
                 <div style="font-size: 0.7em; color: ${textColor}; margin-bottom: 2px;">
@@ -431,18 +463,26 @@ function renderOverworldMap() {
                 </div>
               </div>`;
             }
-
-            cardDiv.innerHTML = cardContent;
-            cardDiv.style.backgroundColor = backgroundColor;
             break;
           }
 
           default: // unrevealed
-            cardDiv.innerHTML =
+            cardContent =
               '<span style="font-size:6em; color: #666; opacity: 0.5;">🔮</span>';
             cardDiv.style.background =
               'linear-gradient(135deg, #1a1a1a, #2a2a2a)'; // Charcoal gradient
             break;
+        }
+
+        // Set the card content
+        cardDiv.innerHTML = cardContent;
+        cardDiv.style.backgroundColor = backgroundColor;
+
+        // Overlay player token if player is at this position
+        if (isPlayerPosition) {
+          cardDiv.style.position = 'relative';
+          cardDiv.innerHTML += `<span style="font-size: 4em; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.8));">🚶‍➡️</span>`;
+          cardDiv.style.border = '3px solid #d4af37';
         }
 
         // Allow clicking on adjacent cards (both revealed and unrevealed)
@@ -453,10 +493,11 @@ function renderOverworldMap() {
         ) {
           cardDiv.style.border = '3px solid #4CAF50'; // Green border for all clickable cards
 
-          // Special case for portal (player-start) - just move there, no events
-          if (mapCell.type === 'player-start') {
+          // Special case for portal (first joker) - just move there, no events
+          if (mapCell.type === 'joker' && col === 0 && row === 0) {
             cardDiv.onclick = () => {
-              currentGameState.playerPosition = { x: col, y: row };
+              currentGameState.runData.location.mapX = col;
+              currentGameState.runData.location.mapY = row;
               isCardSequenceInProgress = false; // Reset busy state immediately
               renderOverworldMap();
             };
@@ -472,7 +513,8 @@ function renderOverworldMap() {
               // Don't trigger event if already visited
               if (mapCell.visited) {
                 // Just move player to the position without triggering event
-                currentGameState.playerPosition = { x: col, y: row };
+                currentGameState.runData.location.mapX = col;
+                currentGameState.runData.location.mapY = row;
                 isCardSequenceInProgress = false; // Reset busy state immediately
                 renderOverworldMap();
                 return;
@@ -535,7 +577,7 @@ function startBattle(enemyType, _newPosition) {
 
 function startChallenge(statType, _newPosition) {
   // Calculate challenge difficulty based on current level
-  const challengeModifier = currentGameState.challengeModifier || 1;
+  const challengeModifier = currentGameState.runData?.location?.level || 1;
   const target = 12 + challengeModifier;
 
   fetch('/event/start', {
@@ -594,7 +636,7 @@ function startShop(_newPosition) {
 
 function handleRest(_newPosition) {
   // Calculate heal amount (50% of max HP)
-  const healAmount = Math.floor(currentGameState.maxHealth / 2);
+  const healAmount = Math.floor(currentGameState.gameData.maxHealth / 2);
 
   fetch('/event/start', {
     method: 'POST',
@@ -612,9 +654,9 @@ function handleRest(_newPosition) {
     .then((data) => {
       if (data.success) {
         // Apply healing immediately
-        currentGameState.health = Math.min(
-          currentGameState.maxHealth,
-          currentGameState.health + healAmount
+        currentGameState.gameData.health = Math.min(
+          currentGameState.gameData.maxHealth,
+          currentGameState.gameData.health + healAmount
         );
         showNotification(
           'Rest Complete',
@@ -722,8 +764,8 @@ function initializeGame() {
 // Initialize game interface
 document.addEventListener('DOMContentLoaded', () => {
   // Get game state from server-side data
-  if (typeof window.gameState !== 'undefined') {
-    currentGameState = window.gameState;
+  if (typeof window.gameSave !== 'undefined') {
+    currentGameState = window.gameSave;
   }
 
   initializeGame();

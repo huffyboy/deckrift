@@ -37,7 +37,7 @@ class DeckriftGame {
     if (path.startsWith('/shop')) return 'shop';
     if (path.startsWith('/game-over')) return 'game-over';
     if (path.startsWith('/status')) return 'status';
-    if (path.startsWith('/profile')) return 'profile';
+    if (path.startsWith('/settings')) return 'settings';
     return 'home';
   }
 
@@ -70,8 +70,8 @@ class DeckriftGame {
       case 'status':
         this.initializeStatusPage();
         break;
-      case 'profile':
-        this.initializeProfilePage();
+      case 'settings':
+        this.initializeSettingsPage();
         break;
     }
   }
@@ -117,8 +117,8 @@ class DeckriftGame {
     // Data loading handled by server-side rendering
   }
 
-  initializeProfilePage() {
-    // Profile page specific initialization
+  initializeSettingsPage() {
+    // Settings page specific initialization
     // Data loading handled by server-side rendering
   }
 
@@ -126,7 +126,7 @@ class DeckriftGame {
     // Global event listeners that work across all pages
 
     // Handle logout
-    const logoutBtn = document.querySelector('a[href="/api/auth/logout"]');
+    const logoutBtn = document.querySelector('a[href="/auth/logout"]');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -157,7 +157,7 @@ class DeckriftGame {
 
   async handleLogout() {
     try {
-      const response = await fetch('/api/auth/logout', {
+      const response = await fetch('/auth/logout', {
         method: 'POST',
       });
 

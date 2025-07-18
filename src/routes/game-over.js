@@ -1,8 +1,15 @@
 import express from 'express';
-import GameSave from '../models/GameSave.js';
 import User from '../models/User.js';
+import SaveService from '../services/saveService.js';
+import {
+  createDefaultSaveData,
+  SAVE_VERSION,
+} from '../services/saveSchemas.js';
 
 const router = express.Router();
+
+// Create save service instance
+const saveService = new SaveService();
 
 // Helper function to calculate final score
 function calculateScore(stats) {
@@ -32,27 +39,32 @@ function calculateScore(stats) {
 }
 
 // Helper function to calculate run statistics
-function calculateRunStats(gameSave) {
+function calculateRunStats(saveData) {
   const stats = {
     duration: 0,
-    levelsCompleted: gameSave.level - 1,
+    levelsCompleted: saveData.runData.location.level - 1,
     totalXP: 0,
-    cardsCollected: gameSave.deck ? gameSave.deck.length : 0,
-    artifactsFound: gameSave.artifacts ? gameSave.artifacts.length : 0,
-    currencyEarned: gameSave.currency || 0,
+    cardsCollected: saveData.runData.fightStatus.playerDeck
+      ? saveData.runData.fightStatus.playerDeck.length
+      : 0,
+    artifactsFound: saveData.runData.equipment
+      ? saveData.runData.equipment.filter((item) => item.type === 'artifact')
+          .length
+      : 0,
+    currencyEarned: saveData.gameData.currency || 0,
     finalScore: 0,
   };
 
   // Calculate duration if we have start and end times
-  if (gameSave.createdAt && gameSave.endedAt) {
+  if (saveData.timestamp && saveData.endedAt) {
     stats.duration = Math.floor(
-      (gameSave.endedAt - gameSave.createdAt) / 1000 / 60
+      (saveData.endedAt - saveData.timestamp) / 1000 / 60
     ); // minutes
   }
 
   // Calculate total XP
-  if (gameSave.statXP) {
-    stats.totalXP = Object.values(gameSave.statXP).reduce(
+  if (saveData.gameData.statXP) {
+    stats.totalXP = Object.values(saveData.gameData.statXP).reduce(
       (sum, xp) => sum + (xp || 0),
       0
     );
@@ -77,24 +89,27 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
 
-    // Get the most recent completed save
-    const completedSave = await GameSave.findOne({
-      userId,
-      isActive: false,
-      endedAt: { $exists: true },
-    }).sort({ endedAt: -1 });
+    // Get the current save (which should be marked as ended)
+    const saveResult = await saveService.loadSave(userId);
 
-    if (!completedSave) {
+    if (!saveResult.success) {
+      return res.redirect('/home-realm');
+    }
+
+    const saveData = saveResult.saveData;
+
+    // Check if this save is actually ended
+    if (!saveData.endedAt) {
       return res.redirect('/home-realm');
     }
 
     // Calculate run statistics
-    const runStats = calculateRunStats(completedSave);
+    const runStats = calculateRunStats(saveData);
 
     return res.render('game-over', {
       title: 'Game Over - Deckrift',
       user: { username: req.session.username },
-      gameSave: completedSave,
+      gameSave: saveData,
       runStats,
     });
   } catch (error) {
@@ -116,6 +131,16 @@ router.post('/return-home', requireAuth, async (req, res) => {
     if (user) {
       // Any final statistics updates can go here
       await user.save();
+    }
+
+    // Archive the completed run data
+    // This preserves game data but marks the run as completed
+    const saveResult = await saveService.loadSave(userId);
+    if (saveResult.success) {
+      // Mark run as completed but keep game data
+      saveResult.saveData.runData.completed = true;
+      saveResult.saveData.runData.completedAt = Date.now();
+      await saveService.updateSave(userId, saveResult.saveData);
     }
 
     return res.json({
@@ -140,42 +165,95 @@ router.post('/new-run', requireAuth, async (req, res) => {
       });
     }
 
-    // Create new game save
-    const newSave = new GameSave({
-      userId,
-      realm: parseInt(realmId, 10),
-      level: 1,
-      playerPosition: 0,
-      equipment: {
-        weapon: startingWeapon,
-        armor: startingArmor,
-      },
-      stats: {
-        power: 4,
-        will: 4,
-        craft: 4,
-        focus: 4,
-      },
-      statXP: {
-        power: 0,
-        will: 0,
-        craft: 0,
-        focus: 0,
-      },
-      health: 100,
-      maxHealth: 100,
-      currency: 0,
-      deck: [],
-      artifacts: [],
-      isActive: true,
-      createdAt: new Date(),
-    });
+    // Clear run data when starting a new run
+    // This preserves game data (stats, currency, unlocks) but clears run progress
+    const existingSave = await saveService.loadSave(userId);
+    if (existingSave.success) {
+      // Clear run data but preserve game data
+      existingSave.saveData.runData = {
+        version: SAVE_VERSION,
+        timestamp: Date.now(),
+        map: {
+          tiles: [],
+          width: 0,
+          height: 0,
+        },
+        location: {
+          realm: parseInt(realmId, 10),
+          level: 1,
+          mapX: 0,
+          mapY: 0,
+        },
+        fightStatus: {
+          inBattle: false,
+          playerHand: [],
+          playerDeck: [],
+          enemyHand: [],
+          enemyDeck: [],
+          enemyStats: {},
+          enemyHealth: 0,
+          enemyMaxHealth: 0,
+          turn: 'player',
+        },
+        eventStatus: {
+          currentEvent: null,
+          drawnCards: [],
+          eventStep: 0,
+          eventPhase: 'start',
+        },
+        statModifiers: {
+          power: 0,
+          will: 0,
+          craft: 0,
+          focus: 0,
+        },
+        equipment: [
+          {
+            type: 'weapon',
+            value: startingWeapon,
+            equipped: true,
+          },
+          {
+            type: 'armor',
+            value: startingArmor,
+            equipped: true,
+          },
+        ],
+      };
+      await saveService.updateSave(userId, existingSave.saveData);
+    }
 
-    await newSave.save();
+    // Create initial save data using helper function
+    const initialSaveData = createDefaultSaveData(`Run ${Date.now()}`);
+
+    // Customize the save data for this specific run
+    initialSaveData.runData.location.realm = parseInt(realmId, 10);
+    initialSaveData.runData.location.level = 1;
+    initialSaveData.runData.equipment = [
+      {
+        type: 'weapon',
+        value: startingWeapon,
+        equipped: true,
+      },
+      {
+        type: 'armor',
+        value: startingArmor,
+        equipped: true,
+      },
+    ];
+
+    // Create new save using save service
+    const saveResult = await saveService.createNewSave(userId, initialSaveData);
+
+    if (!saveResult.success) {
+      return res.status(500).json({
+        error: 'Failed to start new run',
+      });
+    }
 
     return res.json({
       success: true,
-      saveId: newSave._id,
+      saveId: saveResult.saveData.timestamp,
       redirect: '/game',
     });
   } catch (error) {

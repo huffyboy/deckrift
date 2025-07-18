@@ -1,10 +1,15 @@
 // Game routes
 import express from 'express';
-import GameSave from '../models/GameSave.js';
 import User from '../models/User.js';
 import { calculateAllXPThresholds } from '../services/gameUtils.js';
+import SaveService from '../services/saveService.js';
+import migrationService from '../services/migrationService.js';
+import { SAVE_VERSION } from '../services/saveSchemas.js';
 
 const router = express.Router();
+
+// Create save service instance
+const saveService = new SaveService();
 
 const requireAuth = (req, res, next) => {
   if (!req.session.userId) {
@@ -19,14 +24,66 @@ router.get('/new', requireAuth, async (req, res, next) => {
     const { userId } = req.session;
     const { realm = 1, level = 1 } = req.query; // Default to realm 1, level 1
 
-    // Check if there's already an active game and delete it
-    const existingActiveSave = await GameSave.findOne({
+    // Check if migration is needed and perform it
+    const migrationCheck = await migrationService.checkMigrationNeeded(
       userId,
-      isActive: true,
-    });
+      userId
+    );
+    if (migrationCheck.needsMigration) {
+      await migrationService.performMigration(
+        userId,
+        userId,
+        migrationCheck.migrationType
+      );
+    }
 
-    if (existingActiveSave) {
-      await GameSave.deleteOne({ _id: existingActiveSave._id });
+    // Clear run data for new game (preserves game data from migration)
+    const hasSaveResult = await saveService.hasSave(userId);
+    if (hasSaveResult.success) {
+      const saveResult = await saveService.loadSave(userId);
+      if (saveResult.success) {
+        // Clear run data but preserve game data
+        saveResult.saveData.runData = {
+          version: SAVE_VERSION,
+          timestamp: Date.now(),
+          map: {
+            tiles: [],
+            width: 0,
+            height: 0,
+          },
+          location: {
+            realm: 1,
+            level: 1,
+            mapX: 0,
+            mapY: 0,
+          },
+          fightStatus: {
+            inBattle: false,
+            playerHand: [],
+            playerDeck: [],
+            enemyHand: [],
+            enemyDeck: [],
+            enemyStats: {},
+            enemyHealth: 0,
+            enemyMaxHealth: 0,
+            turn: 'player',
+          },
+          eventStatus: {
+            currentEvent: null,
+            drawnCards: [],
+            eventStep: 0,
+            eventPhase: 'start',
+          },
+          statModifiers: {
+            power: 0,
+            will: 0,
+            craft: 0,
+            focus: 0,
+          },
+          equipment: [],
+        };
+        await saveService.updateSave(userId, saveResult.saveData);
+      }
     }
 
     // Get user data for upgrades
@@ -61,21 +118,19 @@ router.get('/new', requireAuth, async (req, res, next) => {
     }));
 
     // Generate basic overworld map
-    const challengeModifier = getChallengeModifier(realm, level);
-    const rows = challengeModifier;
+    const rows = getChallengeModifier(realm, level);
 
     // Create a grid-based map structure
-    const map = [];
+    const mapTiles = [];
 
     // Generate actual cards for the map (excluding jokers)
     const availableCards = [];
-    const testCardValues = ['A', '2',];
+    const testCardValues = ['A', '2'];
 
     // Create a deck of cards (excluding jokers)
     MAP_CARD_SUITS.forEach((suit) => {
-      // MAP_CARD_VALUES.forEach((value) => {
       testCardValues.forEach((value) => {
-        availableCards.push(`${value}${suit}`);
+        availableCards.push({ value, suit });
       });
     });
 
@@ -91,7 +146,6 @@ router.get('/new', requireAuth, async (req, res, next) => {
     let cardIndex = 0;
 
     for (let row = 0; row < rows; row += 1) {
-      const mapRow = [];
       const isFirstRow = row === 0;
       const isLastRow = row === rows - 1;
 
@@ -102,54 +156,41 @@ router.get('/new', requireAuth, async (req, res, next) => {
         const isCardPosition = col >= 1 && col <= 5;
 
         if (isPlayerStart) {
-          mapRow.push({
-            id: `${row}-${col}`,
-            type: 'player-start',
-            position: { x: col, y: row },
-            isPlayerStart: true,
+          mapTiles.push({
+            x: col,
+            y: row,
+            visited: false,
+            suit: 'joker',
+            value: '𝕁',
+            type: 'joker',
           });
         } else if (isJokerPosition) {
-          mapRow.push({
-            id: `${row}-${col}`,
+          mapTiles.push({
+            x: col,
+            y: row,
+            visited: false,
+            suit: 'joker',
+            value: '𝕁',
             type: 'joker',
-            position: { x: col, y: row },
-            isJoker: true,
           });
         } else if (isCardPosition) {
-          const actualCard = availableCards[cardIndex] || '?';
+          const actualCard = availableCards[cardIndex] || {
+            value: 'A',
+            suit: 'hearts',
+          };
 
-          // Parse the card string into components
-          let cardValue, cardSuit;
-          if (actualCard.length === 2) {
-            cardValue = actualCard[0];
-            cardSuit = actualCard[1];
-          } else if (actualCard.length === 3) {
-            cardValue = actualCard.substring(0, 2); // "10"
-            cardSuit = actualCard[2];
-          } else {
-            cardValue = '?';
-            cardSuit = '?';
-          }
-
-          mapRow.push({
-            id: `${row}-${col}`,
-            revealed: false,
-            card: {
-              value: cardValue,
-              suit: cardSuit,
-              display: actualCard,
-            },
+          mapTiles.push({
+            x: col,
+            y: row,
+            visited: false,
+            suit: actualCard.suit,
+            value: actualCard.value,
             type: 'unknown',
-            position: { x: col, y: row },
-            actualCard, // Store the actual card for logging
           });
           cardIndex += 1;
-        } else {
-          // Empty space for non-first/last rows
-          mapRow.push(null);
         }
+        // Skip empty spaces for non-first/last rows
       }
-      map.push(mapRow);
     }
 
     // Initialize starting equipment based on user's starting equipment
@@ -158,62 +199,78 @@ router.get('/new', requireAuth, async (req, res, next) => {
     // Add starting weapon (default to sword)
     const startingWeapon = user.startingWeapon || 'sword';
     startingEquipment.push({
-      key: startingWeapon,
       type: 'weapon',
+      value: startingWeapon,
+      equipped: true,
     });
 
     // Add starting armor (default to light)
     const startingArmor = user.startingArmor || 'light';
     startingEquipment.push({
-      key: startingArmor,
       type: 'armor',
+      value: startingArmor,
+      equipped: true,
     });
 
-    // Create new game save
-    const saveData = {
-      userId,
-      profileId: userId, // Use userId as profileId for now
-      saveName: `Realm ${realm} - Level ${level}`, // Generate a save name
-      realm,
-      level,
-      health: calculatedMaxHealth,
-      maxHealth: calculatedMaxHealth,
-      currency: user.currency || 0,
-      stats: STARTING_STATS,
-      statXP: { power: 0, will: 0, craft: 0, focus: 0 },
-      map,
-      playerPosition: { x: 0, y: 0 },
-      isActive: true,
-      startedAt: new Date(),
-      deck: playerDeck, // Save deck to the database
-      equipment: startingEquipment, // Initialize with starting equipment
-    };
-
-    const newGameSave = new GameSave(saveData);
-
-    await newGameSave.save();
-
-    // Transform game save data to match template expectations
-    const gameState = {
-      health: calculatedMaxHealth,
-      maxHealth: calculatedMaxHealth,
-      currency: user.currency || 0,
-      realmName: REALMS[realm]?.name || `Realm ${realm}`,
-      level,
-      currentScreen: 'overworld',
-      challengeModifier,
-      cardsPerLevel: MAP_CONSTANTS.CARDS_PER_LEVEL,
-      map,
-      playerPosition: { x: 0, y: 0 },
-      enemy: {},
-      event: {},
-      deck: playerDeck, // Add player deck to game state
-      shop: {
-        healCost: SHOP_PRICES.basicHeal,
-        cardRemovalCost: SHOP_PRICES.cardRemoval,
-        equipment: [],
+    // Create initial save data using new schema
+    const initialSaveData = {
+      runData: {
+        map: {
+          tiles: mapTiles,
+          width: 7,
+          height: rows,
+        },
+        location: {
+          realm: parseInt(realm, 10),
+          level: parseInt(level, 10),
+          mapX: 0,
+          mapY: 0,
+        },
+        fightStatus: {
+          inBattle: false,
+          playerHand: [],
+          playerDeck: playerDeck,
+          enemyHand: [],
+          enemyDeck: [],
+          enemyStats: {},
+          enemyHealth: 0,
+          enemyMaxHealth: 0,
+          turn: 'player',
+        },
+        eventStatus: {
+          currentEvent: null,
+          drawnCards: [],
+          eventStep: 0,
+          eventPhase: 'start',
+        },
+        statModifiers: {
+          power: 0,
+          will: 0,
+          craft: 0,
+          focus: 0,
+        },
+        equipment: startingEquipment,
+      },
+      gameData: {
+        health: calculatedMaxHealth,
+        maxHealth: calculatedMaxHealth,
+        currency: user.currency || 0,
+        stats: STARTING_STATS,
+        statXP: { power: 0, will: 0, craft: 0, focus: 0 },
+        unlockedUpgrades: unlockedUpgrades,
+        unlockedEquipment: ['sword', 'light'],
       },
     };
+
+    // Create new save using save service
+    const saveResult = saveService.createNewSave(
+      `Realm ${realm} - Level ${level}`,
+      initialSaveData
+    );
+
+    if (!saveResult.success) {
+      return res.status(500).json({ error: 'Failed to create new save' });
+    }
 
     // Calculate XP thresholds for each stat
     const xpThresholds = calculateAllXPThresholds(STARTING_STATS);
@@ -221,52 +278,46 @@ router.get('/new', requireAuth, async (req, res, next) => {
     return res.render('game', {
       title: 'Game - Deckrift',
       user: { username: req.session.username },
-      gameState,
-      gameSave: newGameSave,
+      gameSave: saveResult.saveData,
       unlockedUpgrades,
       currency: user.currency || 0,
       xpThresholds,
+      // Pass constants for frontend use
+      REALMS,
+      MAP_CONSTANTS,
+      SHOP_PRICES,
     });
   } catch (error) {
-    // Let the global error handler deal with it
     return next(error);
   }
 });
 
-// Continue existing game (or show message if no active game)
+// Continue game
 router.get('/', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
 
-    // Get active game save
-    const activeSave = await GameSave.findOne({
+    // Check if migration is needed
+    const migrationCheck = await migrationService.checkMigrationNeeded(
       userId,
-      isActive: true,
-    });
-
-    if (!activeSave) {
-      // No active game - show a message instead of redirecting
-      return res.render('game', {
-        title: 'Game - Deckrift',
-        user: { username: req.session.username },
-        gameState: {
-          currentScreen: 'no-game',
-          message: {
-            title: 'No Active Adventure',
-            subtitle: 'You have not opened a portal yet.',
-            description: 'Return to the Home Realm to begin your journey.',
-            action: {
-              text: 'Go to Home Realm',
-              url: '/home-realm',
-            },
-          },
-        },
-        gameSave: null,
-        unlockedUpgrades: [],
-        currency: 0,
-        xpThresholds: {},
-      });
+      userId
+    );
+    if (migrationCheck.needsMigration) {
+      await migrationService.performMigration(
+        userId,
+        userId,
+        migrationCheck.migrationType
+      );
     }
+
+    // Load current save
+    const saveResult = await saveService.loadSave(userId);
+    if (!saveResult.success) {
+      // No save found, redirect to new game
+      return res.redirect('/game/new');
+    }
+
+    const saveData = saveResult.saveData;
 
     // Get user data for upgrades
     const user = await User.findById(userId);
@@ -277,53 +328,20 @@ router.get('/', requireAuth, async (req, res, next) => {
       '../public/js/modules/gameData.js'
     );
 
-    // Import utility functions from gameUtils.js
-    const { getChallengeModifier } = await import(
-      '../public/js/modules/gameUtils.js'
-    );
-
-    // Calculate challenge modifier
-    const challengeModifier = getChallengeModifier(
-      activeSave.realm,
-      activeSave.level
-    );
-
-    // Use the existing map from the save (don't regenerate!)
-    const map = activeSave.map || [];
-
-    // Transform game save data to match template expectations
-    const gameState = {
-      health: activeSave.health,
-      maxHealth: activeSave.maxHealth,
-      currency: activeSave.currency,
-      realmName: REALMS[activeSave.realm]?.name || `Realm ${activeSave.realm}`,
-      level: activeSave.level,
-      currentScreen: activeSave.currentScreen || 'overworld',
-      challengeModifier,
-      cardsPerLevel: MAP_CONSTANTS.CARDS_PER_LEVEL,
-      map,
-      playerPosition: activeSave.playerPosition || { x: 0, y: 0 },
-      enemy: activeSave.battleState?.enemy || {},
-      event: activeSave.currentEvent || {},
-      deck: activeSave.playerDeck || [], // Add player deck to game state
-      shop: {
-        healCost: SHOP_PRICES.basicHeal,
-        cardRemovalCost: SHOP_PRICES.cardRemoval,
-        equipment: [],
-      },
-    };
-
     // Calculate XP thresholds for each stat
-    const xpThresholds = calculateAllXPThresholds(activeSave.stats || {});
+    const xpThresholds = calculateAllXPThresholds(saveData.gameData.stats);
 
     return res.render('game', {
       title: 'Game - Deckrift',
       user: { username: req.session.username },
-      gameState,
-      gameSave: activeSave,
+      gameSave: saveData,
       unlockedUpgrades,
       currency: user.currency || 0,
       xpThresholds,
+      // Pass constants for frontend use
+      REALMS,
+      MAP_CONSTANTS,
+      SHOP_PRICES,
     });
   } catch (error) {
     return next(error);
@@ -335,18 +353,15 @@ router.get('/state', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
+    const saveResult = await saveService.loadSave(userId);
 
-    if (!activeSave) {
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
     return res.json({
       success: true,
-      gameState: activeSave,
+      gameState: saveResult.saveData,
     });
   } catch (error) {
     return next(error);
@@ -354,27 +369,30 @@ router.get('/state', requireAuth, async (req, res, next) => {
 });
 
 // API endpoint to update game state
-router.post('/state', requireAuth, async (req, res, next) => {
+router.post('/update-game-state', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
-    const { gameState } = req.body;
+    const gameState = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
+    const saveResult = await saveService.loadSave(userId);
 
-    if (!activeSave) {
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
-    // Update game save with new state
-    Object.assign(activeSave, gameState);
-    await activeSave.save();
+    // Update the save with the new game state
+    if (gameState.runData) {
+      saveResult.saveData.runData = gameState.runData;
+    }
+    if (gameState.gameData) {
+      saveResult.saveData.gameData = gameState.gameData;
+    }
+
+    await saveService.updateSave(userId, saveResult.saveData);
 
     return res.json({
       success: true,
-      message: 'Game state updated',
+      message: 'Game state updated successfully',
     });
   } catch (error) {
     return next(error);
@@ -387,21 +405,18 @@ router.post('/end-run', requireAuth, async (req, res, next) => {
     const { userId } = req.session;
     const { reason, finalStats } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
+    const saveResult = await saveService.loadSave(userId);
 
-    if (!activeSave) {
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
     // Mark save as inactive
-    activeSave.isActive = false;
-    activeSave.endedAt = new Date();
-    activeSave.endReason = reason;
-    activeSave.finalStats = finalStats;
-    await activeSave.save();
+    saveResult.saveData.isActive = false;
+    saveResult.saveData.endedAt = new Date();
+    saveResult.saveData.endReason = reason;
+    saveResult.saveData.finalStats = finalStats;
+    await saveService.updateSave(userId, saveResult.saveData);
 
     // Update user statistics
     const user = await User.findById(userId);
@@ -428,19 +443,16 @@ router.post('/save', requireAuth, async (req, res, next) => {
     const { userId } = req.session;
     const { gameState } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
+    const saveResult = await saveService.loadSave(userId);
 
-    if (!activeSave) {
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
     // Update save with current state
-    Object.assign(activeSave, gameState);
-    activeSave.lastSaved = new Date();
-    await activeSave.save();
+    Object.assign(saveResult.saveData, gameState);
+    saveResult.saveData.lastSaved = new Date();
+    await saveService.updateSave(userId, saveResult.saveData);
 
     return res.json({
       success: true,
@@ -457,18 +469,15 @@ router.post('/update-deck', requireAuth, async (req, res, next) => {
     const { userId } = req.session;
     const { deck } = req.body;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
+    const saveResult = await saveService.loadSave(userId);
 
-    if (!activeSave) {
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
     // Update the player deck
-    activeSave.playerDeck = deck;
-    await activeSave.save();
+    saveResult.saveData.runData.fightStatus.playerDeck = deck;
+    await saveService.updateSave(userId, saveResult.saveData);
 
     return res.json({
       success: true,
@@ -484,9 +493,9 @@ router.post('/clear-saves', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
 
-    const result = await GameSave.deleteMany({ userId });
+    await saveService.deleteSave(userId);
 
-    return res.json({ success: true, deletedCount: result.deletedCount });
+    return res.json({ success: true, message: 'All saves cleared' });
   } catch (error) {
     return next(error);
   }
@@ -497,12 +506,9 @@ router.post('/regenerate-map', requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.session;
 
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
+    const saveResult = await saveService.loadSave(userId);
 
-    if (!activeSave) {
+    if (!saveResult.success) {
       return res.status(404).json({ error: 'No active game found' });
     }
 
@@ -515,14 +521,13 @@ router.post('/regenerate-map', requireAuth, async (req, res, next) => {
     const { getChallengeModifier } = await import('../services/gameUtils.js');
 
     // Generate basic overworld map
-    const challengeModifier = getChallengeModifier(
-      activeSave.realm,
-      activeSave.level
+    const rows = getChallengeModifier(
+      saveResult.saveData.runData.location.realm,
+      saveResult.saveData.runData.location.level
     );
-    const rows = challengeModifier;
 
     // Create a grid-based map structure
-    const map = [];
+    const mapTiles = [];
 
     // Generate actual cards for the map (excluding jokers)
     const availableCards = [];
@@ -546,7 +551,6 @@ router.post('/regenerate-map', requireAuth, async (req, res, next) => {
     let cardIndex = 0;
 
     for (let row = 0; row < rows; row += 1) {
-      const mapRow = [];
       const isFirstRow = row === 0;
       const isLastRow = row === rows - 1;
 
@@ -557,18 +561,22 @@ router.post('/regenerate-map', requireAuth, async (req, res, next) => {
         const isCardPosition = col >= 1 && col <= 5;
 
         if (isPlayerStart) {
-          mapRow.push({
-            id: `${row}-${col}`,
-            type: 'player-start',
-            position: { x: col, y: row },
-            isPlayerStart: true,
+          mapTiles.push({
+            x: col,
+            y: row,
+            visited: false,
+            suit: 'joker',
+            value: '𝕁',
+            type: 'joker',
           });
         } else if (isJokerPosition) {
-          mapRow.push({
-            id: `${row}-${col}`,
+          mapTiles.push({
+            x: col,
+            y: row,
+            visited: false,
+            suit: 'joker',
+            value: '𝕁',
             type: 'joker',
-            position: { x: col, y: row },
-            isJoker: true,
           });
         } else if (isCardPosition) {
           const actualCard = availableCards[cardIndex] || '?';
@@ -586,35 +594,28 @@ router.post('/regenerate-map', requireAuth, async (req, res, next) => {
             cardSuit = '?';
           }
 
-          mapRow.push({
-            id: `${row}-${col}`,
-            revealed: false,
-            card: {
-              value: cardValue,
-              suit: cardSuit,
-              display: actualCard,
-            },
+          mapTiles.push({
+            x: col,
+            y: row,
+            visited: false,
+            suit: cardSuit,
+            value: cardValue,
             type: 'unknown',
-            position: { x: col, y: row },
-            actualCard,
           });
           cardIndex += 1;
-        } else {
-          // Empty space for non-first/last rows
-          mapRow.push(null);
         }
+        // Empty space for non-first/last rows
       }
-      map.push(mapRow);
     }
 
     // Update the save with the new map
-    activeSave.map = map;
-    await activeSave.save();
+    saveResult.saveData.runData.map.tiles = mapTiles;
+    await saveService.updateSave(userId, saveResult.saveData);
 
     return res.json({
       success: true,
       message: 'Map regenerated successfully',
-      mapRows: map.length,
+      mapRows: mapTiles.length,
       cardsPlaced: cardIndex,
     });
   } catch (error) {

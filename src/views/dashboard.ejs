@@ -6,29 +6,6 @@
     </div>
 
     <div class="row">
-        <!-- Statistics Card -->
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Game Statistics</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-6">
-                            <p><strong>Games Played:</strong> <%= statistics.gamesPlayed || 0 %></p>
-                            <p><strong>Games Won:</strong> <%= statistics.gamesWon || 0 %></p>
-                            <p><strong>Win Rate:</strong> <%= statistics.winRate || 0 %>%</p>
-                        </div>
-                        <div class="col-6">
-                            <p><strong>Total Score:</strong> <%= statistics.totalScore || 0 %></p>
-                            <p><strong>Average Score:</strong> <%= statistics.avgScore || 0 %></p>
-                            <p><strong>Best Score:</strong> <%= statistics.bestScore || 0 %></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Recent Saves Card -->
         <div class="col-md-6 mb-4">
             <div class="card">
@@ -67,8 +44,8 @@
                 </div>
                 <div class="card-body">
                     <a href="/" class="btn btn-primary me-2">Play Game</a>
-                    <a href="/profile" class="btn btn-outline-secondary me-2">Edit Profile</a>
-                    <a href="/api/auth/logout" class="btn btn-outline-danger">Logout</a>
+                    <a href="/settings" class="btn btn-outline-secondary me-2">Settings</a>
+                    <a href="/auth/logout" class="btn btn-outline-danger">Logout</a>
                 </div>
             </div>
         </div>

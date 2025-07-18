@@ -1,6 +1,5 @@
-import GameSave from '../models/GameSave.js';
-import Profile from '../models/Profile.js';
-import Statistics from '../models/Statistics.js';
+import Save from '../models/Save.js';
+import { SAVE_VERSION } from '../services/saveSchemas.js';
 
 /**
  * Game Controller
@@ -15,24 +14,18 @@ export const getGameStatus = async (req, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const { profileId } = req.params;
-    if (!profileId) {
-      return res.status(400).json({ error: 'Profile ID required' });
-    }
-
     // Get active game save
-    const gameSave = await GameSave.findOne({
+    const save = await Save.findOne({
       userId,
-      profileId,
       isActive: true,
     });
 
-    if (!gameSave) {
+    if (!save) {
       return res.json({
         game: 'Deckrift – Drawn to Dust',
         status: 'active',
         hasActiveGame: false,
-        version: process.env.GAME_VERSION || '1.0.0',
+        version: process.env.GAME_VERSION || SAVE_VERSION,
         features: [
           'Profile Management',
           'Deck-based Combat',
@@ -49,10 +42,10 @@ export const getGameStatus = async (req, res) => {
       game: 'Deckrift – Drawn to Dust',
       status: 'active',
       hasActiveGame: true,
-      gameState: gameSave.gameState,
-      battleState: gameSave.battleState,
-      lastSaved: gameSave.lastSaved,
-      version: process.env.GAME_VERSION || '1.0.0',
+      runData: save.runData,
+      gameData: save.gameData,
+      lastSaved: save.metadata.lastPlayed,
+      version: process.env.GAME_VERSION || SAVE_VERSION,
       features: [
         'Profile Management',
         'Deck-based Combat',
@@ -76,55 +69,42 @@ export const saveGame = async (req, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const { profileId, gameState, battleState, saveName } = req.body;
+    const { runData, gameData, saveName } = req.body;
 
-    if (!profileId || !gameState) {
-      return res
-        .status(400)
-        .json({ error: 'Profile ID and game state required' });
-    }
-
-    // Check if profile exists and belongs to user
-    const profile = await Profile.findOne({ _id: profileId, userId });
-    if (!profile) {
-      return res.status(404).json({ error: 'Profile not found' });
+    if (!runData || !gameData) {
+      return res.status(400).json({ error: 'Run data and game data required' });
     }
 
     // Update or create game save
-    let gameSave = await GameSave.findOne({
+    let save = await Save.findOne({
       userId,
-      profileId,
       isActive: true,
     });
 
-    if (gameSave) {
+    if (save) {
       // Update existing save
-      gameSave.gameState = gameState;
-      gameSave.battleState = battleState || gameSave.battleState;
-      gameSave.lastSaved = new Date();
-      if (saveName) gameSave.saveName = saveName;
+      save.runData = runData;
+      save.gameData = gameData;
+      save.metadata.lastPlayed = new Date();
+      if (saveName) save.saveName = saveName;
     } else {
       // Create new save
-      gameSave = new GameSave({
+      save = new Save({
         userId,
-        profileId,
         saveName: saveName || 'Auto Save',
-        gameState,
-        battleState: battleState || { inBattle: false },
+        version: SAVE_VERSION,
         isActive: true,
+        runData,
+        gameData,
       });
     }
 
-    await gameSave.save();
-
-    // Update profile last played
-    profile.lastPlayed = new Date();
-    await profile.save();
+    await save.save();
 
     res.json({
       message: 'Game saved successfully',
-      saveId: gameSave._id,
-      lastSaved: gameSave.lastSaved,
+      saveId: save._id,
+      lastSaved: save.metadata.lastPlayed,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to save game' });
@@ -139,121 +119,28 @@ export const loadGame = async (req, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const { profileId, saveId } = req.params;
-
-    if (!profileId) {
-      return res.status(400).json({ error: 'Profile ID required' });
-    }
-
-    // Check if profile exists and belongs to user
-    const profile = await Profile.findOne({ _id: profileId, userId });
-    if (!profile) {
-      return res.status(404).json({ error: 'Profile not found' });
-    }
+    const { saveId } = req.params;
 
     // Find game save
-    const query = { userId, profileId };
+    const query = { userId };
     if (saveId) {
       query._id = saveId;
     } else {
       query.isActive = true;
     }
 
-    const gameSave = await GameSave.findOne(query);
-    if (!gameSave) {
+    const save = await Save.findOne(query);
+    if (!save) {
       return res.status(404).json({ error: 'Game save not found' });
     }
 
     res.json({
-      gameState: gameSave.gameState,
-      battleState: gameSave.battleState,
-      saveName: gameSave.saveName,
-      lastSaved: gameSave.lastSaved,
+      runData: save.runData,
+      gameData: save.gameData,
+      saveName: save.saveName,
+      lastSaved: save.metadata.lastPlayed,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to load game' });
-  }
-};
-
-// Get game statistics endpoint
-export const getGameStats = async (req, res) => {
-  try {
-    const { userId } = req.session;
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const { profileId } = req.params;
-    if (!profileId) {
-      return res.status(400).json({ error: 'Profile ID required' });
-    }
-
-    // Get statistics for the profile
-    const statistics = await Statistics.findOne({ userId, profileId });
-    if (!statistics) {
-      return res.status(404).json({ error: 'Statistics not found' });
-    }
-
-    res.json({
-      statistics,
-      achievements: statistics.achievements,
-      performance: {
-        winRate: statistics.winRate,
-        totalGames: statistics.totalGamesPlayed,
-        averageGameTime: statistics.averageGameTime,
-        longestGame: statistics.longestGame,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get game statistics' });
-  }
-};
-
-// Get user's game saves
-export const getGameSaves = async (req, res) => {
-  try {
-    const { userId } = req.session;
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const { profileId } = req.params;
-    if (!profileId) {
-      return res.status(400).json({ error: 'Profile ID required' });
-    }
-
-    const saves = await GameSave.find({ userId, profileId })
-      .sort({ lastSaved: -1 })
-      .select('saveName lastSaved isActive version');
-
-    res.json({ saves });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get game saves' });
-  }
-};
-
-// Delete game save
-export const deleteGameSave = async (req, res) => {
-  try {
-    const { userId } = req.session;
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const { saveId } = req.params;
-    if (!saveId) {
-      return res.status(400).json({ error: 'Save ID required' });
-    }
-
-    const gameSave = await GameSave.findOne({ _id: saveId, userId });
-    if (!gameSave) {
-      return res.status(404).json({ error: 'Game save not found' });
-    }
-
-    await GameSave.findByIdAndDelete(saveId);
-
-    res.json({ message: 'Game save deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete game save' });
   }
 };

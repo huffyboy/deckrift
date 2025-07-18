@@ -1,8 +1,8 @@
 import express from 'express';
 import gameRoutes from './game.js';
 import authRoutes from './auth.js';
-import apiRoutes from './api.js';
 import { optionalAuth, requireGuest } from '../middlewares/auth.js';
+import { SAVE_VERSION } from '../services/saveSchemas.js';
 
 const router = express.Router();
 
@@ -30,8 +30,8 @@ router.get('/dashboard', async (req, res) => {
   return res.redirect('/home-realm');
 });
 
-// Profile route
-router.get('/profile', async (req, res) => {
+// Settings route
+router.get('/settings', async (req, res) => {
   if (!req.session.userId) {
     return res.redirect('/');
   }
@@ -46,23 +46,22 @@ router.get('/profile', async (req, res) => {
     }
 
     // Get active game save for navbar
-    const GameSave = (await import('../models/GameSave.js')).default;
-    const activeSave = await GameSave.findOne({
-      userId: req.session.userId,
-      isActive: true,
-    });
+    const SaveService = (await import('../services/saveService.js')).default;
+    const saveService = new SaveService();
+    const { userId } = req.session;
+    const saveResult = await saveService.loadSave(userId);
+    const activeSave = saveResult.success ? saveResult.saveData : null;
 
-    return res.render('profile', {
-      title: 'Profile - Deckrift',
+    return res.render('settings', {
+      title: 'Settings - Deckrift',
       user: {
         username: user.username,
         email: user.email,
         createdAt: user.createdAt,
       },
       gameSave: activeSave, // Add gameSave data for navbar
-      profile: {
+      settings: {
         displayName: user.displayName || '',
-        bio: user.bio || '',
         preferences: user.preferences || {
           autoSave: true,
           soundEnabled: true,
@@ -72,7 +71,7 @@ router.get('/profile', async (req, res) => {
   } catch (error) {
     return res.status(500).render('errors/error', {
       title: 'Error - Deckrift',
-      message: 'Failed to load profile',
+      message: 'Failed to load settings',
       error,
       user: { username: req.session.username },
     });
@@ -104,7 +103,7 @@ router.get('/health', (req, res) =>
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    version: process.env.GAME_VERSION || '1.0.0',
+    version: process.env.GAME_VERSION || SAVE_VERSION,
   })
 );
 
@@ -113,18 +112,8 @@ router.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
   res.status(204).end(); // No content response
 });
 
-// API routes (to be expanded)
-router.get('/api/status', (req, res) =>
-  res.json({
-    game: 'Deckrift – Drawn to Dust',
-    status: 'running',
-    version: process.env.GAME_VERSION || '1.0.0',
-  })
-);
-
-// API routes
-router.use('/api', apiRoutes);
-router.use('/api/auth', authRoutes);
-router.use('/api/game', gameRoutes);
+// Routes
+router.use('/auth', authRoutes);
+router.use('/game', gameRoutes);
 
 export default router;

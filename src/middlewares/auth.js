@@ -12,8 +12,8 @@ export const requireAuth = async (req, res, next) => {
     const { userId } = req.session;
 
     if (!userId) {
-      // For API routes, return JSON error
-      if (req.path.startsWith('/api/')) {
+      // Check if this is a JSON request (AJAX/fetch)
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
         return res.status(401).json({
           error: 'Authentication required',
           authenticated: false,
@@ -30,7 +30,7 @@ export const requireAuth = async (req, res, next) => {
       // Clear invalid session
       req.session.destroy();
 
-      if (req.path.startsWith('/api/')) {
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
         return res.status(401).json({
           error: 'Invalid session',
           authenticated: false,
@@ -46,7 +46,7 @@ export const requireAuth = async (req, res, next) => {
   } catch (error) {
     logger.error('Auth middleware error:', error);
 
-    if (req.path.startsWith('/api/')) {
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
       return res.status(500).json({
         error: 'Authentication check failed',
         authenticated: false,

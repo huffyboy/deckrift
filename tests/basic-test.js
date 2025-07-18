@@ -14,10 +14,10 @@ async function testBasicFunctionality() {
       password: 'testpassword123',
     };
 
-    await axios.post(`${BASE_URL}/api/auth/register`, testUser);
+    await axios.post(`${BASE_URL}/auth/register`, testUser);
 
     // Test 3: Login
-    const loginResponse = await axios.post(`${BASE_URL}/api/auth/login`, {
+    const loginResponse = await axios.post(`${BASE_URL}/auth/login`, {
       username: testUser.username,
       password: testUser.password,
     });
@@ -27,7 +27,7 @@ async function testBasicFunctionality() {
     const sessionCookie = cookies ? cookies[0] : '';
 
     // Test 4: Authentication check
-    await axios.get(`${BASE_URL}/api/auth/check`, {
+    await axios.get(`${BASE_URL}/auth/check`, {
       headers: { Cookie: sessionCookie },
     });
 
@@ -38,12 +38,12 @@ async function testBasicFunctionality() {
       timestamp: new Date().toISOString(),
     };
 
-    await axios.post(`${BASE_URL}/api/game/save`, gameData, {
+    await axios.post(`${BASE_URL}/game/save`, gameData, {
       headers: { Cookie: sessionCookie },
     });
 
     // Test 6: Game load
-    await axios.get(`${BASE_URL}/api/game/saves`, {
+    await axios.get(`${BASE_URL}/game/saves`, {
       headers: { Cookie: sessionCookie },
     });
   } catch (error) {

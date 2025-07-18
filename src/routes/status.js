@@ -1,5 +1,5 @@
 import express from 'express';
-import GameSave from '../models/GameSave.js';
+import SaveService from '../services/saveService.js';
 import User from '../models/User.js';
 import logger from '../config/logger.js';
 import {
@@ -13,6 +13,9 @@ import {
 } from '../public/js/modules/gameUtils.js';
 
 const router = express.Router();
+
+// Create save service instance
+const saveService = new SaveService();
 
 // Helper function to check if a card matches a condition
 function cardMatchesCondition(card, condition) {
@@ -153,17 +156,19 @@ router.get('/', requireAuth, async (req, res) => {
     }
 
     // Get current active game save to show current deck
-    const activeSave = await GameSave.findOne({
-      userId,
-      isActive: true,
-    });
+    const saveResult = await saveService.loadSave(userId);
+    const activeSave = saveResult.success ? saveResult.saveData : null;
 
     // Get deck data (from active save or generate standard deck)
     let currentDeck = [];
     let deckSize = 0;
 
-    if (activeSave && activeSave.deck && Array.isArray(activeSave.deck)) {
-      currentDeck = activeSave.deck;
+    if (
+      activeSave &&
+      activeSave.runData.fightStatus.playerDeck &&
+      Array.isArray(activeSave.runData.fightStatus.playerDeck)
+    ) {
+      currentDeck = activeSave.runData.fightStatus.playerDeck;
       deckSize = currentDeck.length;
     } else {
       // Generate standard 52-card deck
@@ -176,12 +181,16 @@ router.get('/', requireAuth, async (req, res) => {
 
     if (
       activeSave &&
-      activeSave.equipment &&
-      Array.isArray(activeSave.equipment)
+      activeSave.runData.equipment &&
+      Array.isArray(activeSave.runData.equipment)
     ) {
       // Use new unified equipment array - look up full data from gameData
-      activeSave.equipment.forEach((item) => {
-        const equipmentData = getEquipmentData(item.key, item.type, EQUIPMENT);
+      activeSave.runData.equipment.forEach((item) => {
+        const equipmentData = getEquipmentData(
+          item.value,
+          item.type,
+          EQUIPMENT
+        );
 
         switch (item.type) {
           case 'weapon':

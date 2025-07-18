@@ -29,7 +29,7 @@ export async function loadData(endpoint, errorMessage = 'Failed to load data') {
  * @returns {Promise<Object>} - Home realm data
  */
 export async function loadHomeRealmData() {
-  return loadData('/api/home-realm/data', 'Failed to load home realm data');
+  return loadData('/home-realm/data', 'Failed to load home realm data');
 }
 
 /**
@@ -37,7 +37,7 @@ export async function loadHomeRealmData() {
  * @returns {Promise<Object>} - Game state data
  */
 export async function loadGameState() {
-  return loadData('/api/game/state', 'Failed to load game state');
+  return loadData('/game/state', 'Failed to load game state');
 }
 
 /**
@@ -45,7 +45,7 @@ export async function loadGameState() {
  * @returns {Promise<Object>} - Battle state data
  */
 export async function loadBattleState() {
-  return loadData('/api/battle/state', 'Failed to load battle state');
+  return loadData('/battle/state', 'Failed to load battle state');
 }
 
 /**
@@ -53,7 +53,7 @@ export async function loadBattleState() {
  * @returns {Promise<Object>} - Event data
  */
 export async function loadEventData() {
-  return loadData('/api/event/data', 'Failed to load event data');
+  return loadData('/event/data', 'Failed to load event data');
 }
 
 /**
@@ -61,7 +61,7 @@ export async function loadEventData() {
  * @returns {Promise<Object>} - Shop data
  */
 export async function loadShopData() {
-  return loadData('/api/shop/data', 'Failed to load shop data');
+  return loadData('/shop/data', 'Failed to load shop data');
 }
 
 /**
@@ -69,7 +69,7 @@ export async function loadShopData() {
  * @returns {Promise<Object>} - Game over data
  */
 export async function loadGameOverData() {
-  return loadData('/api/game-over/data', 'Failed to load game over data');
+  return loadData('/game-over/data', 'Failed to load game over data');
 }
 
 /**
@@ -77,15 +77,15 @@ export async function loadGameOverData() {
  * @returns {Promise<Object>} - Status data
  */
 export async function loadStatusData() {
-  return loadData('/api/status/data', 'Failed to load status data');
+  return loadData('/status/data', 'Failed to load status data');
 }
 
 /**
- * Load profile data
- * @returns {Promise<Object>} - Profile data
+ * Load settings data
+ * @returns {Promise<Object>} - Settings data
  */
-export async function loadProfileData() {
-  return loadData('/api/profile/data', 'Failed to load profile data');
+export async function loadSettingsData() {
+  return loadData('/settings/data', 'Failed to load settings data');
 }
 
 /**
@@ -93,7 +93,7 @@ export async function loadProfileData() {
  * @returns {Promise<Object>} - Upgrades data
  */
 export async function loadUpgradesData() {
-  return loadData('/api/upgrades', 'Failed to load upgrades');
+  return loadData('/upgrades', 'Failed to load upgrades');
 }
 
 /**
@@ -101,7 +101,7 @@ export async function loadUpgradesData() {
  * @returns {Promise<Object>} - Shop items data
  */
 export async function loadShopItems() {
-  return loadData('/api/shop/items', 'Failed to load shop items');
+  return loadData('/shop/items', 'Failed to load shop items');
 }
 
 /**
@@ -109,5 +109,5 @@ export async function loadShopItems() {
  * @returns {Promise<Object>} - Status data
  */
 export async function loadStatus() {
-  return loadData('/api/status', 'Failed to load status');
+  return loadData('/status', 'Failed to load status');
 }

@@ -6,11 +6,11 @@
         </div>
     </div>
 
-    <!-- Current Profile -->
-    <div class="profile-section mb-4">
-        <h3>Current Profile</h3>
-        <div class="profile-info">
-            <p><strong>Name:</strong> <%= currentProfile ? currentProfile.profileName : 'No Profile Selected' %></p>
+    <!-- Player Info -->
+    <div class="user-section mb-4">
+        <h3>Player Info</h3>
+        <div class="user-info">
+            <p><strong>Display Name:</strong> <%= currentUser ? currentUser.displayName : 'Rift Walker' %></p>
             <p><strong>Currency:</strong> <%= currency %></p>
         </div>
     </div>
@@ -21,10 +21,10 @@
         <h3>Active Run</h3>
         <div class="run-info">
             <p><strong>Realm:</strong> 
-                <%= REALMS[activeSave.realm] ? REALMS[activeSave.realm].name : `Realm ${activeSave.realm}` %>
+                <%= REALMS[activeSave.runData.location.realm] ? REALMS[activeSave.runData.location.realm].name : `Realm ${activeSave.runData.location.realm}` %>
             </p>
-            <p><strong>Level:</strong> <%= activeSave.level %></p>
-            <p><strong>Health:</strong> <%= activeSave.health %>/<%= activeSave.maxHealth %></p>
+            <p><strong>Level:</strong> <%= activeSave.runData.location.level %></p>
+            <p><strong>Health:</strong> <%= activeSave.gameData.health %>/<%= activeSave.gameData.maxHealth %></p>
         </div>
         <button class="btn btn-primary" id="resume-run-btn">Resume Run</button>
     </div>
@@ -87,20 +87,20 @@
         <h4>Character Stats</h4>
         <div class="stats-grid">
             <div class="stat-item">
-                <strong>Power:</strong> <%= currentProfile ? currentProfile.power : 4 %> 
-                <small>(<%= currentProfile ? currentProfile.powerXP : 0 %>/<%= xpThresholds.power %>)</small>
+                <strong>Power:</strong> <%= activeSave ? activeSave.gameData.stats.power : 4 %> 
+                <small>(<%= activeSave ? activeSave.gameData.statXP.power : 0 %>/<%= xpThresholds.power %>)</small>
             </div>
             <div class="stat-item">
-                <strong>Will:</strong> <%= currentProfile ? currentProfile.will : 4 %> 
-                <small>(<%= currentProfile ? currentProfile.willXP : 0 %>/<%= xpThresholds.will %>)</small>
+                <strong>Will:</strong> <%= activeSave ? activeSave.gameData.stats.will : 4 %> 
+                <small>(<%= activeSave ? activeSave.gameData.statXP.will : 0 %>/<%= xpThresholds.will %>)</small>
             </div>
             <div class="stat-item">
-                <strong>Craft:</strong> <%= currentProfile ? currentProfile.craft : 4 %> 
-                <small>(<%= currentProfile ? currentProfile.craftXP : 0 %>/<%= xpThresholds.craft %>)</small>
+                <strong>Craft:</strong> <%= activeSave ? activeSave.gameData.stats.craft : 4 %> 
+                <small>(<%= activeSave ? activeSave.gameData.statXP.craft : 0 %>/<%= xpThresholds.craft %>)</small>
             </div>
             <div class="stat-item">
-                <strong>Focus:</strong> <%= currentProfile ? currentProfile.focus : 4 %> 
-                <small>(<%= currentProfile ? currentProfile.focusXP : 0 %>/<%= xpThresholds.focus %>)</small>
+                <strong>Focus:</strong> <%= activeSave ? activeSave.gameData.stats.focus : 4 %> 
+                <small>(<%= activeSave ? activeSave.gameData.statXP.focus : 0 %>/<%= xpThresholds.focus %>)</small>
             </div>
         </div>
     </div>
