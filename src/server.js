@@ -98,6 +98,21 @@ app.use(notFound);
 // Global error handler
 app.use(handleGlobalErrors);
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise);
+  logger.error('Reason:', reason);
+  logger.error('Stack:', reason?.stack);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:');
+  logger.error('Error:', error.message);
+  logger.error('Stack:', error.stack);
+  process.exit(1);
+});
+
 // Start server
 app.listen(port, () => {
   logger.info(`Server is running at ${process.env.URL}`);

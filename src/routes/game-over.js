@@ -4,77 +4,13 @@ import SaveService from '../services/saveService.js';
 import {
   createDefaultSaveData,
   SAVE_VERSION,
+  createFightStatus,
 } from '../services/saveSchemas.js';
 
 const router = express.Router();
 
 // Create save service instance
 const saveService = new SaveService();
-
-// Helper function to calculate final score
-function calculateScore(stats) {
-  let score = 0;
-
-  // Base score from levels completed
-  score += stats.levelsCompleted * 100;
-
-  // Bonus for XP gained
-  score += Math.floor(stats.totalXP / 10);
-
-  // Bonus for cards collected
-  score += stats.cardsCollected * 5;
-
-  // Bonus for artifacts found
-  score += stats.artifactsFound * 25;
-
-  // Bonus for currency earned
-  score += stats.currencyEarned;
-
-  // Time bonus (faster runs get more points)
-  if (stats.duration > 0) {
-    score += Math.max(0, 1000 - stats.duration * 2);
-  }
-
-  return Math.max(0, score);
-}
-
-// Helper function to calculate run statistics
-function calculateRunStats(saveData) {
-  const stats = {
-    duration: 0,
-    levelsCompleted: saveData.runData.location.level - 1,
-    totalXP: 0,
-    cardsCollected: saveData.runData.fightStatus.playerDeck
-      ? saveData.runData.fightStatus.playerDeck.length
-      : 0,
-    artifactsFound: saveData.runData.equipment
-      ? saveData.runData.equipment.filter((item) => item.type === 'artifact')
-          .length
-      : 0,
-    currencyEarned: saveData.gameData.currency || 0,
-    finalScore: 0,
-  };
-
-  // Calculate duration if we have start and end times
-  if (saveData.timestamp && saveData.endedAt) {
-    stats.duration = Math.floor(
-      (saveData.endedAt - saveData.timestamp) / 1000 / 60
-    ); // minutes
-  }
-
-  // Calculate total XP
-  if (saveData.gameData.statXP) {
-    stats.totalXP = Object.values(saveData.gameData.statXP).reduce(
-      (sum, xp) => sum + (xp || 0),
-      0
-    );
-  }
-
-  // Calculate final score based on various factors
-  stats.finalScore = calculateScore(stats);
-
-  return stats;
-}
 
 // Middleware to check if user is authenticated
 const requireAuth = (req, res, next) => {
@@ -103,14 +39,23 @@ router.get('/', requireAuth, async (req, res) => {
       return res.redirect('/home-realm');
     }
 
-    // Calculate run statistics
-    const runStats = calculateRunStats(saveData);
+    // Get final stats from the save
+    const finalStats = {
+      health: saveData.gameData.health,
+      maxHealth: saveData.gameData.maxHealth,
+      power: saveData.gameData.stats.power,
+      will: saveData.gameData.stats.will,
+      craft: saveData.gameData.stats.craft,
+      focus: saveData.gameData.stats.focus,
+      currencyEarned: saveData.runData.runCurrency || 0,
+    };
 
     return res.render('game-over', {
       title: 'Game Over - Deckrift',
       user: { username: req.session.username },
-      gameSave: saveData ? { ...saveData, isActive: true } : null,
-      runStats,
+      gameSave: { ...saveData, isActive: false },
+      finalStats,
+      endReason: saveData.endReason || 'Unknown',
     });
   } catch (error) {
     return res.status(500).render('errors/error', {
@@ -184,17 +129,7 @@ router.post('/new-run', requireAuth, async (req, res) => {
           mapX: 0,
           mapY: 0,
         },
-        fightStatus: {
-          inBattle: false,
-          playerHand: [],
-          playerDeck: [],
-          enemyHand: [],
-          enemyDeck: [],
-          enemyStats: {},
-          enemyHealth: 0,
-          enemyMaxHealth: 0,
-          turn: 'player',
-        },
+        fightStatus: createFightStatus(),
         eventStatus: {
           currentEvent: null,
           drawnCards: [],

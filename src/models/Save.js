@@ -17,9 +17,11 @@ const saveSchema = new mongoose.Schema(
       type: String,
       default: '1.0.0',
     },
-    isActive: {
-      type: Boolean,
-      default: true,
+    saveSlot: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 10,
     },
 
     // New save system structure - Run Data (Temporary/Session)
@@ -60,8 +62,8 @@ const saveSchema = new mongoose.Schema(
             },
             type: {
               type: String,
-              enum: ['unknown', 'joker', 'player-start'],
-              default: 'unknown',
+              enum: ['standard', 'joker', 'player-start', 'unknown'],
+              default: 'standard',
             },
           },
         ],
@@ -77,9 +79,11 @@ const saveSchema = new mongoose.Schema(
       fightStatus: {
         inBattle: { type: Boolean, default: false },
         playerHand: [{ type: mongoose.Schema.Types.Mixed }],
-        playerDeck: [{ type: mongoose.Schema.Types.Mixed }],
+        playerDeck: [{ type: mongoose.Schema.Types.Mixed }], // Cards remaining to draw
+        playerDiscard: [{ type: mongoose.Schema.Types.Mixed }], // Cards played/discarded
         enemyHand: [{ type: mongoose.Schema.Types.Mixed }],
         enemyDeck: [{ type: mongoose.Schema.Types.Mixed }],
+        enemyDiscard: [{ type: mongoose.Schema.Types.Mixed }], // Enemy cards played/discarded
         enemyStats: { type: mongoose.Schema.Types.Mixed, default: {} },
         enemyHealth: { type: Number, default: 0 },
         enemyMaxHealth: { type: Number, default: 0 },
@@ -105,9 +109,9 @@ const saveSchema = new mongoose.Schema(
             required: true,
           },
           value: { type: String, required: true },
-          equipped: { type: Boolean, default: false },
         },
       ],
+      playerDeck: [{ type: mongoose.Schema.Types.Mixed }], // All cards player owns for this run
     },
 
     // New save system structure - Game Data (Persistent)
@@ -116,7 +120,7 @@ const saveSchema = new mongoose.Schema(
       timestamp: { type: Number, required: true },
       health: { type: Number, required: true, min: 0 },
       maxHealth: { type: Number, required: true, min: 1 },
-      currency: { type: Number, required: true, min: 0 },
+      saveCurrency: { type: Number, required: true, min: 0, default: 0 }, // Currency outside of runs
       stats: {
         power: { type: Number, required: true, min: 1 },
         will: { type: Number, required: true, min: 1 },
@@ -129,15 +133,21 @@ const saveSchema = new mongoose.Schema(
         craft: { type: Number, required: true, min: 0 },
         focus: { type: Number, required: true, min: 0 },
       },
-      unlockedUpgrades: [{ type: String }],
+      // Per-save upgrades and realm progress
+      upgrades: [{ type: String }],
       unlockedEquipment: [{ type: String }],
+      completedRealms: { type: [Number], default: [] },
+      unlockedRealms: { type: [Number], default: [1] }, // Start with first realm unlocked
     },
 
     // Metadata
     metadata: {
       totalPlayTime: { type: Number, default: 0 },
       lastPlayed: { type: Date, default: Date.now },
-      saveSlot: { type: Number, default: 1 },
+      lastSelectedEquipment: {
+        weapon: { type: String, default: null },
+        armor: { type: String, default: null },
+      },
     },
   },
   {
@@ -146,8 +156,7 @@ const saveSchema = new mongoose.Schema(
 );
 
 // Indexes for performance
-saveSchema.index({ userId: 1, isActive: 1 });
-saveSchema.index({ userId: 1, saveSlot: 1 });
+saveSchema.index({ userId: 1, saveSlot: 1 }, { unique: true }); // Ensure one save per slot per user
 saveSchema.index({ lastPlayed: -1 });
 saveSchema.index({ 'runData.location.realm': 1, 'runData.location.level': 1 });
 

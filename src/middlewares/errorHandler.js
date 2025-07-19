@@ -1,6 +1,50 @@
 import logger from '../config/logger.js';
 
 /**
+ * Utility function for proper error handling in routes
+ * Logs the error and returns appropriate response
+ * @param {Error} error - The error object
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {string} context - Context where error occurred
+ * @param {boolean} isJson - Whether to return JSON response
+ */
+export function handleRouteError(
+  error,
+  req,
+  res,
+  context = 'Unknown',
+  isJson = true
+) {
+  // Log the full error with context
+  logger.error(`=== ROUTE ERROR: ${context} ===`);
+  logger.error(`Error Message: ${error.message}`);
+  logger.error(`Error Stack: ${error.stack}`);
+  logger.error(`Request URL: ${req.url}`);
+  logger.error(`Request Method: ${req.method}`);
+  logger.error(`User ID: ${req.session?.userId}`);
+  logger.error(`Request Body: ${JSON.stringify(req.body, null, 2)}`);
+  logger.error('=============================');
+
+  // Return appropriate response
+  if (isJson) {
+    return res.status(500).json({
+      error: 'Server Error',
+      message:
+        'Please try again later. If the problem persists, contact support.',
+      context: context,
+    });
+  } else {
+    return res.status(500).render('errors/error', {
+      title: 'Error - Deckrift',
+      message: 'An unexpected error occurred.',
+      error: process.env.NODE_ENV === 'development' ? error : {},
+      context: context,
+    });
+  }
+}
+
+/**
  * Custom error class for API errors
  */
 export class ApiError extends Error {
@@ -24,13 +68,20 @@ export const notFound = (req, res) => {
 
 export const createErrorHandler =
   (_defaultMessage, _isDevelopment) => (err, req, res, _next) => {
-    // Log the error
-    logger.error('Error:', err);
+    // Log the full error with stack trace
+    logger.error('=== EXPRESS ERROR HANDLER ===');
+    logger.error(`Error Message: ${err.message}`);
+    logger.error(`Error Stack: ${err.stack}`);
+    logger.error(`Request URL: ${req.url}`);
+    logger.error(`Request Method: ${req.method}`);
+    logger.error(`User ID: ${req.session?.userId}`);
+    logger.error('=============================');
 
     // Send error response
     res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Something went wrong',
+      error: 'Server Error',
+      message:
+        'Please try again later. If the problem persists, contact support.',
     });
   };
 

@@ -2,6 +2,13 @@
  * Game utility functions shared across routes
  */
 
+import {
+  CHALLENGE_MODIFIERS,
+  MAP_CARD_VALUES,
+  MAP_CARD_SUITS,
+  TEXT_TO_VALUE_MAP,
+} from '../public/js/modules/gameData.js';
+
 /**
  * Calculate XP threshold for a stat level
  * @param {number} statLevel - Current stat level
@@ -71,11 +78,15 @@ export function shuffleDeck(deck) {
   return shuffled;
 }
 
-import {
-  CHALLENGE_MODIFIERS,
-  MAP_CARD_VALUES,
-  MAP_CARD_SUITS,
-} from '../public/js/modules/gameData.js';
+/**
+ * Get card value from card object or string value
+ * @param {Object|string} cardInput - The card object with value property or string value
+ * @returns {number} Numeric value of the card
+ */
+export function getCardValue(cardInput) {
+  const value = typeof cardInput === 'string' ? cardInput : cardInput.value;
+  return TEXT_TO_VALUE_MAP[value] || parseInt(value) || 0;
+}
 
 /**
  * Get challenge modifier for a given realm and level

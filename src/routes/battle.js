@@ -1,5 +1,6 @@
 import express from 'express';
 import SaveService from '../services/saveService.js';
+import { addCardsToDeck, DECK_TYPES } from '../services/deckService.js';
 import { requireAuth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -181,15 +182,17 @@ router.post('/end', requireAuth, async (req, res) => {
             (activeSave.gameData.statXP[stat] || 0) + rewards.xp[stat];
         });
       }
-      if (rewards.currency) {
-        activeSave.gameData.currency =
-          (activeSave.gameData.currency || 0) + rewards.currency;
-      }
+      // Add currency reward to run currency
+      activeSave.runData.runCurrency =
+        (activeSave.runData.runCurrency || 0) + rewards.currency;
       if (rewards.cards) {
-        activeSave.runData.fightStatus.playerDeck = [
-          ...(activeSave.runData.fightStatus.playerDeck || []),
-          ...rewards.cards,
-        ];
+        // Add reward cards to the main player deck using deck service
+        const updatedSave = addCardsToDeck(
+          activeSave,
+          DECK_TYPES.PLAYER_MAIN,
+          rewards.cards
+        );
+        Object.assign(activeSave, updatedSave);
       }
     }
 

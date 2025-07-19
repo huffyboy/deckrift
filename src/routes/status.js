@@ -2,15 +2,13 @@ import express from 'express';
 import SaveService from '../services/saveService.js';
 import User from '../models/User.js';
 import logger from '../config/logger.js';
-import {
-  EQUIPMENT,
-  HOME_REALM_UPGRADES,
-  EFFECT_TO_MULTIPLIER,
-} from '../public/js/modules/gameData.js';
+import { EQUIPMENT, STAT_EFFECTS } from '../public/js/modules/gameData.js';
 import {
   getCardValue,
   generateStandardDeck,
-} from '../public/js/modules/gameUtils.js';
+  calculateAllXPThresholds,
+} from '../services/gameUtils.js';
+import { getDeck, DECK_TYPES } from '../services/deckService.js';
 
 const router = express.Router();
 
@@ -69,7 +67,7 @@ function calculateDynamicStats(equipment, deck, power = 4) {
   }
 
   // Use centralized effect mapping from gameData
-  const effectToMultiplier = EFFECT_TO_MULTIPLIER;
+  const effectToMultiplier = EQUIPMENT.effectToMultiplier;
 
   const totalCards = deck.length;
   let hitCards = 0;
@@ -157,57 +155,91 @@ router.get('/', requireAuth, async (req, res) => {
 
     // Get current active game save to show current deck
     const saveResult = await saveService.loadSave(userId);
-    const activeSave = saveResult.success ? saveResult.saveData : null;
+    let activeSave = saveResult.success ? saveResult.saveData : null;
 
-    // Get deck data (from active save or generate standard deck)
+    // Create default save for new users who don't have one yet
+    if (!activeSave) {
+      const { createDefaultSaveData } = await import(
+        '../services/saveSchemas.js'
+      );
+      const defaultSaveData = createDefaultSaveData();
+
+      const createResult = await saveService.createNewSave(
+        userId,
+        defaultSaveData
+      );
+      if (createResult.success) {
+        activeSave = createResult.saveData;
+      }
+    }
+
+    // Get current deck from active save using deck service
     let currentDeck = [];
     let deckSize = 0;
 
+    // Get user's active save slot
+    const activeSaveSlot = user?.activeSaveSlot || 1;
+
     if (
       activeSave &&
-      activeSave.runData.fightStatus.playerDeck &&
-      Array.isArray(activeSave.runData.fightStatus.playerDeck)
+      activeSave.saveSlot === activeSaveSlot &&
+      activeSave.runData
     ) {
-      currentDeck = activeSave.runData.fightStatus.playerDeck;
+      // In a run - show player's main deck using deck service
+      currentDeck = getDeck(activeSave, DECK_TYPES.PLAYER_MAIN);
       deckSize = currentDeck.length;
     } else {
-      // Generate standard 52-card deck
+      // Not in a run or no save - show standard 52-card deck
       currentDeck = generateStandardDeck();
       deckSize = currentDeck.length;
     }
 
-    // Get equipment collection from active save
+    // Get equipment collection from active save (all unlocked equipment)
     const equipmentCollection = { weapons: [], armor: [], artifacts: [] };
 
     if (
       activeSave &&
-      activeSave.runData.equipment &&
-      Array.isArray(activeSave.runData.equipment)
+      activeSave.unlockedEquipment &&
+      Array.isArray(activeSave.unlockedEquipment)
     ) {
-      // Use new unified equipment array - look up full data from gameData
-      activeSave.runData.equipment.forEach((item) => {
-        const equipmentData = getEquipmentData(
-          item.value,
-          item.type,
-          EQUIPMENT
-        );
+      // Use unlockedEquipment to show all equipment the player owns
+      activeSave.unlockedEquipment.forEach((equipmentKey) => {
+        // Determine equipment type and get full data
+        let equipmentType = 'weapon'; // Default
+        let equipmentData = null;
 
-        switch (item.type) {
-          case 'weapon':
-            equipmentCollection.weapons.push({
-              ...equipmentData,
-            });
-            break;
-          case 'armor':
-            equipmentCollection.armor.push({
-              ...equipmentData,
-            });
-            break;
-          case 'artifact':
-            equipmentCollection.artifacts.push({
-              ...equipmentData,
-            });
-            break;
+        // Check each equipment category to find the item
+        if (EQUIPMENT.weapons[equipmentKey]) {
+          equipmentType = 'weapon';
+          equipmentData = EQUIPMENT.weapons[equipmentKey];
+        } else if (EQUIPMENT.armor[equipmentKey]) {
+          equipmentType = 'armor';
+          equipmentData = EQUIPMENT.armor[equipmentKey];
+        } else if (EQUIPMENT.artifacts && EQUIPMENT.artifacts[equipmentKey]) {
+          equipmentType = 'artifact';
+          equipmentData = EQUIPMENT.artifacts[equipmentKey];
+        }
+
+        if (equipmentData) {
+          const collectionItem = {
+            name: equipmentKey,
+            displayName: equipmentData.name || equipmentKey,
+            description: equipmentData.description || '',
+            owned: true,
+            type: equipmentType,
+          };
+
+          switch (equipmentType) {
+            case 'weapon':
+              equipmentCollection.weapons.push(collectionItem);
+              break;
+            case 'armor':
+              equipmentCollection.armor.push(collectionItem);
+              break;
+            case 'artifact':
+              equipmentCollection.artifacts.push(collectionItem);
+              break;
+          }
         }
       });
     } else if (activeSave && activeSave.legacyArtifacts) {
@@ -215,93 +247,235 @@ router.get('/', requireAuth, async (req, res) => {
       equipmentCollection.artifacts = activeSave.legacyArtifacts.map(
         (artifact) => ({
           name: artifact.name,
+          displayName: artifact.name,
           effect: artifact.effect,
           description: artifact.description,
+          owned: true,
+          type: 'artifact',
         })
       );
     }
 
-    // Get current equipment (from active save or default to starting equipment)
+    // Add default unlocked equipment for new users
+    if (
+      equipmentCollection.weapons.length === 0 &&
+      equipmentCollection.armor.length === 0
+    ) {
+      // Default unlocked equipment: Sword and Light Armor
+      const swordData = EQUIPMENT.weapons['sword'];
+      const lightArmorData = EQUIPMENT.armor['light'];
+
+      if (swordData) {
+        equipmentCollection.weapons.push({
+          name: 'sword',
+          displayName: swordData.name || 'Sword',
+          description: swordData.description || '',
+          owned: true,
+          type: 'weapon',
+        });
+      }
+
+      if (lightArmorData) {
+        equipmentCollection.armor.push({
+          name: 'light',
+          displayName: lightArmorData.name || 'Light Armor',
+          description: lightArmorData.description || '',
+          owned: true,
+          type: 'armor',
+        });
+      }
+    }
+
+    // Get current equipment from runData.equipment (canonical source)
     const currentEquipment = {
-      weapon: { name: 'sword', displayName: 'Sword', stats: null },
-      armor: { name: 'light', displayName: 'Light Armor', stats: null },
+      weapons: [],
+      armor: [],
+      artifacts: [],
+      inventory: {
+        current: 0,
+        max: 0,
+        capacity: '0/0',
+      },
     };
 
     if (
       activeSave &&
-      activeSave.equipment &&
-      Array.isArray(activeSave.equipment)
+      activeSave.runData &&
+      activeSave.runData.equipment &&
+      Array.isArray(activeSave.runData.equipment)
     ) {
-      // Use new unified equipment array from active save
-      const equippedWeapon = activeSave.equipment.find(
-        (item) => item.type === 'weapon'
-      );
-      const equippedArmor = activeSave.equipment.find(
-        (item) => item.type === 'armor'
-      );
+      // In a run - use equipment from run data
+      activeSave.runData.equipment.forEach((item) => {
+        const equipmentData = getEquipmentData(
+          item.value,
+          item.type,
+          EQUIPMENT
+        );
+        const stats = equipmentData
+          ? calculateDynamicStats(equipmentData, currentDeck, 4)
+          : null;
 
-      if (equippedWeapon) {
-        currentEquipment.weapon.name = equippedWeapon.key || 'sword';
-        // Look up display name from gameData
-        const weaponData = EQUIPMENT.weapons[equippedWeapon.key];
-        currentEquipment.weapon.displayName = weaponData?.name || 'Sword';
+        const equipmentItem = {
+          name: item.value,
+          displayName: equipmentData?.name || item.value,
+          type: item.type,
+          stats: stats,
+          description: equipmentData?.description || '',
+        };
+
+        switch (item.type) {
+          case 'weapon':
+            currentEquipment.weapons.push(equipmentItem);
+            break;
+          case 'armor':
+            currentEquipment.armor.push(equipmentItem);
+            break;
+          case 'artifact':
+            currentEquipment.artifacts.push(equipmentItem);
+            break;
+        }
+      });
+
+      // Calculate inventory capacity
+      const baseCraftStat = activeSave.gameData?.stats?.craft || 4;
+      const craftModifier = activeSave.runData?.statModifiers?.craft || 0;
+      const totalCraftStat = baseCraftStat + craftModifier;
+      const maxCapacity = totalCraftStat; // Inventory size = current craft amount
+      const currentCount = activeSave.runData.equipment.length;
+
+      currentEquipment.inventory = {
+        current: currentCount,
+        max: maxCapacity,
+        capacity: `${currentCount}/${maxCapacity}`,
+      };
+    } else if (
+      activeSave &&
+      activeSave.metadata &&
+      activeSave.metadata.lastSelectedEquipment
+    ) {
+      // Not in a run - use last selected equipment from metadata
+      const lastWeapon = activeSave.metadata.lastSelectedEquipment.weapon;
+      const lastArmor = activeSave.metadata.lastSelectedEquipment.armor;
+
+      if (lastWeapon) {
+        const weaponData = EQUIPMENT.weapons[lastWeapon.toLowerCase()];
+        currentEquipment.weapons.push({
+          name: lastWeapon.toLowerCase(),
+          displayName: weaponData?.name || lastWeapon,
+          type: 'weapon',
+          stats: weaponData
+            ? calculateDynamicStats(weaponData, currentDeck, 4)
+            : null,
+          description: weaponData?.description || '',
+        });
       }
-      if (equippedArmor) {
-        currentEquipment.armor.name = equippedArmor.key || 'light';
-        // Look up display name from gameData
-        const armorData = EQUIPMENT.armor[equippedArmor.key];
-        currentEquipment.armor.displayName = armorData?.name || 'Light Armor';
+
+      if (lastArmor) {
+        const armorData =
+          EQUIPMENT.armor[lastArmor.toLowerCase().replace(' ', '')];
+        currentEquipment.armor.push({
+          name: lastArmor.toLowerCase().replace(' ', ''),
+          displayName: armorData?.name || lastArmor,
+          type: 'armor',
+          stats: armorData
+            ? calculateDynamicStats(armorData, currentDeck, 4)
+            : null,
+          description: armorData?.description || '',
+        });
       }
-    } else if (activeSave && activeSave.legacyEquipment) {
-      // Fallback to legacy equipment structure
-      if (activeSave.legacyEquipment.weapon) {
-        currentEquipment.weapon.name =
-          activeSave.legacyEquipment.weapon.toLowerCase();
-      }
-      if (activeSave.legacyEquipment.armor) {
-        currentEquipment.armor.name = activeSave.legacyEquipment.armor
-          .toLowerCase()
-          .replace(' ', '');
-      }
-    } else if (user.startingWeapon && user.startingArmor) {
-      // Use starting equipment from user profile
-      currentEquipment.weapon.name = user.startingWeapon.toLowerCase();
-      currentEquipment.armor.name = user.startingArmor
-        .toLowerCase()
-        .replace(' ', '');
+
+      // Calculate inventory capacity for non-run state
+      const baseCraftStat = activeSave.gameData?.stats?.craft || 4;
+      const craftModifier = activeSave.runData?.statModifiers?.craft || 0;
+      const totalCraftStat = baseCraftStat + craftModifier;
+      const maxCapacity = totalCraftStat; // Inventory size = current craft amount
+      const currentCount =
+        currentEquipment.weapons.length +
+        currentEquipment.armor.length +
+        currentEquipment.artifacts.length;
+
+      currentEquipment.inventory = {
+        current: currentCount,
+        max: maxCapacity,
+        capacity: `${currentCount}/${maxCapacity}`,
+      };
     }
 
-    // Get equipment stats from gameData and calculate dynamic stats
-    if (EQUIPMENT.weapons[currentEquipment.weapon.name]) {
-      const weaponStats = EQUIPMENT.weapons[currentEquipment.weapon.name];
-      currentEquipment.weapon.displayName = weaponStats.name;
-      currentEquipment.weapon.stats = calculateDynamicStats(
-        weaponStats,
-        currentDeck,
-        4
-      ); // Assuming power = 4
-    }
-    if (EQUIPMENT.armor[currentEquipment.armor.name]) {
-      const armorStats = EQUIPMENT.armor[currentEquipment.armor.name];
-      currentEquipment.armor.displayName = armorStats.name;
-      currentEquipment.armor.stats = calculateDynamicStats(
-        armorStats,
-        currentDeck,
-        4
-      ); // Assuming power = 4
+    // Add default equipment only for new users who haven't started a run yet
+    // (not for users who are in a run but have lost all equipment)
+    if (
+      currentEquipment.weapons.length === 0 &&
+      currentEquipment.armor.length === 0 &&
+      !activeSave?.runData?.equipment // Only show defaults if no run data exists
+    ) {
+      // Default starting equipment: Sword and Light Armor
+      const swordData = EQUIPMENT.weapons['sword'];
+      const lightArmorData = EQUIPMENT.armor['light'];
+
+      currentEquipment.weapons.push({
+        name: 'sword',
+        displayName: swordData?.name || 'Sword',
+        type: 'weapon',
+        stats: swordData
+          ? calculateDynamicStats(swordData, currentDeck, 4)
+          : null,
+        description: swordData?.description || '',
+      });
+
+      currentEquipment.armor.push({
+        name: 'light',
+        displayName: lightArmorData?.name || 'Light Armor',
+        type: 'armor',
+        stats: lightArmorData
+          ? calculateDynamicStats(lightArmorData, currentDeck, 4)
+          : null,
+        description: lightArmorData?.description || '',
+      });
+
+      // Calculate inventory capacity for default state
+      const baseCraftStat = activeSave?.gameData?.stats?.craft || 4;
+      const craftModifier = activeSave?.runData?.statModifiers?.craft || 0;
+      const totalCraftStat = baseCraftStat + craftModifier;
+      const maxCapacity = totalCraftStat; // Inventory size = current craft amount
+      const currentCount = 2; // Sword + Light Armor
+
+      currentEquipment.inventory = {
+        current: currentCount,
+        max: maxCapacity,
+        capacity: `${currentCount}/${maxCapacity}`,
+      };
     }
 
-    // Get purchased upgrades from user profile
+    // Get purchased upgrades from save data (now per-save)
     const purchasedUpgrades = [];
 
-    // Check for upgrades in the user's upgrades array
-    if (user.upgrades && user.upgrades.length > 0) {
-      user.upgrades.forEach((upgrade) => {
-        if (HOME_REALM_UPGRADES[upgrade]) {
-          purchasedUpgrades.push(HOME_REALM_UPGRADES[upgrade]);
+    // Check for upgrades in the save's upgrades array
+    if (
+      activeSave?.gameData?.upgrades &&
+      activeSave.gameData.upgrades.length > 0
+    ) {
+      activeSave.gameData.upgrades.forEach((upgrade) => {
+        if (EQUIPMENT.HOME_REALM_UPGRADES[upgrade]) {
+          purchasedUpgrades.push(EQUIPMENT.HOME_REALM_UPGRADES[upgrade]);
         }
       });
     }
+
+    // Calculate XP thresholds for each stat
+    const stats = activeSave
+      ? activeSave.gameData.stats
+      : { power: 4, will: 4, craft: 4, focus: 4 };
+    const xpThresholds = calculateAllXPThresholds(stats);
+
+    // Get stat modifiers from run data
+    const statModifiers = activeSave
+      ? activeSave.runData.statModifiers || {
+          power: 0,
+          will: 0,
+          craft: 0,
+          focus: 0,
+        }
+      : { power: 0, will: 0, craft: 0, focus: 0 };
 
     const renderData = {
       title: 'Status - Deckrift',
@@ -315,10 +489,15 @@ router.get('/', requireAuth, async (req, res) => {
         artifacts: [],
       },
       currentEquipment: currentEquipment || {
-        weapon: { name: 'Sword', stats: null },
-        armor: { name: 'Light Armor', stats: null },
+        weapons: [],
+        armor: [],
+        artifacts: [],
+        inventory: { current: 0, max: 4, capacity: '0/4' },
       },
       purchasedUpgrades: purchasedUpgrades || [],
+      xpThresholds,
+      statModifiers,
+      statEffects: STAT_EFFECTS,
     };
 
     return res.render('status', renderData);

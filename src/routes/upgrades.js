@@ -1,5 +1,4 @@
 import express from 'express';
-import User from '../models/User.js';
 import SaveService from '../services/saveService.js';
 import { calculateAllXPThresholds } from '../services/gameUtils.js';
 
@@ -21,20 +20,12 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
 
-    // Get user's current profile
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.redirect('/');
-    }
-
     // Get current save data for upgrades and stats
     const saveResult = await saveService.loadSave(userId);
     const currentSave = saveResult.success ? saveResult.saveData : null;
 
-    // Get unlocked upgrades from save data or user
-    const unlockedUpgrades = currentSave
-      ? currentSave.gameData.unlockedUpgrades
-      : user.upgrades || [];
+    // Get unlocked upgrades from save data (now per-save)
+    const unlockedUpgrades = currentSave?.gameData?.upgrades || [];
 
     // Get upgrade data and filter based on what's already purchased
     const { HOME_REALM_UPGRADES } = await import(
@@ -69,9 +60,7 @@ router.get('/', requireAuth, async (req, res) => {
       currentSave,
       unlockedUpgrades,
       availableUpgrades,
-      currency: currentSave
-        ? currentSave.gameData.currency
-        : user.currency || 0,
+      currency: currentSave?.gameData?.saveCurrency || 0,
       xpThresholds,
     });
   } catch (error) {
@@ -88,11 +77,6 @@ router.post('/purchase-upgrade', requireAuth, async (req, res) => {
   try {
     const { userId } = req.session;
     const { upgradeId } = req.body;
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
 
     // Get current save data
     const saveResult = await saveService.loadSave(userId);
@@ -112,30 +96,36 @@ router.post('/purchase-upgrade', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid upgrade' });
     }
 
-    // Check if user can afford it
-    if (currentSave.gameData.currency < upgrade.cost) {
-      return res.status(400).json({ error: 'Insufficient currency' });
+    // Check if user has enough currency
+    if (currentSave.gameData.saveCurrency < upgrade.cost) {
+      return res.status(400).json({
+        success: false,
+        error: 'Insufficient currency',
+        required: upgrade.cost,
+        current: currentSave.gameData.saveCurrency,
+      });
     }
 
     // Check if already purchased
     if (
-      currentSave.gameData.unlockedUpgrades &&
-      currentSave.gameData.unlockedUpgrades.includes(upgradeId)
+      currentSave.gameData.upgrades &&
+      currentSave.gameData.upgrades.includes(upgradeId)
     ) {
       return res.status(400).json({ error: 'Upgrade already purchased' });
     }
 
     // Purchase upgrade
-    currentSave.gameData.currency -= upgrade.cost;
-    if (!currentSave.gameData.unlockedUpgrades)
-      currentSave.gameData.unlockedUpgrades = [];
-    currentSave.gameData.unlockedUpgrades.push(upgradeId);
+    currentSave.gameData.saveCurrency -= upgrade.cost;
+    if (!currentSave.gameData.upgrades) currentSave.gameData.upgrades = [];
+    currentSave.gameData.upgrades.push(upgradeId);
+
+    // Save the updated save data
     await saveService.updateSave(userId, currentSave);
 
     return res.json({
       success: true,
-      newCurrency: currentSave.gameData.currency,
       message: `Successfully purchased ${upgrade.name}`,
+      newCurrency: currentSave.gameData.saveCurrency,
     });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to purchase upgrade' });

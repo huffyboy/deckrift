@@ -1,5 +1,7 @@
 // uiUtils.js - Shared UI utility functions
 
+import { SUIT_TO_EMOJI_MAP } from './gameData.js';
+
 /**
  * Show a stylized game message (fantasy/roguelike themed)
  * @param {string} title - Message title
@@ -276,8 +278,9 @@ export function showDeckDrawingAnimation(
       const lastCard = cards[cards.length - 1];
 
       // Get card display info
-      const cardValue = drawnCard?.value || 'A';
-      const cardSuit = drawnCard?.suit || '♥️';
+      const cardValue = drawnCard?.value;
+      const cardSuit = drawnCard?.suit;
+      const suitSymbol = SUIT_TO_EMOJI_MAP[cardSuit] || cardSuit;
 
       // Step 1: Squash the card (make it invisible)
       lastCard.style.transform = `translate(260px, 260px) scaleX(0)`;
@@ -285,7 +288,7 @@ export function showDeckDrawingAnimation(
 
       // Step 2: After squash completes, switch to front and stretch back
       setTimeout(() => {
-        lastCard.textContent = `${cardValue}${cardSuit}`;
+        lastCard.textContent = `${cardValue}${suitSymbol}`;
         lastCard.style.background = 'linear-gradient(135deg, #2d1b69, #4a2c8f)'; // Purple gradient
         lastCard.style.color = '#e0e0e0'; // White text
         lastCard.style.fontSize = '1.5rem';

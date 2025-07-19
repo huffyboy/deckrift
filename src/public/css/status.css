@@ -22,6 +22,96 @@
   font-size: 1.1rem;
 }
 
+/* Stats Section */
+.stats-section {
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+  border: 2px solid #4a2c8f;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.stats-section h2 {
+  color: #d4af37;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.stat-item {
+  background: rgba(74, 44, 143, 0.1);
+  border: 1px solid #4a2c8f;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.stat-item:hover {
+  border-color: #d4af37;
+  background: rgba(74, 44, 143, 0.2);
+  cursor: help;
+}
+
+/* Tooltip styling */
+.stat-item {
+  position: relative;
+}
+
+.stat-item[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: #e0e0e0;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  z-index: 1000;
+  border: 1px solid #d4af37;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  max-width: 250px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.stat-item strong {
+  color: #d4af37;
+  font-size: 1.1rem;
+  display: inline;
+  margin-right: 0.5rem;
+}
+
+.stat-item small {
+  color: #8b8b8b;
+  font-size: 0.9rem;
+  display: inline;
+}
+
+.stat-adjustment {
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-left: 0.25rem;
+  display: inline;
+}
+
+.stat-adjustment.positive {
+  color: #32cd32 !important;
+}
+
+.stat-adjustment.negative {
+  color: #ff6b6b !important;
+}
+
 /* Deck Section */
 .deck-section {
   background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
@@ -209,10 +299,13 @@
   font-weight: bold;
 }
 
+/* NOTE: .status-badge.equipped styling is not currently in use
+   Equipment system doesn't work with equipped/unequipped states yet
 .status-badge.equipped {
   background: linear-gradient(135deg, #32cd32, #228b22);
   color: #0a0a0a;
 }
+*/
 
 /* Equipment Collection Section */
 .equipment-section {
@@ -426,4 +519,62 @@
   .status-deck-card .card-suit {
     font-size: 1.2rem;
   }
+}
+
+/* ===== INVENTORY CAPACITY ===== */
+.inventory-capacity {
+  font-size: 0.9em;
+  color: #666;
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+/* ===== EQUIPMENT TYPE BADGES ===== */
+.equipment-type {
+  background: linear-gradient(135deg, #4a90e2, #357abd);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  letter-spacing: 0.5px;
+}
+
+/* ===== NO EQUIPMENT MESSAGE ===== */
+.no-equipment {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #8b8b8b;
+  background: rgba(74, 44, 143, 0.1);
+  border-radius: 12px;
+  border: 2px dashed #4a2c8f;
+  transition: all 0.3s ease;
+}
+
+.no-equipment:hover {
+  border-color: #d4af37;
+  background: rgba(74, 44, 143, 0.15);
+}
+
+.no-equipment-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+
+.no-equipment h3 {
+  color: #d4af37;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.no-equipment p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  opacity: 0.8;
 }

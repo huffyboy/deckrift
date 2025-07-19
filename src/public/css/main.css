@@ -1064,10 +1064,6 @@ h6 {
   border-bottom: 1px solid #4a2c8f;
 }
 
-.stat-item:last-child {
-  border-bottom: none;
-}
-
 .profile-actions {
   display: flex;
   gap: 1rem;

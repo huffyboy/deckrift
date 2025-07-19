@@ -1,6 +1,6 @@
 // eventHandler.js - Event processing logic
 
-import { getCardValue } from './gameUtils.js';
+import { getCardValue, applyStatChanges } from './gameUtils.js';
 import {
   showNotification,
   showGameMessage,
@@ -11,11 +11,26 @@ import {
   GAME_CONSTANTS,
   BOONS,
   BANES,
+  BANE_AND_BOON_EFFECTS,
+  SUIT_TO_STAT_MAP,
+  SUIT_TO_EMOJI_MAP,
   ARTIFACTS,
   CARD_ADDING_EFFECTS,
-  BANE_AND_BOON_EFFECTS,
+  NEGATIVE_CARD_VALUES,
 } from './gameData.js';
-import { drawFromPlayerDeck } from '../game.js';
+import {
+  drawAndRemoveCardFromPlayerDeck,
+  getRandomCardFromPlayerDeck,
+} from '../game.js';
+import {
+  DECK_TYPES,
+  addJokersToDeck,
+  removeCardFromDeck,
+  getHighCards,
+  getFaceCards,
+  saveDeckToServer,
+  saveGameStateToServer,
+} from './deckService.js';
 
 /**
  * Save the current player deck to the server
@@ -34,6 +49,8 @@ async function savePlayerDeck(deck) {
     const data = await response.json();
     if (!data.success) {
       // Failed to save player deck
+    } else {
+      // Successfully saved deck
     }
   } catch (error) {
     // Error saving player deck
@@ -42,24 +59,15 @@ async function savePlayerDeck(deck) {
 
 /**
  * Save the current game state to the server
- * @param {Object} gameState - The current game state
+ * @param {Object} gameState - The game state to save
+ * @returns {Promise<boolean>} - Success status
  */
 async function saveGameState(gameState) {
   try {
-    const response = await fetch('/game/update-game-state', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(gameState),
-    });
-
-    const data = await response.json();
-    if (!data.success) {
-      // Failed to save game state
-    }
+    const success = await saveGameStateToServer(gameState);
+    return success;
   } catch (error) {
-    // Error saving game state
+    return false;
   }
 }
 
@@ -151,7 +159,7 @@ export function handleCardEncounter(card, gameState, handlers) {
         null, // No timeout
         () => {
           // Draw from player's deck first
-          drawFromPlayerDeck().then((drawnCard) => {
+          drawAndRemoveCardFromPlayerDeck().then((drawnCard) => {
             if (drawnCard) {
               // Show deck drawing animation with the actual drawn card
               showDeckDrawingAnimation(() => {
@@ -193,30 +201,203 @@ export function handleCardEncounter(card, gameState, handlers) {
         null, // No timeout
         () => {
           // Draw from player's deck first
-          drawFromPlayerDeck().then((drawnCard) => {
+          getRandomCardFromPlayerDeck().then((drawnCard) => {
             if (drawnCard) {
               // Show deck drawing animation with the actual drawn card
               showDeckDrawingAnimation(() => {
                 // Process the bane based on the drawn card
                 processBane(drawnCard, gameState).then((baneResult) => {
-                  // Show the specific bane result using the header and description from gameData
-                  showGameMessage(
-                    baneResult.header,
-                    baneResult.description,
-                    'error',
-                    `${drawnCard.display} ${baneResult.icon}`,
-                    null, // No timeout
-                    () => {
-                      // Callback when message is dismissed
-                      if (handlers.resetBusyState) {
-                        handlers.resetBusyState();
-                        // Re-render the map after resetting busy state
-                        if (handlers.renderOverworldMap) {
-                          handlers.renderOverworldMap();
+                  // Check if this is a bane that needs a second card draw
+                  if (
+                    baneResult.needsSecondDraw &&
+                    baneResult.secondDrawMessage
+                  ) {
+                    // Show the main bane message first
+                    showGameMessage(
+                      baneResult.header,
+                      baneResult.description,
+                      'error',
+                      `${drawnCard.display} ${baneResult.icon}`,
+                      null, // No timeout
+                      () => {
+                        // Go directly to drawing the second card for all bane effects
+                        // Determine which deck to draw from based on secondDrawDeck
+                        let drawPromise;
+                        if (baneResult.secondDrawDeck === 'player') {
+                          // For both stat loss and currency loss, get card without removing it
+                          // The card is just used to determine the effect, not actually lost
+                          drawPromise = getRandomCardFromPlayerDeck();
+                        } else if (
+                          baneResult.secondDrawDeck === 'playerHighCards'
+                        ) {
+                          // Pick from high cards in player's personal deck (for loseHighCard)
+                          drawPromise = pickRandomHighCard(
+                            baneResult.highCards
+                          );
+                        } else if (
+                          baneResult.secondDrawDeck === 'playerFaceCards'
+                        ) {
+                          // Pick from face cards in player's personal deck (for loseFaceCard)
+                          drawPromise = pickRandomFaceCard(
+                            baneResult.faceCards
+                          );
+                        } else {
+                          // Fallback to player's personal deck
+                          drawPromise = drawAndRemoveCardFromPlayerDeck();
+                        }
+
+                        drawPromise.then((secondCard) => {
+                          if (secondCard) {
+                            // Show deck drawing animation for second card
+                            showDeckDrawingAnimation(() => {
+                              // Apply the appropriate effect based on bane type
+                              let effectPromise;
+                              if (baneResult.secondDrawDeck === 'player') {
+                                // Check if this is a stat loss or currency loss
+                                if (
+                                  baneResult.header === 'You feel a bit weaker'
+                                ) {
+                                  // Apply stat loss
+                                  effectPromise = applyStatLoss(
+                                    secondCard,
+                                    gameState
+                                  );
+                                } else {
+                                  // Apply currency loss
+                                  effectPromise = applyCurrencyLoss(
+                                    secondCard,
+                                    gameState
+                                  );
+                                }
+                              } else if (
+                                baneResult.secondDrawDeck === 'playerHighCards'
+                              ) {
+                                // Apply high card loss
+                                effectPromise = applyHighCardLoss(
+                                  secondCard,
+                                  gameState
+                                );
+                              } else if (
+                                baneResult.secondDrawDeck === 'playerFaceCards'
+                              ) {
+                                // Apply face card loss
+                                effectPromise = applyFaceCardLoss(
+                                  secondCard,
+                                  gameState
+                                );
+                              }
+
+                              effectPromise.then((result) => {
+                                const suitSymbol =
+                                  SUIT_TO_EMOJI_MAP[secondCard.suit] ||
+                                  secondCard.suit;
+                                let message;
+                                let messageTitle = baneResult.header; // Default title
+
+                                if (baneResult.secondDrawDeck === 'player') {
+                                  // Currency loss message
+                                  const cardDisplay = `${secondCard.value}${suitSymbol}`;
+
+                                  let messageConfig;
+                                  if (result.currencyLost === 0) {
+                                    // No currency to lose
+                                    messageConfig = baneResult.messages
+                                      ?.noCurrency || {
+                                      title: 'Empty pockets',
+                                      message:
+                                        'You realize you had nothing to lose.',
+                                    };
+                                  } else if (
+                                    result.currencyLost < result.cardValue
+                                  ) {
+                                    // Partial loss
+                                    messageConfig = baneResult.messages
+                                      ?.partialLoss || {
+                                      title: 'Missing treasure',
+                                      message: 'You lost what little you had.',
+                                    };
+                                  } else {
+                                    // Full loss
+                                    messageConfig = baneResult.messages
+                                      ?.fullLoss || {
+                                      title: 'Missing treasure',
+                                      message: `You draw ${cardDisplay} and lose ${result.currencyLost} currency.`,
+                                    };
+                                    if (
+                                      messageConfig.message.includes('{card}')
+                                    ) {
+                                      messageConfig.message =
+                                        messageConfig.message
+                                          .replace('{card}', cardDisplay)
+                                          .replace(
+                                            '{amount}',
+                                            result.currencyLost
+                                          );
+                                    }
+                                  }
+
+                                  message = messageConfig.message;
+                                  messageTitle = messageConfig.title;
+                                } else {
+                                  // Card loss message
+                                  message = `You lose your ${secondCard.value}${suitSymbol}.`;
+                                }
+
+                                // Handle stat loss message
+                                if (
+                                  baneResult.header === 'You feel a bit weaker'
+                                ) {
+                                  // Stat loss message
+                                  const statToLose =
+                                    SUIT_TO_STAT_MAP[secondCard.suit] ||
+                                    'power';
+                                  message = `You drew ${suitSymbol} and lose 1 ${statToLose}.`;
+                                  messageTitle = baneResult.header;
+                                }
+
+                                showGameMessage(
+                                  messageTitle,
+                                  message,
+                                  'error',
+                                  `${secondCard.value}${suitSymbol} ${baneResult.icon}`,
+                                  null, // No timeout
+                                  () => {
+                                    // Callback when message is dismissed
+                                    if (handlers.resetBusyState) {
+                                      handlers.resetBusyState();
+                                      // Re-render the map after resetting busy state
+                                      if (handlers.renderOverworldMap) {
+                                        handlers.renderOverworldMap();
+                                      }
+                                    }
+                                  }
+                                );
+                              });
+                            }, secondCard);
+                          }
+                        });
+                      }
+                    );
+                  } else {
+                    // Show the specific bane result using the header and description from gameData
+                    showGameMessage(
+                      baneResult.header,
+                      baneResult.description,
+                      'error',
+                      `${drawnCard.display} ${baneResult.icon}`,
+                      null, // No timeout
+                      () => {
+                        // Callback when message is dismissed
+                        if (handlers.resetBusyState) {
+                          handlers.resetBusyState();
+                          // Re-render the map after resetting busy state
+                          if (handlers.renderOverworldMap) {
+                            handlers.renderOverworldMap();
+                          }
                         }
                       }
-                    }
-                  );
+                    );
+                  }
                 });
               }, drawnCard);
             }
@@ -537,7 +718,7 @@ async function processBoon(card, gameState) {
  * @returns {Object} - Bane result with header, description, icon and applied effects
  */
 async function processBane(card, gameState) {
-  const cardValue = getCardValue(card);
+  const cardValue = card.value; // Use string value directly for BANES lookup
   const cardSuit = card.suit;
   const isRed = cardSuit === 'hearts' || cardSuit === 'diamonds';
 
@@ -562,6 +743,90 @@ async function processBane(card, gameState) {
   // Get the proper header and description from BANE_AND_BOON_EFFECTS
   const effectData =
     BANE_AND_BOON_EFFECTS[baneEffect?.type] || BANE_AND_BOON_EFFECTS.nothing;
+
+  // Special handling for loseStat to show what card was drawn and which stat was lost
+  if (baneEffect?.type === 'loseStat') {
+    return {
+      header: effectData.header,
+      description: effectData.description,
+      icon: effectData.icon,
+      applied: true,
+      needsSecondDraw: true, // Signal that we need to draw a second card
+      secondDrawMessage: effectData.secondDrawMessage,
+      secondDrawDeck: effectData.secondDrawDeck,
+    };
+  }
+
+  // Special handling for loseItem to show what was lost
+  if (baneEffect?.type === 'loseItem' && result.lostItem) {
+    return {
+      header: effectData.header,
+      description: `You lost your ${result.itemName}.`,
+      icon: effectData.icon,
+      applied: result.applied,
+    };
+  }
+
+  // Special handling for loseItem when player has no equipment
+  if (baneEffect?.type === 'loseItem' && !result.applied) {
+    return {
+      header: effectData.header,
+      description: 'Or so you thought, you have nothing worthwhile to lose.',
+      icon: effectData.icon,
+      applied: false,
+    };
+  }
+
+  // Special handling for loseHighCard to show what card was lost
+  if (baneEffect?.type === 'loseHighCard' && result.highCards) {
+    return {
+      header: effectData.header,
+      description: effectData.description,
+      icon: effectData.icon,
+      applied: true,
+      needsSecondDraw: true, // Signal that we need to draw a second card
+      highCards: result.highCards,
+      secondDrawMessage: effectData.secondDrawMessage,
+      secondDrawDeck: effectData.secondDrawDeck,
+    };
+  }
+
+  // Special handling for loseFaceCard to show what card was lost
+  if (baneEffect?.type === 'loseFaceCard' && result.faceCards) {
+    return {
+      header: effectData.header,
+      description: effectData.description,
+      icon: effectData.icon,
+      applied: true,
+      needsSecondDraw: true, // Signal that we need to draw a second card
+      faceCards: result.faceCards,
+      secondDrawMessage: effectData.secondDrawMessage,
+      secondDrawDeck: effectData.secondDrawDeck,
+    };
+  }
+
+  // Special handling for loseCurrency to show what card was drawn and how much was lost
+  if (baneEffect?.type === 'loseCurrency') {
+    return {
+      header: effectData.header,
+      description: effectData.description,
+      icon: effectData.icon,
+      applied: true,
+      needsSecondDraw: true, // Signal that we need to draw a second card
+      secondDrawMessage: effectData.secondDrawMessage,
+      secondDrawDeck: effectData.secondDrawDeck,
+    };
+  }
+
+  // Special handling for addJoker to show the correct amount
+  if (baneEffect?.type === 'addJoker' && result.jokerAmount) {
+    return {
+      header: effectData.header,
+      description: `Add ${result.jokerAmount} joker${result.jokerAmount === 1 ? '' : 's'} to your deck.`,
+      icon: effectData.icon,
+      applied: result.applied,
+    };
+  }
 
   return {
     header: effectData.header,
@@ -593,7 +858,13 @@ async function applyBoonEffect(boonEffect, card, gameState) {
     case 'focusPlus': {
       const stat = boonEffect.stat;
       const value = boonEffect.value || 1;
-      gameState[stat] = (gameState[stat] || 0) + value;
+
+      // Apply the stat gain using the simplified system
+      const result = applyStatChanges(gameState, { [stat]: value }, true);
+
+      // Update the game state with the changes
+      Object.assign(gameState, result.gameState);
+
       return {
         description: `+${value} to ${stat}`,
         applied: true,
@@ -605,7 +876,13 @@ async function applyBoonEffect(boonEffect, card, gameState) {
     case 'craftPlusTwo':
     case 'focusPlusTwo': {
       const stat = boonEffect.stat || boonEffect.type.replace('PlusTwo', '');
-      gameState[stat] = (gameState[stat] || 0) + 2;
+
+      // Apply the stat gain using the simplified system
+      const result = applyStatChanges(gameState, { [stat]: 2 }, true);
+
+      // Update the game state with the changes
+      Object.assign(gameState, result.gameState);
+
       return {
         description: `+2 to ${stat}`,
         applied: true,
@@ -624,7 +901,8 @@ async function applyBoonEffect(boonEffect, card, gameState) {
 
     case 'currencyGain': {
       const currencyGain = getCardValue(card);
-      gameState.currency = (gameState.currency || 0) + currencyGain;
+      gameState.runData.runCurrency =
+        (gameState.runData.runCurrency || 0) + currencyGain;
       return {
         description: `+${currencyGain} currency`,
         applied: true,
@@ -718,6 +996,15 @@ async function applyBoonEffect(boonEffect, card, gameState) {
 }
 
 /**
+ * Get card value for negative effects (inverted scale)
+ * @param {Object} card - The card object
+ * @returns {number} - Card value for negative effects (A=1, Joker=14)
+ */
+function getNegativeCardValue(card) {
+  return NEGATIVE_CARD_VALUES[card.value] || getCardValue(card);
+}
+
+/**
  * Apply a bane effect to the game state
  * @param {Object} baneEffect - The bane effect to apply
  * @param {Object} card - The drawn card
@@ -734,70 +1021,153 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 
   switch (baneEffect.type) {
     case 'loseItem': {
-      // For now, just return the effect description
+      // Get the player's equipment inventory
+      const equipment = gameState.runData?.equipment || [];
+
+      if (equipment.length === 0) {
+        return {
+          description: 'You have no items to lose',
+          applied: false,
+        };
+      }
+
+      // Randomly select an item to lose
+      const randomIndex = Math.floor(Math.random() * equipment.length);
+      const lostItem = equipment[randomIndex];
+
+      // Remove the item from the equipment array
+      equipment.splice(randomIndex, 1);
+
+      // Save the updated game state to the server
+      await saveGameState(gameState);
+
+      // Get the item name for display
+      let itemName = lostItem.value;
+      const itemType = lostItem.type;
+
+      // Try to get a more descriptive name from EQUIPMENT data
+      try {
+        const { EQUIPMENT } = await import('./gameData.js');
+
+        // Look up the equipment name based on type and value
+        if (
+          EQUIPMENT[itemType + 's'] &&
+          EQUIPMENT[itemType + 's'][lostItem.value]
+        ) {
+          itemName = EQUIPMENT[itemType + 's'][lostItem.value].name;
+        } else {
+          // Fallback: try to find by value in any equipment type
+          for (const equipmentType of ['weapons', 'armor', 'artifacts']) {
+            if (
+              EQUIPMENT[equipmentType] &&
+              EQUIPMENT[equipmentType][lostItem.value]
+            ) {
+              itemName = EQUIPMENT[equipmentType][lostItem.value].name;
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        // Fallback to the value if we can't get the name
+      }
+
       return {
-        description: 'Lose a random item',
+        description: `Lost ${itemName} (${itemType})`,
         applied: true,
+        lostItem: lostItem,
+        itemName: itemName,
+        itemType: itemType,
       };
     }
 
     case 'loseStat': {
-      // For now, just return the effect description
+      // For loseStat, we don't draw a card here anymore
+      // The second card draw is handled in the main bane flow
       return {
-        description: 'Lose 1 stat point',
+        description: 'Stat loss effect triggered',
         applied: true,
       };
     }
 
     case 'loseHighCard': {
-      // For now, just return the effect description
+      // Get high cards from the player's main deck using deck service
+      const highCards = getHighCards(gameState, DECK_TYPES.PLAYER_MAIN);
+
+      if (highCards.length === 0) {
+        return {
+          description: 'You have no high cards to lose',
+          applied: false,
+        };
+      }
+
+      // For loseHighCard, we don't draw a card here anymore
+      // The second card draw is handled in the main bane flow
       return {
-        description: 'Lose a high card from your deck',
+        description: 'High card loss effect triggered',
         applied: true,
+        highCards: highCards,
       };
     }
 
     case 'loseFaceCard': {
-      // For now, just return the effect description
+      // Get face cards from the player's main deck using deck service
+      const faceCards = getFaceCards(gameState, DECK_TYPES.PLAYER_MAIN);
+
+      if (faceCards.length === 0) {
+        return {
+          description: 'You have no face cards to lose',
+          applied: false,
+        };
+      }
+
+      // For loseFaceCard, we don't draw a card here anymore
+      // The second card draw is handled in the main bane flow
       return {
-        description: 'Lose a face card from your deck',
+        description: 'Face card loss effect triggered',
         applied: true,
+        faceCards: faceCards,
       };
     }
 
     case 'loseCurrency': {
-      const currencyLoss = getCardValue(card);
-      gameState.currency = Math.max(
-        0,
-        (gameState.currency || 0) - currencyLoss
-      );
+      // Get the player's current currency
+      const currentCurrency = gameState.runData?.runCurrency || 0;
+
+      if (currentCurrency <= 0) {
+        return {
+          description: 'You have no currency to lose',
+          applied: false,
+        };
+      }
+
+      // For loseCurrency, we don't draw a card here anymore
+      // The second card draw is handled in the main bane flow
       return {
-        description: `Lose ${currencyLoss} currency`,
+        description: 'Currency loss effect triggered',
         applied: true,
       };
     }
 
     case 'addJoker': {
       const jokerAmount = baneEffect.amount || 1;
-      // Add jokers to the player's deck
-      if (
-        gameState.runData &&
-        gameState.runData.fightStatus &&
-        gameState.runData.fightStatus.playerDeck
-      ) {
-        for (let i = 0; i < jokerAmount; i++) {
-          gameState.runData.fightStatus.playerDeck.push({
-            value: '𝕁',
-            suit: '🃏',
-            type: 'joker',
-          });
-        }
-        // Save the updated deck to the server
-        await savePlayerDeck(gameState.runData.fightStatus.playerDeck);
-      }
+
+      // Use deck service to add jokers to the main player deck
+      const updatedGameState = addJokersToDeck(
+        gameState,
+        DECK_TYPES.PLAYER_MAIN,
+        jokerAmount
+      );
+
+      // Update the game state
+      Object.assign(gameState, updatedGameState);
+
+      // Save the updated deck to the server
+      await saveDeckToServer(gameState.runData.playerDeck);
+
       return {
-        description: `Add ${jokerAmount} joker(s) to your deck`,
+        description: `Add ${jokerAmount} joker${jokerAmount === 1 ? '' : 's'} to your deck`,
         applied: true,
+        jokerAmount: jokerAmount,
       };
     }
 
@@ -807,4 +1177,163 @@ async function applyBaneEffect(baneEffect, card, gameState) {
         applied: false,
       };
   }
+}
+
+/**
+ * Apply currency loss to the game state.
+ * This function is called when a 'loseCurrency' bane effect is processed.
+ * It draws a second card to determine the exact amount of currency to lose.
+ * @param {Object} card - The drawn card for the currency amount.
+ * @param {Object} gameState - Current game state.
+ * @returns {Promise<Object>} - Result with description, applied flag, currencyLost, cardValue, and originalCurrency.
+ */
+async function applyCurrencyLoss(card, gameState) {
+  const cardValue = getNegativeCardValue(card);
+  const currentCurrency = gameState.runData?.runCurrency || 0;
+
+  const currencyToLose = Math.min(cardValue, currentCurrency);
+
+  gameState.runData.runCurrency = currentCurrency - currencyToLose;
+
+  await saveGameState(gameState);
+
+  return {
+    description: `Lost ${currencyToLose} currency (${card.value}${card.suit})`,
+    applied: true,
+    currencyLost: currencyToLose,
+    cardValue: cardValue,
+    originalCurrency: currentCurrency,
+  };
+}
+
+/**
+ * Apply stat loss to the game state.
+ * This function is called when a 'loseStat' bane effect is processed.
+ * It draws a second card to determine which stat to lose.
+ * @param {Object} card - The drawn card for the stat determination.
+ * @param {Object} gameState - Current game state.
+ * @returns {Promise<Object>} - Result with description, applied flag, statLost, and card.
+ */
+async function applyStatLoss(card, gameState) {
+  // Determine which stat to lose based on the suit
+  const statToLose = SUIT_TO_STAT_MAP[card.suit] || 'power';
+
+  // Apply the stat loss using the simplified system
+  const result = applyStatChanges(gameState, { [statToLose]: -1 }, true);
+
+  // Update the game state with the changes
+  Object.assign(gameState, result.gameState);
+
+  await saveGameState(gameState);
+
+  return {
+    description: `Lost 1 ${statToLose} (${card.value}${card.suit})`,
+    applied: true,
+    statLost: statToLose,
+    card: card,
+  };
+}
+
+/**
+ * Applies a high card loss effect to the game state.
+ * This function is called when a 'loseHighCard' bane effect is processed.
+ * It removes the drawn high card from the player's deck.
+ * @param {Object} drawnCard - The drawn high card object.
+ * @param {Object} gameState - Current game state.
+ * @returns {Promise<Object>} - Result with description and applied flag.
+ */
+async function applyHighCardLoss(drawnCard, gameState) {
+  // Use deck service to remove the card from the main player deck
+  const { gameState: updatedGameState, removedCard } = removeCardFromDeck(
+    gameState,
+    DECK_TYPES.PLAYER_MAIN,
+    drawnCard
+  );
+
+  if (removedCard) {
+    // Update the game state
+    Object.assign(gameState, updatedGameState);
+
+    // Save the updated deck to the server
+    await saveDeckToServer(gameState.runData.playerDeck);
+  }
+
+  return {
+    description: `Lost ${drawnCard.value}${drawnCard.suit} (high card)`,
+    applied: true,
+  };
+}
+
+/**
+ * Applies a face card loss effect to the game state.
+ * This function is called when a 'loseFaceCard' bane effect is processed.
+ * It removes the drawn face card from the player's deck.
+ * @param {Object} drawnCard - The drawn face card object.
+ * @param {Object} gameState - Current game state.
+ * @returns {Promise<Object>} - Result with description and applied flag.
+ */
+async function applyFaceCardLoss(drawnCard, gameState) {
+  // Use deck service to remove the card from the main player deck
+  const { gameState: updatedGameState, removedCard } = removeCardFromDeck(
+    gameState,
+    DECK_TYPES.PLAYER_MAIN,
+    drawnCard
+  );
+
+  if (removedCard) {
+    // Update the game state
+    Object.assign(gameState, updatedGameState);
+
+    // Save the updated deck to the server
+    await saveDeckToServer(gameState.runData.playerDeck);
+  }
+
+  return {
+    description: `Lost ${drawnCard.value}${drawnCard.suit} (face card)`,
+    applied: true,
+  };
+}
+
+/**
+ * Pick a random high card from the provided array
+ * @param {Array} highCards - Array of high cards (10, J, Q, K, A) from player's personal deck
+ * @returns {Promise<Object|null>} The picked high card or null if no high cards available
+ */
+function pickRandomHighCard(highCards) {
+  return new Promise((resolve) => {
+    if (!highCards || highCards.length === 0) {
+      resolve(null);
+      return;
+    }
+
+    // Simulate drawing animation delay
+    setTimeout(() => {
+      const randomIndex = Math.floor(Math.random() * highCards.length);
+      const pickedCard = highCards[randomIndex];
+
+      resolve(pickedCard);
+    }, 1000);
+  });
+}
+
+/**
+ * Pick a random face card from the provided array
+ * @param {Array} faceCards - Array of face cards (J, Q, K) from player's personal deck
+ * @returns {Promise<Object|null>} The picked face card or null if no face cards available
+ */
+function pickRandomFaceCard(faceCards) {
+  return new Promise((resolve) => {
+    if (!faceCards || faceCards.length === 0) {
+      resolve(null);
+      return;
+    }
+
+    // Simulate drawing animation delay
+    setTimeout(() => {
+      const randomIndex = Math.floor(Math.random() * faceCards.length);
+      const pickedCard = faceCards[randomIndex];
+
+      resolve(pickedCard);
+    }, 1000);
+  });
 }

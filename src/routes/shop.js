@@ -1,6 +1,12 @@
 import express from 'express';
 import SaveService from '../services/saveService.js';
 
+import {
+  getDeck,
+  removeCardFromDeck,
+  DECK_TYPES,
+} from '../services/deckService.js';
+
 const router = express.Router();
 
 // Create save service instance
@@ -152,24 +158,30 @@ router.post('/heal', requireAuth, async (req, res) => {
       );
     const healAmount = 10;
 
-    // Check if player can afford it
-    if (activeSave.gameData.currency < healCost) {
-      return res.status(400).json({ error: 'Insufficient currency' });
+    // Check if player has enough currency
+    if (activeSave.runData.runCurrency < healCost) {
+      return res.status(400).json({
+        success: false,
+        error: 'Insufficient currency',
+        required: healCost,
+        current: activeSave.runData.runCurrency,
+      });
     }
 
-    // Apply healing
-    activeSave.gameData.currency -= healCost;
+    // Deduct currency and heal
+    activeSave.runData.runCurrency -= healCost;
     activeSave.gameData.health = Math.min(
-      activeSave.gameData.maxHealth,
-      activeSave.gameData.health + healAmount
+      activeSave.gameData.health + healAmount,
+      activeSave.gameData.maxHealth
     );
+
     await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
+      message: `Healed for ${healAmount} health`,
       newHealth: activeSave.gameData.health,
-      newCurrency: activeSave.gameData.currency,
-      message: `Healed for ${healAmount} HP`,
+      newCurrency: activeSave.runData.runCurrency,
     });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to purchase healing' });
@@ -190,7 +202,7 @@ router.post('/equipment', requireAuth, async (req, res) => {
     const activeSave = saveResult.saveData;
 
     // Check if player can afford it
-    if (activeSave.gameData.currency < cost) {
+    if (activeSave.runData.runCurrency < cost) {
       return res.status(400).json({ error: 'Insufficient currency' });
     }
 
@@ -201,18 +213,18 @@ router.post('/equipment', requireAuth, async (req, res) => {
     }
 
     // Purchase equipment
-    activeSave.gameData.currency -= cost;
+    activeSave.runData.runCurrency -= cost;
     if (!activeSave.runData.equipment) activeSave.runData.equipment = [];
     activeSave.runData.equipment.push({
       type: equipment.type,
-      value: equipment.id,
-      equipped: false,
+      value: equipment.value,
     });
+
     await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
-      newCurrency: activeSave.gameData.currency,
+      newCurrency: activeSave.runData.runCurrency,
       equipment,
       message: `Purchased ${equipment.name}`,
     });
@@ -242,31 +254,40 @@ router.post('/remove-card', requireAuth, async (req, res) => {
       );
 
     // Check if player can afford it
-    if (activeSave.gameData.currency < cardRemovalCost) {
+    if (activeSave.runData.runCurrency < cardRemovalCost) {
       return res.status(400).json({ error: 'Insufficient currency' });
     }
 
-    // Check if card exists
-    if (
-      !activeSave.runData.fightStatus.playerDeck ||
-      cardIndex >= activeSave.runData.fightStatus.playerDeck.length
-    ) {
+    // Check if card exists and remove it using deck service
+    const currentDeck = getDeck(activeSave, DECK_TYPES.PLAYER_MAIN);
+
+    if (cardIndex >= currentDeck.length) {
       return res.status(400).json({ error: 'Invalid card index' });
     }
 
-    // Remove card
-    const removedCard = activeSave.runData.fightStatus.playerDeck.splice(
-      cardIndex,
-      1
-    )[0];
-    activeSave.gameData.currency -= cardRemovalCost;
+    const cardToRemove = currentDeck[cardIndex];
+
+    // Remove the card from the player's deck
+    const updatedSave = removeCardFromDeck(
+      activeSave,
+      DECK_TYPES.PLAYER_MAIN,
+      cardToRemove
+    );
+
+    if (!updatedSave.removedCard) {
+      return res.status(400).json({ error: 'Card not found in deck' });
+    }
+
+    // Update the save data
+    Object.assign(activeSave, updatedSave);
+    activeSave.runData.runCurrency -= cardRemovalCost;
     await saveService.updateSave(userId, activeSave);
 
     return res.json({
       success: true,
-      newCurrency: activeSave.gameData.currency,
-      removedCard,
-      message: `Removed ${removedCard.value} of ${removedCard.suit}`,
+      newCurrency: activeSave.runData.runCurrency,
+      removedCard: updatedSave.removedCard,
+      message: `Removed ${updatedSave.removedCard.value} of ${updatedSave.removedCard.suit}`,
     });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to remove card' });

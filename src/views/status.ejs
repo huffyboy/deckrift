@@ -7,6 +7,140 @@
         <p class="status-subtitle">View your current deck, equipment, and upgrades.</p>
     </div>
 
+    <!-- Character Stats Section -->
+    <div class="stats-section">
+        <h2>Character Stats</h2>
+        <div class="stats-grid">
+            <div class="stat-item" data-stat="power" title="<%= statEffects.power.description %>">
+                <strong><%= statEffects.power.icon %> <%= statEffects.power.name %>:</strong> <%= gameSave ? gameSave.gameData.stats.power : 4 %>
+                <% if (statModifiers.power !== 0) { %>
+                    <span class="stat-adjustment <%= statModifiers.power > 0 ? 'positive' : 'negative' %>">
+                        (<%= statModifiers.power > 0 ? '+' : '' %><%= statModifiers.power %>)
+                    </span>
+                <% } %>
+                <small>(<%= gameSave ? gameSave.gameData.statXP.power : 0 %>/<%= xpThresholds.power %>)</small>
+            </div>
+            <div class="stat-item" data-stat="will" title="<%= statEffects.will.description %>">
+                <strong><%= statEffects.will.icon %> <%= statEffects.will.name %>:</strong> <%= gameSave ? gameSave.gameData.stats.will : 4 %>
+                <% if (statModifiers.will !== 0) { %>
+                    <span class="stat-adjustment <%= statModifiers.will > 0 ? 'positive' : 'negative' %>">
+                        (<%= statModifiers.will > 0 ? '+' : '' %><%= statModifiers.will %>)
+                    </span>
+                <% } %>
+                <small>(<%= gameSave ? gameSave.gameData.statXP.will : 0 %>/<%= xpThresholds.will %>)</small>
+            </div>
+            <div class="stat-item" data-stat="craft" title="<%= statEffects.craft.description %>">
+                <strong><%= statEffects.craft.icon %> <%= statEffects.craft.name %>:</strong> <%= gameSave ? gameSave.gameData.stats.craft : 4 %>
+                <% if (statModifiers.craft !== 0) { %>
+                    <span class="stat-adjustment <%= statModifiers.craft > 0 ? 'positive' : 'negative' %>">
+                        (<%= statModifiers.craft > 0 ? '+' : '' %><%= statModifiers.craft %>)
+                    </span>
+                <% } %>
+                <small>(<%= gameSave ? gameSave.gameData.statXP.craft : 0 %>/<%= xpThresholds.craft %>)</small>
+            </div>
+            <div class="stat-item" data-stat="focus" title="<%= statEffects.focus.description %>">
+                <strong><%= statEffects.focus.icon %> <%= statEffects.focus.name %>:</strong> <%= gameSave ? gameSave.gameData.stats.focus : 4 %>
+                <% if (statModifiers.focus !== 0) { %>
+                    <span class="stat-adjustment <%= statModifiers.focus > 0 ? 'positive' : 'negative' %>">
+                        (<%= statModifiers.focus > 0 ? '+' : '' %><%= statModifiers.focus %>)
+                    </span>
+                <% } %>
+                <small>(<%= gameSave ? gameSave.gameData.statXP.focus : 0 %>/<%= xpThresholds.focus %>)</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Section -->
+    <div class="current-equipment-section">
+        <h2>Inventory <span class="inventory-capacity">(<%= currentEquipment.inventory.capacity %>)</span></h2>
+        <div class="current-equipment-grid">
+            <!-- Weapons -->
+            <% if (currentEquipment.weapons && currentEquipment.weapons.length > 0) { %>
+                <% currentEquipment.weapons.forEach(weapon => { %>
+                <div class="current-equipment-item">
+                    <div class="equipment-icon">
+                        <span class="equipment-symbol">⚔️</span>
+                    </div>
+                    <div class="equipment-info">
+                        <h4><%= weapon.displayName %></h4>
+                        <p class="equipment-description"><%= weapon.description %></p>
+                        <% if (weapon.stats) { %>
+                            <div class="equipment-stats">
+                                <span class="stat">Hit Rate: <strong><%= weapon.stats.calculatedHitRate || weapon.stats.baseHitRate %></strong></span>
+                                <span class="stat">Damage Rate: <strong><%= weapon.stats.calculatedDamageOutput || weapon.stats.baseDamageOutput %></strong></span>
+                                <span class="stat">Condition: <strong><%= weapon.stats.cardCondition %></strong></span>
+                            </div>
+                        <% } %>
+                    </div>
+                    <div class="equipment-status">
+                        <span class="equipment-type">Weapon</span>
+                    </div>
+                </div>
+                <% }); %>
+            <% } %>
+
+            <!-- Armor -->
+            <% if (currentEquipment.armor && currentEquipment.armor.length > 0) { %>
+                <% currentEquipment.armor.forEach(armor => { %>
+                <div class="current-equipment-item">
+                    <div class="equipment-icon">
+                        <span class="equipment-symbol">🛡️</span>
+                    </div>
+                    <div class="equipment-info">
+                        <h4><%= armor.displayName %></h4>
+                        <p class="equipment-description"><%= armor.description %></p>
+                        <% if (armor.stats) { %>
+                            <div class="equipment-stats">
+                                <span class="stat">Trigger Rate: <strong><%= armor.stats.calculatedHitRate || armor.stats.triggerRate %></strong></span>
+                                <span class="stat">Mitigation: <strong><%= armor.stats.calculatedMitigation || armor.stats.damageMitigation %></strong></span>
+                                <span class="stat">Condition: <strong><%= armor.stats.cardCondition %></strong></span>
+                            </div>
+                        <% } %>
+                    </div>
+                    <div class="equipment-status">
+                        <span class="equipment-type">Armor</span>
+                    </div>
+                </div>
+                <% }); %>
+            <% } %>
+
+            <!-- Artifacts -->
+            <% if (currentEquipment.artifacts && currentEquipment.artifacts.length > 0) { %>
+                <% currentEquipment.artifacts.forEach(artifact => { %>
+                <div class="current-equipment-item">
+                    <div class="equipment-icon">
+                        <span class="equipment-symbol">🏺</span>
+                    </div>
+                    <div class="equipment-info">
+                        <h4><%= artifact.displayName %></h4>
+                        <p class="equipment-description"><%= artifact.description %></p>
+                        <% if (artifact.stats) { %>
+                            <div class="equipment-stats">
+                                <% if (artifact.stats.effect) { %>
+                                    <span class="stat">Effect: <strong><%= artifact.stats.effect %></strong></span>
+                                <% } %>
+                            </div>
+                        <% } %>
+                    </div>
+                    <div class="equipment-status">
+                        <span class="equipment-type">Artifact</span>
+                    </div>
+                </div>
+                <% }); %>
+            <% } %>
+
+            <!-- No Equipment Message -->
+            <% if ((!currentEquipment.weapons || currentEquipment.weapons.length === 0) && 
+                   (!currentEquipment.armor || currentEquipment.armor.length === 0) && 
+                   (!currentEquipment.artifacts || currentEquipment.artifacts.length === 0)) { %>
+                <div class="no-equipment">
+                    <div class="no-equipment-icon">🥺</div>
+                    <h3>Empty</h3>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
     <!-- Current Deck Section -->
     <div class="deck-section">
         <h2>Current Deck</h2>
@@ -20,77 +154,22 @@
         </div>
     </div>
 
-    <!-- Current Equipment Section -->
-    <div class="current-equipment-section">
-        <h2>Current Equipment</h2>
-        <div class="current-equipment-grid">
-            <!-- Current Weapon -->
-            <div class="current-equipment-item">
-                <div class="equipment-icon">
-                    <span class="equipment-symbol">⚔️</span>
-                </div>
-                <div class="equipment-info">
-                    <h4><%= currentEquipment.weapon.displayName %></h4>
-                    <p class="equipment-description">Currently equipped weapon</p>
-                    <% if (currentEquipment.weapon.stats) { %>
-                        <div class="equipment-stats">
-                            <span class="stat">Hit Rate: <strong><%= currentEquipment.weapon.stats.calculatedHitRate || currentEquipment.weapon.stats.baseHitRate %></strong></span>
-                            <span class="stat">Damage Rate: <strong><%= currentEquipment.weapon.stats.calculatedDamageOutput || currentEquipment.weapon.stats.baseDamageOutput %></strong></span>
-                            <span class="stat">Condition: <strong><%= currentEquipment.weapon.stats.cardCondition %></strong></span>
-                        </div>
-                    <% } %>
-                </div>
-                <div class="equipment-status">
-                    <span class="status-badge equipped">Equipped</span>
-                </div>
-            </div>
-            
-            <!-- Current Armor -->
-            <div class="current-equipment-item">
-                <div class="equipment-icon">
-                    <span class="equipment-symbol">🛡️</span>
-                </div>
-                <div class="equipment-info">
-                    <h4><%= currentEquipment.armor.displayName %></h4>
-                    <p class="equipment-description">Currently equipped armor</p>
-                    <% if (currentEquipment.armor.stats) { %>
-                        <div class="equipment-stats">
-                            <span class="stat">Trigger Rate: <strong><%= currentEquipment.armor.stats.calculatedHitRate || currentEquipment.armor.stats.triggerRate %></strong></span>
-                            <span class="stat">Mitigation: <strong><%= currentEquipment.armor.stats.calculatedMitigation || currentEquipment.armor.stats.damageMitigation %></strong></span>
-                            <span class="stat">Condition: <strong><%= currentEquipment.armor.stats.cardCondition %></strong></span>
-                        </div>
-                    <% } %>
-                </div>
-                <div class="equipment-status">
-                    <span class="status-badge equipped">Equipped</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Equipment Collection Section -->
     <div class="equipment-section">
-        <h2>Equipment Collection</h2>
+        <h2>Unlocked Equipment</h2>
         
         <!-- Weapons -->
         <div class="equipment-category">
             <h3>Weapons</h3>
             <div class="equipment-grid" id="weapons-grid">
                 <% equipmentCollection.weapons.forEach(weapon => { %>
-                <div class="equipment-item <%= weapon.owned ? 'owned' : 'locked' %>">
+                <div class="equipment-item owned">
                     <div class="equipment-icon">
                         <span class="equipment-symbol">⚔️</span>
                     </div>
                     <div class="equipment-info">
-                        <h4><%= weapon.name %></h4>
+                        <h4><%= weapon.displayName %></h4>
                         <p class="equipment-description"><%= weapon.description %></p>
-                    </div>
-                    <div class="equipment-status">
-                        <% if (weapon.owned) { %>
-                            <span class="status-badge owned">Owned</span>
-                        <% } else { %>
-                            <span class="status-badge locked">Locked</span>
-                        <% } %>
                     </div>
                 </div>
                 <% }); %>
@@ -102,20 +181,13 @@
             <h3>Armor</h3>
             <div class="equipment-grid" id="armor-grid">
                 <% equipmentCollection.armor.forEach(armor => { %>
-                <div class="equipment-item <%= armor.owned ? 'owned' : 'locked' %>">
+                <div class="equipment-item owned">
                     <div class="equipment-icon">
                         <span class="equipment-symbol">🛡️</span>
                     </div>
                     <div class="equipment-info">
-                        <h4><%= armor.name %></h4>
+                        <h4><%= armor.displayName %></h4>
                         <p class="equipment-description"><%= armor.description %></p>
-                    </div>
-                    <div class="equipment-status">
-                        <% if (armor.owned) { %>
-                            <span class="status-badge owned">Owned</span>
-                        <% } else { %>
-                            <span class="status-badge locked">Locked</span>
-                        <% } %>
                     </div>
                 </div>
                 <% }); %>

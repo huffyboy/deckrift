@@ -6,6 +6,115 @@
 // Save data version for compatibility
 export const SAVE_VERSION = '1.0.0';
 
+import { createStandardDeck } from './deckService.js';
+
+/**
+ * Factory functions to create consistent objects
+ * This prevents code duplication and ensures all objects have the same structure
+ */
+
+/**
+ * Create a default fight status object
+ * @param {Object} options - Optional overrides
+ * @returns {Object} Fight status object
+ */
+export function createFightStatus(options = {}) {
+  return {
+    inBattle: false,
+    playerHand: [],
+    playerDeck: [],
+    playerDiscard: [],
+    enemyHand: [],
+    enemyDeck: [],
+    enemyDiscard: [],
+    enemyStats: {},
+    enemyHealth: 0,
+    enemyMaxHealth: 0,
+    turn: 'player',
+    ...options,
+  };
+}
+
+/**
+ * Create a default event status object
+ * @param {Object} options - Optional overrides
+ * @returns {Object} Event status object
+ */
+export function createEventStatus(options = {}) {
+  return {
+    currentEvent: null,
+    drawnCards: [],
+    eventStep: 0,
+    eventPhase: 'start',
+    ...options, // Allow overrides
+  };
+}
+
+/**
+ * Create a default stat modifiers object
+ * @param {Object} options - Optional overrides
+ * @returns {Object} Stat modifiers object
+ */
+export function createStatModifiers(options = {}) {
+  return {
+    power: 0,
+    will: 0,
+    craft: 0,
+    focus: 0,
+    ...options, // Allow overrides
+  };
+}
+
+/**
+ * Create a default location object
+ * @param {Object} options - Optional overrides
+ * @returns {Object} Location object
+ */
+export function createLocation(options = {}) {
+  return {
+    realm: 1,
+    level: 1,
+    mapX: 0,
+    mapY: 0,
+    ...options, // Allow overrides
+  };
+}
+
+/**
+ * Create a default map object
+ * @param {Object} options - Optional overrides
+ * @returns {Object} Map object
+ */
+export function createMap(options = {}) {
+  return {
+    tiles: [],
+    width: 0,
+    height: 0,
+    ...options, // Allow overrides
+  };
+}
+
+/**
+ * Create a default run data object
+ * @param {Object} options - Optional overrides
+ * @returns {Object} Run data object
+ */
+export function createRunData(options = {}) {
+  return {
+    version: SAVE_VERSION,
+    timestamp: Date.now(),
+    map: createMap(options.map),
+    location: createLocation(options.location),
+    fightStatus: createFightStatus(options.fightStatus),
+    eventStatus: createEventStatus(options.eventStatus),
+    statModifiers: createStatModifiers(options.statModifiers),
+    equipment: [],
+    playerDeck: createStandardDeck(),
+    runCurrency: 0, // Start each run with 0 currency
+    ...options, // Allow overrides
+  };
+}
+
 /**
  * Tile Schema
  * Represents a single tile on the map
@@ -38,6 +147,11 @@ export const TileSchema = {
       '𝕁',
     ],
     required: true,
+  },
+  type: {
+    type: 'string',
+    enum: ['standard', 'joker', 'player-start', 'unknown'],
+    default: 'standard',
   },
 };
 
@@ -84,9 +198,11 @@ export const EquipmentItemSchema = {
 export const FightStatusSchema = {
   inBattle: { type: 'boolean', default: false },
   playerHand: { type: 'array', items: 'object', default: [] },
-  playerDeck: { type: 'array', items: 'object', default: [] },
+  playerDeck: { type: 'array', items: 'object', default: [] }, // Cards remaining to draw (order matters)
+  playerDiscard: { type: 'array', items: 'object', default: [] }, // Cards played/discarded (order matters)
   enemyHand: { type: 'array', items: 'object', default: [] },
   enemyDeck: { type: 'array', items: 'object', default: [] },
+  enemyDiscard: { type: 'array', items: 'object', default: [] }, // Enemy cards played/discarded (order matters)
   enemyStats: { type: 'object', default: {} },
   enemyHealth: { type: 'number', default: 0 },
   enemyMaxHealth: { type: 'number', default: 0 },
@@ -127,6 +243,8 @@ export const RunDataSchema = {
   eventStatus: EventStatusSchema,
   statModifiers: StatModifiersSchema,
   equipment: { type: 'array', items: EquipmentItemSchema, default: [] },
+  playerDeck: { type: 'array', items: 'object', default: [] }, // All cards player owns for this run
+  runCurrency: { type: 'number', required: true, min: 0, default: 0 }, // Currency earned during this run
 };
 
 /**
@@ -138,7 +256,7 @@ export const GameDataSchema = {
   timestamp: { type: 'number', required: true },
   health: { type: 'number', required: true, min: 0 },
   maxHealth: { type: 'number', required: true, min: 1 },
-  currency: { type: 'number', required: true, min: 0 },
+  saveCurrency: { type: 'number', required: true, min: 0, default: 0 }, // Currency outside of runs
   stats: {
     power: { type: 'number', required: true, min: 1 },
     will: { type: 'number', required: true, min: 1 },
@@ -284,7 +402,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'hearts',
       value: 'A',
-      type: 'unknown',
+      type: 'standard',
     },
     {
       x: 2,
@@ -292,7 +410,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'diamonds',
       value: '2',
-      type: 'unknown',
+      type: 'standard',
     },
     {
       x: 3,
@@ -300,7 +418,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'clubs',
       value: 'A',
-      type: 'unknown',
+      type: 'standard',
     },
     {
       x: 4,
@@ -308,7 +426,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'spades',
       value: '2',
-      type: 'unknown',
+      type: 'standard',
     },
     {
       x: 5,
@@ -316,7 +434,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'hearts',
       value: '2',
-      type: 'unknown',
+      type: 'standard',
     },
     // Joker position
     {
@@ -333,51 +451,19 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
     version: SAVE_VERSION,
     timestamp: Date.now(),
     saveName,
-    runData: {
-      version: SAVE_VERSION,
-      timestamp: Date.now(),
+    runData: createRunData({
       map: {
         tiles: mapTiles,
         width: 7,
         height: 1,
       },
-      location: {
-        realm: 1,
-        level: 1,
-        mapX: 0,
-        mapY: 0,
-      },
-      fightStatus: {
-        inBattle: false,
-        playerHand: [],
-        playerDeck: [],
-        enemyHand: [],
-        enemyDeck: [],
-        enemyStats: {},
-        enemyHealth: 0,
-        enemyMaxHealth: 0,
-        turn: 'player',
-      },
-      eventStatus: {
-        currentEvent: null,
-        drawnCards: [],
-        eventStep: 0,
-        eventPhase: 'start',
-      },
-      statModifiers: {
-        power: 0,
-        will: 0,
-        craft: 0,
-        focus: 0,
-      },
-      equipment: [],
-    },
+    }),
     gameData: {
       version: SAVE_VERSION,
       timestamp: Date.now(),
       health: 40,
       maxHealth: 40,
-      currency: 0,
+      saveCurrency: 0,
       stats: {
         power: 4,
         will: 4,
@@ -392,6 +478,15 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       },
       unlockedUpgrades: [],
       unlockedEquipment: ['sword', 'light'], // Starting equipment
+    },
+    metadata: {
+      totalPlayTime: 0,
+      lastPlayed: new Date(),
+      saveSlot: 1,
+      lastSelectedEquipment: {
+        weapon: null,
+        armor: null,
+      },
     },
   };
 }

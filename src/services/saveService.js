@@ -3,7 +3,12 @@
  * Coordinates save operations between frontend and database
  */
 
-import { validateData, SaveDataSchema, SAVE_VERSION } from './saveSchemas.js';
+import {
+  validateData,
+  SaveDataSchema,
+  SAVE_VERSION,
+  createFightStatus,
+} from './saveSchemas.js';
 import databaseService from './databaseService.js';
 
 // Storage keys (matching frontend)
@@ -55,7 +60,17 @@ class SaveService {
    */
   async loadSave(userId) {
     try {
-      const result = await this.databaseService.loadFromDatabase(userId);
+      // Get user's active save slot
+      const user = await this.databaseService.getUser(userId);
+      if (!user) {
+        return { success: false, error: 'User not found' };
+      }
+
+      const activeSlot = user.activeSaveSlot || 1;
+      const result = await this.databaseService.loadFromDatabase(
+        userId,
+        activeSlot
+      );
 
       if (result.success) {
         // Validate loaded data
@@ -269,17 +284,7 @@ class SaveService {
               mapX: 0,
               mapY: 0,
             },
-            fightStatus: {
-              inBattle: false,
-              playerHand: [],
-              playerDeck: [],
-              enemyHand: [],
-              enemyDeck: [],
-              enemyStats: {},
-              enemyHealth: 0,
-              enemyMaxHealth: 0,
-              turn: 'player',
-            },
+            fightStatus: createFightStatus(),
             eventStatus: {
               currentEvent: null,
               drawnCards: [],

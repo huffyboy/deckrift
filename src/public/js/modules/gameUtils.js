@@ -283,3 +283,147 @@ export function addJokersToDeck(playerDeck, count) {
   }
   return addCardsToDeck(playerDeck, jokers);
 }
+
+/**
+ * Transfer run currency to save currency when a run ends
+ * @param {Object} gameState - Current game state
+ * @returns {Object} Updated game state with currency transferred
+ */
+export function transferRunCurrencyToSave(gameState) {
+  const updatedGameState = { ...gameState };
+
+  // Get current currencies
+  const runCurrency = updatedGameState.runData?.runCurrency || 0;
+  const currentSaveCurrency = updatedGameState.gameData?.saveCurrency || 0;
+
+  if (runCurrency > 0) {
+    // Add run currency to save currency
+    updatedGameState.gameData.saveCurrency = currentSaveCurrency + runCurrency;
+
+    // Reset run currency to 0
+    updatedGameState.runData.runCurrency = 0;
+  }
+
+  return updatedGameState;
+}
+
+/**
+ * Apply stat changes and handle side effects
+ * @param {Object} gameState - Current game state
+ * @param {Object} statChanges - Object with stat changes { power: +1, will: -2, etc. }
+ * @param {boolean} isTemporary - Whether these are temporary modifiers (true) or permanent stats (false)
+ * @returns {Object} Updated game state with current permanent stats and modifiers
+ */
+export function applyStatChanges(gameState, statChanges, isTemporary = true) {
+  const updatedGameState = { ...gameState };
+
+  // Get current stats
+  const baseStats = updatedGameState.gameData?.stats || {
+    power: 4,
+    will: 4,
+    craft: 4,
+    focus: 4,
+  };
+  const modifiers = updatedGameState.runData?.statModifiers || {
+    power: 0,
+    will: 0,
+    craft: 0,
+    focus: 0,
+  };
+
+  // Calculate old total stats
+  const oldTotalStats = {
+    power: baseStats.power + modifiers.power,
+    will: baseStats.will + modifiers.will,
+    craft: baseStats.craft + modifiers.craft,
+    focus: baseStats.focus + modifiers.focus,
+  };
+
+  // Apply changes
+  if (isTemporary) {
+    // Apply to modifiers
+    Object.keys(statChanges).forEach((stat) => {
+      if (statChanges[stat] !== 0) {
+        modifiers[stat] = (modifiers[stat] || 0) + statChanges[stat];
+      }
+    });
+    updatedGameState.runData.statModifiers = modifiers;
+  } else {
+    // Apply to permanent stats
+    Object.keys(statChanges).forEach((stat) => {
+      if (statChanges[stat] !== 0) {
+        baseStats[stat] = (baseStats[stat] || 4) + statChanges[stat];
+      }
+    });
+    updatedGameState.gameData.stats = baseStats;
+  }
+
+  // Calculate new total stats
+  const newTotalStats = {
+    power: baseStats.power + modifiers.power,
+    will: baseStats.will + modifiers.will,
+    craft: baseStats.craft + modifiers.craft,
+    focus: baseStats.focus + modifiers.focus,
+  };
+
+  // Handle side effects
+  Object.keys(statChanges).forEach((stat) => {
+    if (statChanges[stat] !== 0) {
+      const oldValue = oldTotalStats[stat];
+      const newValue = newTotalStats[stat];
+      const change = newValue - oldValue;
+
+      // Handle Will changes - affects max HP
+      if (stat === 'will' && change !== 0) {
+        const newMaxHealth = newValue * 10;
+
+        // Update max health
+        updatedGameState.maxHealth = newMaxHealth;
+
+        // If max HP increased, increase current HP by the same amount
+        if (change > 0) {
+          updatedGameState.health = Math.min(
+            updatedGameState.health + change * 10,
+            newMaxHealth
+          );
+        }
+        // If max HP decreased, cap current HP to new max
+        else if (change < 0) {
+          updatedGameState.health = Math.min(
+            updatedGameState.health,
+            newMaxHealth
+          );
+        }
+      }
+
+      // Handle Craft changes - affects inventory capacity
+      if (stat === 'craft' && change < 0) {
+        const currentEquipmentCount =
+          updatedGameState.runData?.equipment?.length || 0;
+        const newInventoryCapacity = newValue;
+
+        if (currentEquipmentCount > newInventoryCapacity) {
+          // TODO: Implement item removal logic
+          // const itemsToRemove = currentEquipmentCount - newInventoryCapacity;
+        }
+      }
+
+      // Handle Focus changes - affects hand size
+      if (stat === 'focus' && change !== 0) {
+        // TODO: Implement hand size adjustment logic
+      }
+
+      // Handle Power changes - no immediate side effects
+      if (stat === 'power' && change !== 0) {
+        // No immediate side effects
+      }
+    }
+  });
+
+  return {
+    gameState: updatedGameState,
+    permanentStats: baseStats,
+    statModifiers: modifiers,
+    totalStats: newTotalStats,
+  };
+}

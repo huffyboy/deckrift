@@ -5,7 +5,12 @@
 
 import SaveService from './saveService.js';
 import databaseService from './databaseService.js';
-import { validateData, SaveDataSchema, SAVE_VERSION } from './saveSchemas.js';
+import {
+  validateData,
+  SaveDataSchema,
+  SAVE_VERSION,
+  createFightStatus,
+} from './saveSchemas.js';
 
 class MigrationService {
   constructor() {
@@ -295,17 +300,7 @@ class MigrationService {
           mapX: oldState.currentPosition?.x || 0,
           mapY: oldState.currentPosition?.y || 0,
         },
-        fightStatus: {
-          inBattle: oldState.battleState?.inBattle || false,
-          playerHand: oldState.battleState?.playerHand || [],
-          playerDeck: oldState.deck || [],
-          enemyHand: [],
-          enemyDeck: [],
-          enemyStats: oldState.battleState?.enemy || {},
-          enemyHealth: 0,
-          enemyMaxHealth: 0,
-          turn: oldState.battleState?.turn || 'player',
-        },
+        fightStatus: createFightStatus(oldState.battleState),
         eventStatus: {
           currentEvent: oldState.currentEvent,
           drawnCards: [],
@@ -325,7 +320,7 @@ class MigrationService {
         timestamp: Date.now(),
         health: oldState.health || 40,
         maxHealth: oldState.maxHealth || 40,
-        currency: oldState.currency || 0,
+        saveCurrency: oldState.currency || 0,
         stats: oldState.stats || { power: 4, will: 4, craft: 4, focus: 4 },
         statXP: oldState.statXP || { power: 0, will: 0, craft: 0, focus: 0 },
         unlockedUpgrades: oldState.unlockedUpgrades || [],
@@ -347,17 +342,7 @@ class MigrationService {
         timestamp: Date.now(),
         map: { tiles: [], width: 0, height: 0 },
         location: { realm: 1, level: 1, mapX: 0, mapY: 0 },
-        fightStatus: {
-          inBattle: false,
-          playerHand: [],
-          playerDeck: [],
-          enemyHand: [],
-          enemyDeck: [],
-          enemyStats: {},
-          enemyHealth: 0,
-          enemyMaxHealth: 0,
-          turn: 'player',
-        },
+        fightStatus: createFightStatus({}),
         eventStatus: {
           currentEvent: null,
           drawnCards: [],
@@ -372,7 +357,7 @@ class MigrationService {
         timestamp: Date.now(),
         health: oldData.health || 40,
         maxHealth: oldData.maxHealth || 40,
-        currency: oldData.currency || 0,
+        saveCurrency: oldData.currency || 0,
         stats: oldData.stats || { power: 4, will: 4, craft: 4, focus: 4 },
         statXP: oldData.statXP || { power: 0, will: 0, craft: 0, focus: 0 },
         unlockedUpgrades: oldData.upgrades || [],
@@ -400,17 +385,7 @@ class MigrationService {
           mapX: oldData.mapX || 0,
           mapY: oldData.mapY || 0,
         },
-        fightStatus: {
-          inBattle: oldData.inBattle || false,
-          playerHand: oldData.playerHand || [],
-          playerDeck: oldData.playerDeck || [],
-          enemyHand: oldData.enemyHand || [],
-          enemyDeck: oldData.enemyDeck || [],
-          enemyStats: oldData.enemyStats || {},
-          enemyHealth: oldData.enemyHealth || 0,
-          enemyMaxHealth: oldData.enemyMaxHealth || 0,
-          turn: oldData.turn || 'player',
-        },
+        fightStatus: createFightStatus(oldData.battleState),
         eventStatus: {
           currentEvent: oldData.currentEvent,
           drawnCards: oldData.drawnCards || [],
@@ -430,7 +405,7 @@ class MigrationService {
         timestamp: Date.now(),
         health: oldData.health || 40,
         maxHealth: oldData.maxHealth || 40,
-        currency: oldData.currency || 0,
+        saveCurrency: oldData.currency || 0,
         stats: oldData.stats || { power: 4, will: 4, craft: 4, focus: 4 },
         statXP: oldData.statXP || { power: 0, will: 0, craft: 0, focus: 0 },
         unlockedUpgrades: oldData.unlockedUpgrades || [],

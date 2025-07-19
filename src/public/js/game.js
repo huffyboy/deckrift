@@ -25,11 +25,24 @@ import {
   handleCardEvent as handleCardEventUtil,
 } from './modules/eventHandler.js';
 
+import {
+  drawCardFromDeck,
+  DECK_TYPES,
+  saveDeckToServer,
+} from './modules/deckService.js';
+
 // Game state management
 let currentGameState = null;
 let currentDeck = null; // Store the current deck state
 let isCardSequenceInProgress = false; // Track if card flip/movement is happening
 let playerDirection = 'right'; // Track player direction: 'left' or 'right'
+
+// Test mode configuration
+const testMode = {
+  enabled: true,
+  baneCard: { value: '2', suit: '♠' }, // Default test card for bane events
+  boonCard: { value: 'A', suit: '♥' }, // Default test card for boon events
+};
 
 // Deck management functions
 async function initializeDeck(customCards = null) {
@@ -111,6 +124,28 @@ async function createCustomDeck(cardStrings) {
 window.initializeTestingDeck = initializeTestingDeck;
 window.createCustomDeck = createCustomDeck;
 
+// Test mode control functions
+window.enableTestMode = (
+  baneCard = { value: '2', suit: '♠' },
+  boonCard = { value: 'A', suit: '♥' }
+) => {
+  testMode.enabled = true;
+  testMode.baneCard = baneCard;
+  testMode.boonCard = boonCard;
+};
+
+window.disableTestMode = () => {
+  testMode.enabled = false;
+};
+
+window.setTestBaneCard = (card) => {
+  testMode.baneCard = card;
+};
+
+window.getTestMode = () => {
+  return { ...testMode };
+};
+
 async function drawCard() {
   if (!currentDeck) {
     // Fallback to random selection if no deck
@@ -149,61 +184,54 @@ async function drawCard() {
 }
 
 /**
- * Save the current player deck to the server
- * @param {Array} deck - The current player deck
+ * Get a random card from the player deck for display (without removing it)
+ * Used for bane/boon trigger cards
  */
-async function savePlayerDeck(deck) {
-  try {
-    const response = await fetch('/game/update-deck', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ deck }),
-    });
-
-    const data = await response.json();
-    if (!data.success) {
-      // Failed to save player deck
-    }
-  } catch (error) {
-    // Error saving player deck
+async function getRandomCardFromPlayerDeck(testCard = null) {
+  // Test mode: return the specified test card
+  if (testCard) {
+    return {
+      value: testCard.value,
+      suit: testCard.suit,
+      display: `${testCard.value}${SUIT_TO_EMOJI_MAP[testCard.suit] || testCard.suit}`,
+      code: `${testCard.value}${testCard.suit}`,
+    };
   }
-}
 
-/**
- * Draw a card from the player's deck for boon events
- * @returns {Promise<Object>} - The drawn card object
- */
-async function drawFromPlayerDeck() {
-  if (
-    !currentGameState ||
-    !currentGameState.deck ||
-    currentGameState.deck.length === 0
-  ) {
-    // If no player deck, fallback to random card
+  // Global test mode: return the configured test card for bane events
+  if (testMode.enabled) {
+    return {
+      value: testMode.baneCard.value,
+      suit: testMode.baneCard.suit,
+      display: `${testMode.baneCard.value}${SUIT_TO_EMOJI_MAP[testMode.baneCard.suit] || testMode.baneCard.suit}`,
+      code: `${testMode.baneCard.value}${testMode.baneCard.suit}`,
+    };
+  }
+
+  if (!currentGameState) {
+    // If no game state, fallback to random card
     return getRandomCardDisplay();
   }
 
   try {
-    // Get a random card from the player's deck
-    const randomIndex = Math.floor(
-      Math.random() * currentGameState.deck.length
-    );
-    const deckCard = currentGameState.deck[randomIndex];
+    // Get the player's main deck
+    const playerDeck = currentGameState.runData?.playerDeck || [];
 
-    // Remove the drawn card from the deck
-    currentGameState.deck.splice(randomIndex, 1);
+    if (playerDeck.length === 0) {
+      // If deck is empty, fallback to random card
+      return getRandomCardDisplay();
+    }
 
-    // Save the updated deck to the server
-    await savePlayerDeck(currentGameState.deck);
+    // Pick a random card without removing it
+    const randomIndex = Math.floor(Math.random() * playerDeck.length);
+    const drawnCard = playerDeck[randomIndex];
 
     // Convert to our card format
     const cardObject = {
-      value: deckCard.value,
-      suit: deckCard.suit,
-      display: `${deckCard.value}${SUIT_TO_EMOJI_MAP[deckCard.suit] || deckCard.suit}`,
-      code: `${deckCard.value}${deckCard.suit}`,
+      value: drawnCard.value,
+      suit: drawnCard.suit,
+      display: `${drawnCard.value}${SUIT_TO_EMOJI_MAP[drawnCard.suit] || drawnCard.suit}`,
+      code: `${drawnCard.value}${drawnCard.suit}`,
     };
 
     return cardObject;
@@ -213,7 +241,49 @@ async function drawFromPlayerDeck() {
   }
 }
 
-export { drawFromPlayerDeck };
+/**
+ * Draw a card from the player's deck (removes the card)
+ */
+async function drawAndRemoveCardFromPlayerDeck() {
+  if (!currentGameState) {
+    // If no game state, fallback to random card
+    return getRandomCardDisplay();
+  }
+
+  try {
+    // Use deck service to draw from the main player deck
+    const { gameState: updatedState, drawnCard } = drawCardFromDeck(
+      currentGameState,
+      DECK_TYPES.PLAYER_MAIN
+    );
+
+    if (!drawnCard) {
+      // If no card drawn, fallback to random card
+      return getRandomCardDisplay();
+    }
+
+    // Update the current game state
+    Object.assign(currentGameState, updatedState);
+
+    // Save the updated deck to the server
+    await saveDeckToServer(currentGameState.runData.playerDeck);
+
+    // Convert to our card format
+    const cardObject = {
+      value: drawnCard.value,
+      suit: drawnCard.suit,
+      display: `${drawnCard.value}${SUIT_TO_EMOJI_MAP[drawnCard.suit] || drawnCard.suit}`,
+      code: `${drawnCard.value}${drawnCard.suit}`,
+    };
+
+    return cardObject;
+  } catch (error) {
+    // Fallback to random card if there's an error
+    return getRandomCardDisplay();
+  }
+}
+
+export { drawAndRemoveCardFromPlayerDeck, getRandomCardFromPlayerDeck };
 
 // Game state generation functions - now using shared gameUtils
 function generateEnemyStats(enemyType) {
@@ -522,7 +592,7 @@ function renderOverworldMap() {
               handleCardFlip(mapCell, { x: col, y: row });
             };
           } else {
-            // Revealed card - move there and trigger event (only if not already visited)
+            // Revealed card - move there (only if not already visited)
             cardDiv.onclick = () => {
               // Don't trigger event if already visited
               if (mapCell.visited) {
@@ -549,6 +619,11 @@ function renderOverworldMap() {
               isCardSequenceInProgress = true; // Set busy state
               // Mark this card as visited when player moves to it
               mapCell.visited = true;
+              // Move player to the position and trigger the event through the proper sequence
+              currentGameState.runData.location.mapX = col;
+              currentGameState.runData.location.mapY = row;
+              renderOverworldMap();
+              // Trigger the event through the proper sequence
               handleCardEvent(mapCell, { x: col, y: row });
             };
           }

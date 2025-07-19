@@ -76,6 +76,24 @@ You were once an adventurer, until you vanished into a realm all your own. Immor
 - **Weapons**: Dagger, Bow, Staff, Hammer (unlocked via Home Realm upgrades)
 - **Armor**: Medium Armor, Heavy Armor (unlocked via Home Realm upgrades)
 
+### No Weapon Mechanic
+
+If the player has no weapon equipped, their attack damage is reduced:
+
+- **Face cards (J, Q, K)**: Deal 1/2 normal damage
+- **Ace (A)**: Deal full damage
+
+This mechanic applies whenever the player's weapon slot is empty (e.g., after losing their last weapon to a bane effect).
+
+### No Armor Mechanic
+
+If the player has no armor equipped, they can only dodge damage with an Ace:
+
+- **Ace (A)**: Dodge all damage
+- **All other cards**: Take full damage
+
+This mechanic applies whenever the player's armor slot is empty (e.g., after losing their last armor to a bane effect).
+
 ## Upgrade System
 
 ### XP Boost Upgrades

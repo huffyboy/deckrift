@@ -43,37 +43,17 @@ const userSchema = new mongoose.Schema(
         default: true,
       },
     },
-    // Game statistics
-    totalRuns: {
-      type: Number,
-      default: 0,
-    },
-    bestScore: {
-      type: Number,
-      default: 0,
-    },
-    totalPlaytime: {
-      type: Number,
-      default: 0, // in minutes
-    },
     currency: {
       type: Number,
       default: 0,
     },
-    // Upgrades
-    upgrades: [
-      {
-        type: String,
-      },
-    ],
-    // Realm completion tracking
-    completedRealms: {
-      type: [Number],
-      default: [],
-    },
-    unlockedRealms: {
-      type: [Number],
-      default: [1], // Start with first realm unlocked
+    // Indicates which save slot is currently active for this user
+    // Since users can have multiple save slots, only one should be active at a time
+    activeSaveSlot: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 10, // Allow up to 10 save slots
     },
     createdAt: {
       type: Date,

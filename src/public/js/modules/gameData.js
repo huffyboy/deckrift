@@ -23,6 +23,24 @@ export const CARD_VALUES = {
   𝕁: 0,
 };
 
+// Negative card value mappings for negative effects (inverted scale)
+export const NEGATIVE_CARD_VALUES = {
+  𝕁: 14, // Joker becomes 14 (bad - maximum loss)
+  K: 13, // King stays 13
+  Q: 12, // Queen stays 12
+  J: 11, // Jack stays 11
+  10: 10, // 10 stays 10
+  9: 9, // 9 stays 9
+  8: 8, // 8 stays 8
+  7: 7, // 7 stays 7
+  6: 6, // 6 stays 6
+  5: 5, // 5 stays 5
+  4: 4, // 4 stays 4
+  3: 3, // 3 stays 3
+  2: 2, // 2 stays 2
+  A: 1, // Ace becomes 1 (good - minimal loss)
+};
+
 // Card color mappings
 export const CARD_COLORS = {
   hearts: 'red',
@@ -257,21 +275,28 @@ export const STAT_EFFECTS = {
   power: {
     damagePerPoint: 1,
     minDamage: 1,
-    description: 'Damage',
+    description: 'Increases damage dealt in combat.',
+    icon: '💪',
+    name: 'Power',
   },
   will: {
     hpPerPoint: 10,
-    description: 'Max HP (Max HP increases also adds to current HP)',
+    description: 'Determines your maximum health (10 HP per point).',
+    icon: '💙',
+    name: 'Will',
   },
   craft: {
     equipmentSlots: 1,
-    description:
-      'Determines number of equipment and artifacts player can carry',
+    description: 'Determines your inventory capacity.',
+    icon: '⚒️',
+    name: 'Craft',
   },
   focus: {
     handSizePerPoint: 1,
     minHandSize: 2,
-    description: 'Hand size',
+    description: 'Determines your hand size.',
+    icon: '🧠',
+    name: 'Focus',
   },
 };
 
@@ -334,6 +359,17 @@ export const CHALLENGE_MODIFIERS = {
 // ============================================================================
 
 export const EQUIPMENT = {
+  // Effect to damage multiplier mapping
+  effectToMultiplier: {
+    noDamage: 0,
+    quarterDamage: 0.25,
+    halfDamage: 0.5,
+    threeQuarterDamage: 0.75,
+    fullDamage: 1.0,
+    doubleDamage: 2.0,
+    instantKill: 999, // Special case for instant kill
+    healSelf: 1.0, // Heal amount equals damage that would have been dealt
+  },
   weapons: {
     sword: {
       name: 'Sword',
@@ -474,6 +510,32 @@ export const EQUIPMENT = {
           effect: 'instantKill',
         },
       ],
+    },
+    // Special case: No weapon equipped
+    none: {
+      name: 'No Weapon',
+      description: 'Fighting without a weapon reduces your effectiveness.',
+      baseHitRate: '30.77%', // 16/52 cards hit (J, Q, K, A)
+      baseDamageOutput: '0.192 * Power', // Average damage: (12×0.5 + 4×1.0) / 52 = 10/52
+      cardCondition: 'Face cards: 1/2 damage, Ace: full damage',
+      hitEffects: [
+        {
+          condition: {
+            type: 'range',
+            from: 11,
+            to: 13, // J, Q, K (face cards)
+          },
+          effect: 'halfDamage',
+        },
+        {
+          condition: {
+            type: 'card',
+            value: 'A',
+          },
+          effect: 'fullDamage',
+        },
+      ],
+      isNoWeapon: true, // Flag to identify this special case
     },
   },
   armor: {
@@ -634,6 +696,7 @@ export const EQUIPMENT_REFERENCE = {
   hammer: { type: 'weapon', category: 'basic' },
   sword: { type: 'weapon', category: 'basic' },
   needle: { type: 'weapon', category: 'special', runExclusive: true },
+  none: { type: 'weapon', category: 'special', isNoWeapon: true },
 
   // Armor
   light: { type: 'armor', category: 'basic' },
@@ -1023,22 +1086,54 @@ export const BANES = {
     type: 'addJoker',
     amount: 1,
   },
-  11: {
+  J: {
     type: 'addJoker',
     amount: 1,
   },
-  12: {
+  Q: {
     type: 'loseCurrency',
   },
-  13: {
+  K: {
     type: 'loseCurrency',
   },
-  14: {
+  A: {
     type: 'loseCurrency',
   },
 };
 
+// Suit to stat mapping for bane effects
+export const SUIT_TO_STAT_MAP = {
+  // Unicode symbols
+  '♠': 'power', // Spades -> Power
+  '♥': 'will', // Hearts -> Will
+  '♦': 'craft', // Diamonds -> Craft
+  '♣': 'focus', // Clubs -> Focus
+
+  // Emoji versions
+  '♠️': 'power', // Spades -> Power
+  '♥️': 'will', // Hearts -> Will
+  '♦️': 'craft', // Diamonds -> Craft
+  '♣️': 'focus', // Clubs -> Focus
+
+  // String suit names (for database compatibility)
+  spades: 'power', // Spades -> Power
+  hearts: 'will', // Hearts -> Will
+  diamonds: 'craft', // Diamonds -> Craft
+  clubs: 'focus', // Clubs -> Focus
+};
+
 export const BANE_AND_BOON_EFFECTS = {
+  // ============================================================================
+  // BANE EFFECTS WITH SECOND DRAWS
+  // ============================================================================
+  // Some bane effects require a second card draw to determine the specific outcome.
+  // The secondDrawDeck property specifies which deck to draw from:
+  // - 'player': Draw from the player's full personal deck (for loseCurrency)
+  // - 'playerHighCards': Draw from filtered high cards (10, J, Q, K, A) in player's personal deck (for loseHighCard)
+  // - 'playerFaceCards': Draw from filtered face cards (J, Q, K) in player's personal deck (for loseFaceCard)
+  // - 'standard': Draw from a standard 52-card deck (for initial event draws)
+  // ============================================================================
+
   powerPlus: {
     header: 'You gain a surge of power',
     description: 'Add 1 to your power for the rest of the run.',
@@ -1095,28 +1190,51 @@ export const BANE_AND_BOON_EFFECTS = {
   },
   loseItem: {
     header: 'One of your equipment has gone missing',
-    description: 'You lose 1 item you were carrying.',
+    description: 'Lose a random item from your inventory.',
     icon: '🕳️',
   },
   loseStat: {
     header: 'You feel a bit weaker',
-    description: 'Lose 1 stat point.',
+    description: 'Draw a card to determine which stat to lose.',
+    secondDrawMessage: 'You draw {card} and lose {stat}.',
+    secondDrawDeck: 'player', // Draw from player's deck
     icon: '💔',
   },
   loseHighCard: {
     header: 'You lose some clarity',
-    description: 'Lose 1 high card from your deck.',
+    description: 'Lose a random high card from your deck.',
+    secondDrawDeck: 'playerHighCards', // Draw from filtered high cards in player's personal deck
+    secondDrawMessage: 'You lost your {card} from your deck.',
     icon: '🌩️',
   },
   loseFaceCard: {
     header: 'Your luck is fading',
-    description: 'Lose 1 face card from your deck.',
+    description: 'Lose a random face card in your deck.',
+    secondDrawDeck: 'playerFaceCards', // Draw from filtered face cards in player's personal deck
+    secondDrawMessage: 'You lost your {card} from your deck.',
     icon: '⛈️',
   },
   loseCurrency: {
     header: 'Some treasure has gone missing',
-    description: 'Lose 1 card worth of treasure.',
+    description: 'Draw another card to determine how much currency to lose.',
+    secondDrawMessage: 'You draw {card} and lose {amount} currency.',
+    secondDrawDeck: 'player', // Draw from player's deck
     icon: '💸',
+    // New messaging for different currency loss scenarios
+    messages: {
+      noCurrency: {
+        title: 'Empty pockets',
+        message: 'You realize you had nothing to lose.',
+      },
+      partialLoss: {
+        title: 'Missing treasure',
+        message: 'You lost what little you had.',
+      },
+      fullLoss: {
+        title: 'Missing treasure',
+        message: 'You draw {card} and lose {amount} currency.',
+      },
+    },
   },
   addJoker: {
     header: 'You have been cursed',
@@ -1484,19 +1602,21 @@ export const SUIT_TO_EMOJI_MAP = {
   joker: '🃏',
 };
 
-// Suit order for sorting (spades, hearts, diamonds, clubs)
+// Suit order for sorting (black suits first, then red suits, then joker)
 export const SUIT_ORDER = {
   // Unicode symbols
-  '♠': 0,
-  '♥': 1,
-  '♦': 2,
-  '♣': 3,
+  '♠': 0, // spades (black)
+  '♣': 1, // clubs (black)
+  '♥': 2, // hearts (red)
+  '♦': 3, // diamonds (red)
+  '🃏': 4, // joker
 
   // String suit names (for database compatibility)
-  spades: 0,
-  hearts: 1,
-  diamonds: 2,
-  clubs: 3,
+  spades: 0, // black
+  clubs: 1, // black
+  hearts: 2, // red
+  diamonds: 3, // red
+  joker: 4, // joker
 };
 
 // Internal suit to API suit mapping
@@ -1632,28 +1752,13 @@ export const SHOP_PRICES = {
 };
 
 // ============================================================================
-// EFFECT MAPPINGS
-// ============================================================================
-
-// Map effect strings to damage multipliers
-export const EFFECT_TO_MULTIPLIER = {
-  fullDamage: 1.0,
-  halfDamage: 0.5,
-  doubleDamage: 2.0,
-  quarterDamage: 0.25,
-  threeQuarterDamage: 0.75,
-  noDamage: 0.0,
-  instantKill: 0.0, // Special case
-  healSelf: 1.0, // Special case for staff
-};
-
-// ============================================================================
 // DEFAULT EXPORT
 // ============================================================================
 
 export default {
   // Card System
   CARD_VALUES,
+  NEGATIVE_CARD_VALUES,
   CARD_COLORS,
   CARD_RANGES,
   FACE_CARDS,
@@ -1700,9 +1805,6 @@ export default {
 
   // Economy & Shopping
   SHOP_PRICES,
-
-  // Effect Mappings
-  EFFECT_TO_MULTIPLIER,
 
   // Suit Symbol Mapping
   SUIT_SYMBOL_MAP,

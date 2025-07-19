@@ -1,9 +1,11 @@
 /**
- * Save Schemas - Frontend
- * Data structure definitions and validation for save data
+ * Frontend Save Data Schemas
+ * Defines the structure and validation for save data on the frontend
  */
 
-// Save data version
+import { createStandardDeck } from './deckService.js';
+
+// Save data version for compatibility
 export const SAVE_VERSION = '1.0.0';
 
 // Base schema validation function
@@ -77,6 +79,7 @@ export const RunDataSchema = {
     schema: 'StatModifiersSchema',
   },
   equipment: { required: true, array: true },
+  playerDeck: { required: true, array: true }, // All cards player owns for this run
 };
 
 // Game data schema (persistent data)
@@ -85,7 +88,7 @@ export const GameDataSchema = {
   timestamp: { required: true, type: 'number' },
   health: { required: true, type: 'number' },
   maxHealth: { required: true, type: 'number' },
-  currency: { required: true, type: 'number' },
+  saveCurrency: { required: true, type: 'number' },
   stats: { required: true, object: true, schema: 'StatsSchema' },
   statXP: { required: true, object: true, schema: 'StatXPSchema' },
   unlockedUpgrades: { required: true, array: true },
@@ -109,15 +112,17 @@ export const LocationSchema = {
 
 // Fight status schema
 export const FightStatusSchema = {
-  inBattle: { required: true, type: 'boolean' },
+  inBattle: { required: true, boolean: true },
   playerHand: { required: true, array: true },
-  playerDeck: { required: true, array: true },
+  playerDeck: { required: true, array: true }, // Cards remaining to draw (order matters)
+  playerDiscard: { required: true, array: true }, // Cards played/discarded (order matters)
   enemyHand: { required: true, array: true },
   enemyDeck: { required: true, array: true },
+  enemyDiscard: { required: true, array: true }, // Enemy cards played/discarded (order matters)
   enemyStats: { required: true, object: true },
-  enemyHealth: { required: true, type: 'number' },
-  enemyMaxHealth: { required: true, type: 'number' },
-  turn: { required: true, type: 'string' },
+  enemyHealth: { required: true, number: true },
+  enemyMaxHealth: { required: true, number: true },
+  turn: { required: true, string: true, enum: ['player', 'enemy'] },
 };
 
 // Event status schema
@@ -185,7 +190,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'hearts',
       value: 'A',
-      type: 'unknown',
+      type: 'standard',
     },
     {
       x: 2,
@@ -193,7 +198,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'diamonds',
       value: '2',
-      type: 'unknown',
+      type: 'standard',
     },
     {
       x: 3,
@@ -201,7 +206,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'clubs',
       value: 'A',
-      type: 'unknown',
+      type: 'standard',
     },
     {
       x: 4,
@@ -209,7 +214,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'spades',
       value: '2',
-      type: 'unknown',
+      type: 'standard',
     },
     {
       x: 5,
@@ -217,7 +222,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       visited: false,
       suit: 'hearts',
       value: '2',
-      type: 'unknown',
+      type: 'standard',
     },
     // Joker position
     {
@@ -236,7 +241,7 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
     saveName,
     runData: {
       version: SAVE_VERSION,
-      timestamp,
+      timestamp: Date.now(),
       map: {
         tiles: mapTiles,
         width: 7,
@@ -251,9 +256,11 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       fightStatus: {
         inBattle: false,
         playerHand: [],
-        playerDeck: [],
+        playerDeck: [], // Cards remaining to draw (order matters)
+        playerDiscard: [], // Cards played/discarded (order matters)
         enemyHand: [],
         enemyDeck: [],
+        enemyDiscard: [], // Enemy cards played/discarded (order matters)
         enemyStats: {},
         enemyHealth: 0,
         enemyMaxHealth: 0,
@@ -272,13 +279,14 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
         focus: 0,
       },
       equipment: [],
+      playerDeck: createStandardDeck(), // All cards player owns for this run
     },
     gameData: {
       version: SAVE_VERSION,
       timestamp,
-      health: 100,
-      maxHealth: 100,
-      currency: 0,
+      health: 40,
+      maxHealth: 40,
+      saveCurrency: 0,
       stats: {
         power: 1,
         will: 1,
@@ -294,6 +302,23 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       unlockedUpgrades: [],
       unlockedEquipment: [],
     },
+  };
+}
+
+export function createFightStatus(options = {}) {
+  return {
+    inBattle: false,
+    playerHand: [],
+    playerDeck: [],
+    playerDiscard: [],
+    enemyHand: [],
+    enemyDeck: [],
+    enemyDiscard: [],
+    enemyStats: {},
+    enemyHealth: 0,
+    enemyMaxHealth: 0,
+    turn: 'player',
+    ...options,
   };
 }
 

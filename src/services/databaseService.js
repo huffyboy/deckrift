@@ -42,9 +42,20 @@ class DatabaseService {
   }
 
   /**
+   * Get user by ID
+   */
+  async getUser(userId) {
+    try {
+      return await User.findById(userId);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
    * Save game data to database
    */
-  async saveToDatabase(userId, saveData) {
+  async saveToDatabase(userId, saveData, saveSlot = 1) {
     try {
       if (!this.isOnline) {
         return {
@@ -68,7 +79,7 @@ class DatabaseService {
       // Find existing save or create new one
       let save = await Save.findOne({
         userId,
-        isActive: true,
+        saveSlot,
       });
 
       if (save) {
@@ -76,7 +87,7 @@ class DatabaseService {
         save = await this.updateExistingSave(save, saveData);
       } else {
         // Create new save
-        save = await this.createNewDatabaseSave(userId, saveData);
+        save = await this.createNewDatabaseSave(userId, saveData, saveSlot);
       }
 
       return { success: true, saveId: save._id };
@@ -102,12 +113,12 @@ class DatabaseService {
   /**
    * Create new database save
    */
-  async createNewDatabaseSave(userId, saveData) {
+  async createNewDatabaseSave(userId, saveData, saveSlot) {
     const save = new Save({
       userId,
+      saveSlot,
       saveName: saveData.saveName,
       version: saveData.version,
-      isActive: true,
       runData: saveData.runData,
       gameData: saveData.gameData,
     });
@@ -119,7 +130,7 @@ class DatabaseService {
   /**
    * Load game data from database
    */
-  async loadFromDatabase(userId) {
+  async loadFromDatabase(userId, saveSlot = 1) {
     try {
       if (!this.isOnline) {
         return {
@@ -130,11 +141,14 @@ class DatabaseService {
 
       const save = await Save.findOne({
         userId,
-        isActive: true,
+        saveSlot,
       });
 
       if (!save) {
-        return { success: false, error: 'No active save found in database' };
+        return {
+          success: false,
+          error: 'No save found in database for slot ' + saveSlot,
+        };
       }
 
       // Return save data in new format
@@ -143,6 +157,7 @@ class DatabaseService {
         version: save.version,
         timestamp: save.metadata.lastPlayed.getTime(),
         saveName: save.saveName,
+        saveSlot: save.saveSlot,
         runData: save.runData,
         gameData: save.gameData,
       };
@@ -159,18 +174,18 @@ class DatabaseService {
   async getSaveSlots(userId) {
     try {
       const saves = await Save.find({ userId })
-        .sort({ 'metadata.lastPlayed': -1 })
+        .sort({ saveSlot: 1 })
         .select(
-          'saveName metadata.lastPlayed isActive version runData.location.realm runData.location.level'
+          'saveName metadata.lastPlayed saveSlot version runData.location.realm runData.location.level'
         );
 
       return saves.map((save) => ({
         id: save._id,
+        slot: save.saveSlot,
         name: save.saveName,
         timestamp: save.metadata.lastPlayed.getTime(),
-        realm: save.runData.location.realm,
-        level: save.runData.location.level,
-        isActive: save.isActive,
+        realm: save.runData?.location?.realm || 1,
+        level: save.runData?.location?.level || 1,
         version: save.version,
       }));
     } catch (error) {
@@ -361,7 +376,7 @@ class DatabaseService {
           timestamp: Date.now(),
           health: oldSave.health || 40,
           maxHealth: oldSave.maxHealth || 40,
-          currency: oldSave.currency || 0,
+          saveCurrency: oldSave.currency || 0,
           stats: oldSave.stats || {
             power: 4,
             will: 4,

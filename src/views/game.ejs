@@ -14,7 +14,15 @@
             <div class="col-md-3">
                 <div class="game-stat">
                     <h5>Currency</h5>
-                    <span class="currency-value"><%= gameSave.gameData.currency %></span>
+                    <span class="currency-value">
+  <% if (gameSave && gameSave.runData && gameSave.runData.runCurrency !== undefined) { %>
+    <%= gameSave.runData.runCurrency %>
+  <% } else if (gameSave && gameSave.gameData && gameSave.gameData.saveCurrency !== undefined) { %>
+    <%= gameSave.gameData.saveCurrency %>
+  <% } else { %>
+    0
+  <% } %>
+</span>
                 </div>
             </div>
             <div class="col-md-3">
