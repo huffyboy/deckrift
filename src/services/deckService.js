@@ -73,7 +73,7 @@ export function createCustomDeck(cardValues) {
 export function getDeck(gameState, deckType) {
   switch (deckType) {
     case DECK_TYPES.PLAYER_MAIN:
-      return gameState?.runData?.playerDeck || [];
+      return gameState?.runData?.playerDeck || generateStandardDeck();
     case DECK_TYPES.PLAYER_BATTLE:
       return gameState?.runData?.fightStatus?.playerDeck || [];
     case DECK_TYPES.PLAYER_DISCARD:

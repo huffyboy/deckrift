@@ -6,9 +6,9 @@
                 <div class="game-stat">
                     <h5>Health</h5>
                     <div class="health-bar">
-                        <div class="health-fill" style="width: <%= (gameSave.gameData.health / gameSave.gameData.maxHealth) * 100 %>%"></div>
+                        <div class="health-fill" style="width: <%= (gameSave.runData.health / gameSave.runData.maxHealth) * 100 %>%"></div>
                     </div>
-                    <span><%= gameSave.gameData.health %>/<%= gameSave.gameData.maxHealth %></span>
+                    <span><%= gameSave.runData.health %>/<%= gameSave.runData.maxHealth %></span>
                 </div>
             </div>
             <div class="col-md-3">

@@ -149,6 +149,535 @@ export function updateCurrencyDisplay(newCurrency) {
 }
 
 /**
+ * Update the health display in the game header
+ * @param {number} currentHealth - Current health value
+ * @param {number} maxHealth - Maximum health value
+ */
+export function updateHealthDisplay(currentHealth, maxHealth) {
+  // Update the health bar fill
+  const healthFill = document.querySelector('.health-fill');
+  if (healthFill) {
+    const healthPercentage = (currentHealth / maxHealth) * 100;
+    healthFill.style.width = `${healthPercentage}%`;
+  }
+
+  // Update the health text
+  const healthText = document.querySelector('.game-stat span');
+  if (healthText) {
+    healthText.textContent = `${currentHealth}/${maxHealth}`;
+  }
+}
+
+/**
+ * Show a card choice dialog with accept/decline buttons
+ * @param {Object} card - The card object to show
+ * @param {Function} onAccept - Callback when card is accepted
+ * @param {Function} onDecline - Callback when card is declined
+ */
+export function showCardChoiceDialog(card, onAccept, onDecline) {
+  // Create dialog overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'card-choice-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+  `;
+
+  // Create dialog content
+  const dialog = document.createElement('div');
+  dialog.className = 'card-choice-dialog';
+  dialog.style.cssText = `
+    background: linear-gradient(135deg, #2a2a2a, #1e1e1e);
+    border: 3px solid #4a2c8f;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 400px;
+    color: white;
+    font-family: 'Cinzel', serif;
+  `;
+
+  const cardDisplay = `${card.value}${SUIT_TO_EMOJI_MAP[card.suit] || card.suit}`;
+
+  dialog.innerHTML = `
+    <h3 style="margin-bottom: 1rem; color: #d4af37;">Add Card to Deck</h3>
+    <div style="font-size: 4em; margin: 1rem 0;">${cardDisplay}</div>
+    <p style="margin-bottom: 2rem; font-size: 1.1rem;">Would you like to add ${cardDisplay} to your deck?</p>
+    <div style="display: flex; gap: 1rem; justify-content: center;">
+      <button class="btn btn-success" style="background: #28a745; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Accept</button>
+      <button class="btn btn-secondary" style="background: #6c757d; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Decline</button>
+    </div>
+  `;
+
+  // Add event listeners
+  const acceptBtn = dialog.querySelector('.btn-success');
+  const declineBtn = dialog.querySelector('.btn-secondary');
+
+  acceptBtn.addEventListener('click', () => {
+    overlay.remove();
+    if (onAccept) onAccept();
+  });
+
+  declineBtn.addEventListener('click', () => {
+    overlay.remove();
+    if (onDecline) onDecline();
+  });
+
+  // Add to page
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+}
+
+/**
+ * Show a multi-card choice dialog with accept/decline options for each card
+ * @param {Array} cards - Array of card objects to show
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ * @param {Function} applyAddCard - Function to apply add card effect
+ */
+export function showMultiCardChoiceDialog(
+  cards,
+  gameState,
+  handlers,
+  applyAddCard
+) {
+  // Create dialog overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'multi-card-choice-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+  `;
+
+  // Create dialog content
+  const dialog = document.createElement('div');
+  dialog.className = 'multi-card-choice-dialog';
+  dialog.style.cssText = `
+    background: linear-gradient(135deg, #2a2a2a, #1e1e1e);
+    border: 3px solid #4a2c8f;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 800px;
+    color: white;
+    font-family: 'Cinzel', serif;
+  `;
+
+  // Create cards row (horizontal layout)
+  const cardsRow = document.createElement('div');
+  cardsRow.style.cssText = `
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  `;
+
+  // Add each card to the row
+  cards.forEach((card) => {
+    const cardElement = document.createElement('div');
+    cardElement.className = 'choice-card';
+    cardElement.style.cssText = `
+      background: linear-gradient(135deg, #ffffff, #f0f0f0);
+      border: 2px solid #4a2c8f;
+      border-radius: 8px;
+      padding: 1rem 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #1e1e1e;
+      width: 60px;
+      height: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    `;
+
+    const cardDisplay = `${card.value}${SUIT_TO_EMOJI_MAP[card.suit] || card.suit}`;
+    cardElement.innerHTML = `
+      <div style="font-size: 1.2em; transition: transform 0.2s ease;">${cardDisplay}</div>
+    `;
+
+    // Add hover effect
+    cardElement.addEventListener('mouseenter', () => {
+      cardElement.style.transform = 'translateY(-4px) scale(1.05)';
+      cardElement.style.borderColor = '#d4af37';
+      cardElement.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    });
+
+    cardElement.addEventListener('mouseleave', () => {
+      cardElement.style.transform = 'translateY(0) scale(1)';
+      cardElement.style.borderColor = '#4a2c8f';
+      cardElement.style.boxShadow = 'none';
+    });
+
+    // Add click handler with satisfying feedback
+    cardElement.addEventListener('click', async () => {
+      // Immediate visual feedback
+      cardElement.style.transform = 'translateY(-2px) scale(0.95)';
+      cardElement.style.borderColor = '#28a745';
+      cardElement.style.background =
+        'linear-gradient(135deg, #d4edda, #c3e6cb)';
+      cardElement.style.boxShadow = '0 2px 8px rgba(40, 167, 69, 0.4)';
+
+      // Add a subtle glow effect
+      cardElement.style.filter = 'brightness(1.1)';
+
+      // Disable pointer events to prevent double-clicks
+      cardElement.style.pointerEvents = 'none';
+
+      // Small delay for visual feedback, then proceed
+      setTimeout(async () => {
+        // Apply the add card effect
+        await applyAddCard(card, gameState);
+
+        // Show success notification
+        showNotification(
+          'Card Added!',
+          `Added ${cardDisplay} to your deck.`,
+          'success'
+        );
+
+        // Fade out the overlay with a satisfying animation
+        overlay.style.transition = 'opacity 0.3s ease';
+        overlay.style.opacity = '0';
+
+        setTimeout(() => {
+          overlay.remove();
+          // Continue after choice
+          if (handlers.resetBusyState) {
+            handlers.resetBusyState();
+            if (handlers.renderOverworldMap) {
+              handlers.renderOverworldMap();
+            }
+          }
+        }, 300);
+      }, 150); // Short delay for visual feedback
+    });
+
+    cardsRow.appendChild(cardElement);
+  });
+
+  dialog.innerHTML = `
+    <h3 style="margin-bottom: 1rem; color: #d4af37;">Choose a Card to Add</h3>
+    <p style="margin-bottom: 1rem; font-size: 1.1rem;">Select one card to add to your deck, or decline all:</p>
+  `;
+
+  dialog.appendChild(cardsRow);
+
+  // Add decline all button with enhanced feedback
+  const declineButton = document.createElement('button');
+  declineButton.className = 'btn btn-secondary';
+  declineButton.style.cssText = `
+    background: #6c757d;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 1rem;
+    color: white;
+    transition: all 0.2s ease;
+    user-select: none;
+  `;
+  declineButton.textContent = 'Decline All';
+
+  // Add hover effect for decline button
+  declineButton.addEventListener('mouseenter', () => {
+    declineButton.style.background = '#5a6268';
+    declineButton.style.transform = 'translateY(-1px)';
+    declineButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+  });
+
+  declineButton.addEventListener('mouseleave', () => {
+    declineButton.style.background = '#6c757d';
+    declineButton.style.transform = 'translateY(0)';
+    declineButton.style.boxShadow = 'none';
+  });
+
+  declineButton.addEventListener('click', () => {
+    // Immediate visual feedback
+    declineButton.style.background = '#495057';
+    declineButton.style.transform = 'translateY(1px)';
+    declineButton.style.boxShadow = 'inset 0 1px 3px rgba(0,0,0,0.2)';
+
+    // Disable pointer events
+    declineButton.style.pointerEvents = 'none';
+
+    setTimeout(() => {
+      showNotification(
+        'Cards Declined',
+        'You chose not to add any cards to your deck.',
+        'info'
+      );
+
+      // Fade out the overlay
+      overlay.style.transition = 'opacity 0.3s ease';
+      overlay.style.opacity = '0';
+
+      setTimeout(() => {
+        overlay.remove();
+        // Continue after choice
+        if (handlers.resetBusyState) {
+          handlers.resetBusyState();
+          if (handlers.renderOverworldMap) {
+            handlers.renderOverworldMap();
+          }
+        }
+      }, 300);
+    }, 100);
+  });
+
+  dialog.appendChild(declineButton);
+
+  // Add to page
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+}
+
+/**
+ * Show a multi-card choice dialog for removing cards from the player's deck
+ * @param {Array} cards - Array of card objects to show
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ * @param {Function} applyRemoveCard - Function to apply remove card effect
+ */
+export function showMultiCardRemoveDialog(
+  cards,
+  gameState,
+  handlers,
+  applyRemoveCard
+) {
+  // Create dialog overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'multi-card-remove-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+  `;
+
+  // Create dialog content
+  const dialog = document.createElement('div');
+  dialog.className = 'multi-card-remove-dialog';
+  dialog.style.cssText = `
+    background: linear-gradient(135deg, #2a2a2a, #1e1e1e);
+    border: 3px solid #dc3545;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 800px;
+    color: white;
+    font-family: 'Cinzel', serif;
+  `;
+
+  // Create cards row (horizontal layout)
+  const cardsRow = document.createElement('div');
+  cardsRow.style.cssText = `
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  `;
+
+  // Add each card to the row
+  cards.forEach((card) => {
+    const cardElement = document.createElement('div');
+    cardElement.className = 'remove-choice-card';
+    cardElement.style.cssText = `
+      background: linear-gradient(135deg, #ffffff, #f0f0f0);
+      border: 2px solid #dc3545;
+      border-radius: 8px;
+      padding: 1rem 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #1e1e1e;
+      width: 60px;
+      height: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    `;
+
+    const cardDisplay = `${card.value}${SUIT_TO_EMOJI_MAP[card.suit] || card.suit}`;
+    cardElement.innerHTML = `
+      <div style="font-size: 1.2em; transition: transform 0.2s ease;">${cardDisplay}</div>
+    `;
+
+    // Add hover effect
+    cardElement.addEventListener('mouseenter', () => {
+      cardElement.style.transform = 'translateY(-4px) scale(1.05)';
+      cardElement.style.borderColor = '#dc3545';
+      cardElement.style.boxShadow = '0 4px 12px rgba(220, 53, 69, 0.3)';
+    });
+
+    cardElement.addEventListener('mouseleave', () => {
+      cardElement.style.transform = 'translateY(0) scale(1)';
+      cardElement.style.borderColor = '#dc3545';
+      cardElement.style.boxShadow = 'none';
+    });
+
+    // Add click handler with satisfying feedback
+    cardElement.addEventListener('click', async () => {
+      // Immediate visual feedback
+      cardElement.style.transform = 'translateY(-2px) scale(0.95)';
+      cardElement.style.borderColor = '#dc3545';
+      cardElement.style.background =
+        'linear-gradient(135deg, #f8d7da, #f5c6cb)';
+      cardElement.style.boxShadow = '0 2px 8px rgba(220, 53, 69, 0.4)';
+
+      // Add a subtle glow effect
+      cardElement.style.filter = 'brightness(1.1)';
+
+      // Disable pointer events to prevent double-clicks
+      cardElement.style.pointerEvents = 'none';
+
+      // Small delay for visual feedback, then proceed
+      setTimeout(async () => {
+        // Apply the remove card effect
+        await applyRemoveCard(card, gameState);
+
+        // Show success notification
+        showNotification(
+          'Card Removed!',
+          `Removed ${cardDisplay} from your deck.`,
+          'warning'
+        );
+
+        // Fade out the overlay with a satisfying animation
+        overlay.style.transition = 'opacity 0.3s ease';
+        overlay.style.opacity = '0';
+
+        setTimeout(() => {
+          overlay.remove();
+          // Continue after choice
+          if (handlers.resetBusyState) {
+            handlers.resetBusyState();
+            if (handlers.renderOverworldMap) {
+              handlers.renderOverworldMap();
+            }
+          }
+        }, 300);
+      }, 150); // Short delay for visual feedback
+    });
+
+    cardsRow.appendChild(cardElement);
+  });
+
+  dialog.innerHTML = `
+    <h3 style="margin-bottom: 1rem; color: #dc3545;">Choose a Card to Remove</h3>
+    <p style="margin-bottom: 1rem; font-size: 1.1rem;">Select one card to remove from your deck, or decline all:</p>
+  `;
+
+  dialog.appendChild(cardsRow);
+
+  // Add decline all button with enhanced feedback
+  const declineButton = document.createElement('button');
+  declineButton.className = 'btn btn-secondary';
+  declineButton.style.cssText = `
+    background: #6c757d;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 1rem;
+    color: white;
+    transition: all 0.2s ease;
+    user-select: none;
+  `;
+  declineButton.textContent = 'Decline All';
+
+  // Add hover effect for decline button
+  declineButton.addEventListener('mouseenter', () => {
+    declineButton.style.background = '#5a6268';
+    declineButton.style.transform = 'translateY(-1px)';
+    declineButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+  });
+
+  declineButton.addEventListener('mouseleave', () => {
+    declineButton.style.background = '#6c757d';
+    declineButton.style.transform = 'translateY(0)';
+    declineButton.style.boxShadow = 'none';
+  });
+
+  declineButton.addEventListener('click', () => {
+    // Immediate visual feedback
+    declineButton.style.background = '#495057';
+    declineButton.style.transform = 'translateY(1px)';
+    declineButton.style.boxShadow = 'inset 0 1px 3px rgba(0,0,0,0.2)';
+
+    // Disable pointer events
+    declineButton.style.pointerEvents = 'none';
+
+    setTimeout(() => {
+      showNotification(
+        'Cards Kept',
+        'You chose not to remove any cards from your deck.',
+        'info'
+      );
+
+      // Fade out the overlay
+      overlay.style.transition = 'opacity 0.3s ease';
+      overlay.style.opacity = '0';
+
+      setTimeout(() => {
+        overlay.remove();
+        // Continue after choice
+        if (handlers.resetBusyState) {
+          handlers.resetBusyState();
+          if (handlers.renderOverworldMap) {
+            handlers.renderOverworldMap();
+          }
+        }
+      }, 300);
+    }, 100);
+  });
+
+  dialog.appendChild(declineButton);
+
+  // Add to page
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+}
+
+/**
  * Show/hide loading screen
  * @param {boolean} show - Whether to show or hide the loading screen
  */
@@ -175,7 +704,7 @@ export function showGameInterface() {
 export function showDeckDrawingAnimation(
   onComplete,
   drawnCard = null,
-  delayAfterAnimation = 1000
+  delayAfterAnimation = 400
 ) {
   // Get the player's actual deck size (default to 52 if not available)
   const deckSize = window.currentGameState?.deck?.length || 52;
@@ -252,7 +781,7 @@ export function showDeckDrawingAnimation(
   document.body.appendChild(overlay);
 
   // Animation configuration
-  const FADE_DELAY = 50; // ms between each card fade
+  const FADE_DELAY = 25; // ms between each card fade
   const FADE_DISTANCE = 200; // pixels cards move when fading
   const FLIP_SQUASH_DURATION = 400; // ms for squash phase
   const FADE_WAIT_AFTER = 100; // ms to wait after all fades before flip
@@ -305,4 +834,230 @@ export function showDeckDrawingAnimation(
     },
     allButLast.length * FADE_DELAY + FADE_WAIT_AFTER
   );
+}
+
+/**
+ * Show inventory overflow dialog for selecting artifacts to remove
+ * @param {Array} artifacts - Array of artifact objects with value, name, emoji, description
+ * @param {number} overflowCount - Number of artifacts that need to be removed
+ * @param {string} message - Custom message to display
+ * @param {Function} onComplete - Callback when selection is complete
+ */
+export async function showInventoryOverflowDialog(
+  artifacts,
+  overflowCount,
+  message,
+  onComplete
+) {
+  // Import the data we need for tooltips
+  const { EQUIPMENT, ARTIFACT_DETAILS } = await import('./gameData.js');
+
+  // Create dialog overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'inventory-overflow-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+  `;
+
+  // Create dialog content
+  const dialog = document.createElement('div');
+  dialog.className = 'inventory-overflow-dialog';
+  dialog.style.cssText = `
+    background: linear-gradient(135deg, #2a2a2a, #1e1e1e);
+    border: 3px solid #dc3545;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 800px;
+    color: white;
+    font-family: 'Cinzel', serif;
+  `;
+
+  // Create artifacts row (horizontal layout)
+  const artifactsRow = document.createElement('div');
+  artifactsRow.style.cssText = `
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  `;
+
+  const selectedArtifacts = [];
+
+  // Add each artifact to the row
+  artifacts.forEach((artifact) => {
+    const artifactElement = document.createElement('div');
+    artifactElement.className = 'inventory-overflow-artifact';
+    artifactElement.style.cssText = `
+      background: linear-gradient(135deg, #ffffff, #f0f0f0);
+      border: 2px solid #dc3545;
+      border-radius: 8px;
+      padding: 1rem 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #1e1e1e;
+      width: 80px;
+      height: 100px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    `;
+
+    artifactElement.innerHTML = `
+      <div style="font-size: 1.5em; margin-bottom: 0.5rem;">${artifact.emoji}</div>
+      <div style="font-size: 0.8em; text-align: center; line-height: 1.2;">${artifact.name}</div>
+    `;
+
+    // Add tooltip with correct data sources
+    let tooltipText = 'No description available';
+
+    if (artifact.type === 'weapon') {
+      const weaponData = EQUIPMENT.weapons[artifact.value];
+      tooltipText = weaponData?.cardCondition || 'No effect available';
+    } else if (artifact.type === 'armor') {
+      const armorData = EQUIPMENT.armor[artifact.value];
+      tooltipText = armorData?.cardCondition || 'No effect available';
+    } else if (artifact.type === 'artifact') {
+      const artifactData = ARTIFACT_DETAILS[artifact.value];
+      tooltipText = artifactData?.effectText || 'No effect available';
+    }
+
+    artifactElement.title = tooltipText;
+
+    // Add hover effect
+    artifactElement.addEventListener('mouseenter', () => {
+      artifactElement.style.transform = 'translateY(-4px) scale(1.05)';
+      artifactElement.style.borderColor = '#dc3545';
+      artifactElement.style.boxShadow = '0 4px 12px rgba(220, 53, 69, 0.3)';
+    });
+
+    artifactElement.addEventListener('mouseleave', () => {
+      artifactElement.style.transform = 'translateY(0) scale(1)';
+      artifactElement.style.borderColor = '#dc3545';
+      artifactElement.style.boxShadow = 'none';
+    });
+
+    // Add click handler
+    artifactElement.addEventListener('click', () => {
+      const index = selectedArtifacts.findIndex(
+        (a) => a.value === artifact.value
+      );
+
+      if (index === -1) {
+        // Select artifact
+        selectedArtifacts.push(artifact);
+        artifactElement.style.background =
+          'linear-gradient(135deg, #f8d7da, #f5c6cb)';
+        artifactElement.style.borderColor = '#dc3545';
+        artifactElement.style.boxShadow = '0 2px 8px rgba(220, 53, 69, 0.4)';
+      } else {
+        // Deselect artifact
+        selectedArtifacts.splice(index, 1);
+        artifactElement.style.background =
+          'linear-gradient(135deg, #ffffff, #f0f0f0)';
+        artifactElement.style.borderColor = '#dc3545';
+        artifactElement.style.boxShadow = 'none';
+      }
+
+      // Update confirm button state
+      updateConfirmButton();
+    });
+
+    artifactsRow.appendChild(artifactElement);
+  });
+
+  // Create confirm button
+  const confirmButton = document.createElement('button');
+  confirmButton.className = 'btn btn-danger';
+  confirmButton.style.cssText = `
+    background: #dc3545;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    margin: 1rem 0.5rem;
+    color: white;
+    transition: all 0.2s ease;
+    user-select: none;
+    opacity: 0.5;
+    pointer-events: none;
+  `;
+  confirmButton.textContent = `Remove ${overflowCount} Item${overflowCount > 1 ? 's' : ''}`;
+
+  function updateConfirmButton() {
+    if (selectedArtifacts.length === overflowCount) {
+      confirmButton.style.opacity = '1';
+      confirmButton.style.pointerEvents = 'auto';
+    } else {
+      confirmButton.style.opacity = '0.5';
+      confirmButton.style.pointerEvents = 'none';
+    }
+  }
+
+  // Add hover effect for confirm button
+  confirmButton.addEventListener('mouseenter', () => {
+    if (selectedArtifacts.length === overflowCount) {
+      confirmButton.style.background = '#c82333';
+      confirmButton.style.transform = 'translateY(-1px)';
+      confirmButton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+    }
+  });
+
+  confirmButton.addEventListener('mouseleave', () => {
+    confirmButton.style.background = '#dc3545';
+    confirmButton.style.transform = 'translateY(0)';
+    confirmButton.style.boxShadow = 'none';
+  });
+
+  confirmButton.addEventListener('click', () => {
+    if (selectedArtifacts.length === overflowCount) {
+      // Fade out the overlay
+      overlay.style.transition = 'opacity 0.3s ease';
+      overlay.style.opacity = '0';
+
+      setTimeout(() => {
+        overlay.remove();
+        onComplete(selectedArtifacts);
+      }, 300);
+    }
+  });
+
+  dialog.innerHTML = `
+    <h3 style="margin-bottom: 1rem; color: #dc3545;">Inventory Overload</h3>
+    <p style="margin-bottom: 1rem; font-size: 1.1rem;">${message}</p>
+    <p style="margin-bottom: 1rem; font-size: 0.9rem; color: #ccc;">Hover over items to see descriptions</p>
+  `;
+
+  dialog.appendChild(artifactsRow);
+
+  // Add button container (only confirm button, no cancel)
+  const buttonContainer = document.createElement('div');
+  buttonContainer.style.cssText = `
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+  `;
+  buttonContainer.appendChild(confirmButton);
+  dialog.appendChild(buttonContainer);
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
 }

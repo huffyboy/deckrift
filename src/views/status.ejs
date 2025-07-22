@@ -12,40 +12,52 @@
         <h2>Character Stats</h2>
         <div class="stats-grid">
             <div class="stat-item" data-stat="power" title="<%= statEffects.power.description %>">
-                <strong><%= statEffects.power.icon %> <%= statEffects.power.name %>:</strong> <%= gameSave ? gameSave.gameData.stats.power : 4 %>
-                <% if (statModifiers.power !== 0) { %>
-                    <span class="stat-adjustment <%= statModifiers.power > 0 ? 'positive' : 'negative' %>">
-                        (<%= statModifiers.power > 0 ? '+' : '' %><%= statModifiers.power %>)
-                    </span>
-                <% } %>
-                <small>(<%= gameSave ? gameSave.gameData.statXP.power : 0 %>/<%= xpThresholds.power %>)</small>
+                <strong><%= statEffects.power.icon %> <%= statEffects.power.name %>:</strong> 
+                <span class="stat-value-container">
+                    <span class="stat-value"><%= gameSave.gameData.stats.power %></span>
+                    <% if (statModifiers.power !== 0) { %>
+                        <span class="stat-adjustment <%= statModifiers.power > 0 ? 'positive' : 'negative' %>">
+                            (<%= statModifiers.power > 0 ? '+' : '' %><%= statModifiers.power %>)
+                        </span>
+                    <% } %>
+                </span>
+                <small>(<%= gameSave.gameData.statXP.power %>/<%= xpThresholds.power %>)</small>
             </div>
             <div class="stat-item" data-stat="will" title="<%= statEffects.will.description %>">
-                <strong><%= statEffects.will.icon %> <%= statEffects.will.name %>:</strong> <%= gameSave ? gameSave.gameData.stats.will : 4 %>
-                <% if (statModifiers.will !== 0) { %>
-                    <span class="stat-adjustment <%= statModifiers.will > 0 ? 'positive' : 'negative' %>">
-                        (<%= statModifiers.will > 0 ? '+' : '' %><%= statModifiers.will %>)
-                    </span>
-                <% } %>
-                <small>(<%= gameSave ? gameSave.gameData.statXP.will : 0 %>/<%= xpThresholds.will %>)</small>
+                <strong><%= statEffects.will.icon %> <%= statEffects.will.name %>:</strong> 
+                <span class="stat-value-container">
+                    <span class="stat-value"><%= gameSave.gameData.stats.will %></span>
+                    <% if (statModifiers.will !== 0) { %>
+                        <span class="stat-adjustment <%= statModifiers.will > 0 ? 'positive' : 'negative' %>">
+                            (<%= statModifiers.will > 0 ? '+' : '' %><%= statModifiers.will %>)
+                        </span>
+                    <% } %>
+                </span>
+                <small>(<%= gameSave.gameData.statXP.will %>/<%= xpThresholds.will %>)</small>
             </div>
             <div class="stat-item" data-stat="craft" title="<%= statEffects.craft.description %>">
-                <strong><%= statEffects.craft.icon %> <%= statEffects.craft.name %>:</strong> <%= gameSave ? gameSave.gameData.stats.craft : 4 %>
-                <% if (statModifiers.craft !== 0) { %>
-                    <span class="stat-adjustment <%= statModifiers.craft > 0 ? 'positive' : 'negative' %>">
-                        (<%= statModifiers.craft > 0 ? '+' : '' %><%= statModifiers.craft %>)
-                    </span>
-                <% } %>
-                <small>(<%= gameSave ? gameSave.gameData.statXP.craft : 0 %>/<%= xpThresholds.craft %>)</small>
+                <strong><%= statEffects.craft.icon %> <%= statEffects.craft.name %>:</strong> 
+                <span class="stat-value-container">
+                    <span class="stat-value"><%= gameSave.gameData.stats.craft %></span>
+                    <% if (statModifiers.craft !== 0) { %>
+                        <span class="stat-adjustment <%= statModifiers.craft > 0 ? 'positive' : 'negative' %>">
+                            (<%= statModifiers.craft > 0 ? '+' : '' %><%= statModifiers.craft %>)
+                        </span>
+                    <% } %>
+                </span>
+                <small>(<%= gameSave.gameData.statXP.craft %>/<%= xpThresholds.craft %>)</small>
             </div>
             <div class="stat-item" data-stat="focus" title="<%= statEffects.focus.description %>">
-                <strong><%= statEffects.focus.icon %> <%= statEffects.focus.name %>:</strong> <%= gameSave ? gameSave.gameData.stats.focus : 4 %>
-                <% if (statModifiers.focus !== 0) { %>
-                    <span class="stat-adjustment <%= statModifiers.focus > 0 ? 'positive' : 'negative' %>">
-                        (<%= statModifiers.focus > 0 ? '+' : '' %><%= statModifiers.focus %>)
-                    </span>
-                <% } %>
-                <small>(<%= gameSave ? gameSave.gameData.statXP.focus : 0 %>/<%= xpThresholds.focus %>)</small>
+                <strong><%= statEffects.focus.icon %> <%= statEffects.focus.name %>:</strong> 
+                <span class="stat-value-container">
+                    <span class="stat-value"><%= gameSave.gameData.stats.focus %></span>
+                    <% if (statModifiers.focus !== 0) { %>
+                        <span class="stat-adjustment <%= statModifiers.focus > 0 ? 'positive' : 'negative' %>">
+                            (<%= statModifiers.focus > 0 ? '+' : '' %><%= statModifiers.focus %>)
+                        </span>
+                    <% } %>
+                </span>
+                <small>(<%= gameSave.gameData.statXP.focus %>/<%= xpThresholds.focus %>)</small>
             </div>
         </div>
     </div>
@@ -55,22 +67,20 @@
         <h2>Inventory <span class="inventory-capacity">(<%= currentEquipment.inventory.capacity %>)</span></h2>
         <div class="current-equipment-grid">
             <!-- Weapons -->
-            <% if (currentEquipment.weapons && currentEquipment.weapons.length > 0) { %>
+            <% if (currentEquipment.weapons.length > 0) { %>
                 <% currentEquipment.weapons.forEach(weapon => { %>
                 <div class="current-equipment-item">
                     <div class="equipment-icon">
                         <span class="equipment-symbol">⚔️</span>
                     </div>
                     <div class="equipment-info">
-                        <h4><%= weapon.displayName %></h4>
-                        <p class="equipment-description"><%= weapon.description %></p>
-                        <% if (weapon.stats) { %>
-                            <div class="equipment-stats">
-                                <span class="stat">Hit Rate: <strong><%= weapon.stats.calculatedHitRate || weapon.stats.baseHitRate %></strong></span>
-                                <span class="stat">Damage Rate: <strong><%= weapon.stats.calculatedDamageOutput || weapon.stats.baseDamageOutput %></strong></span>
-                                <span class="stat">Condition: <strong><%= weapon.stats.cardCondition %></strong></span>
-                            </div>
-                        <% } %>
+                        <h4><%= weapon.name %></h4>
+                        <p class="equipment-description"><%= weapon.flavorText %></p>
+                        <div class="equipment-stats">
+                            <span class="stat">Hit Rate: <strong><%= weapon.calculatedHitRate %></strong></span>
+                            <span class="stat">Damage Rate: <strong><%= weapon.calculatedDamageOutput %></strong></span>
+                            <span class="stat">Condition: <strong><%= weapon.cardCondition %></strong></span>
+                        </div>
                     </div>
                     <div class="equipment-status">
                         <span class="equipment-type">Weapon</span>
@@ -80,22 +90,20 @@
             <% } %>
 
             <!-- Armor -->
-            <% if (currentEquipment.armor && currentEquipment.armor.length > 0) { %>
+            <% if (currentEquipment.armor.length > 0) { %>
                 <% currentEquipment.armor.forEach(armor => { %>
                 <div class="current-equipment-item">
                     <div class="equipment-icon">
                         <span class="equipment-symbol">🛡️</span>
                     </div>
                     <div class="equipment-info">
-                        <h4><%= armor.displayName %></h4>
-                        <p class="equipment-description"><%= armor.description %></p>
-                        <% if (armor.stats) { %>
-                            <div class="equipment-stats">
-                                <span class="stat">Trigger Rate: <strong><%= armor.stats.calculatedHitRate || armor.stats.triggerRate %></strong></span>
-                                <span class="stat">Mitigation: <strong><%= armor.stats.calculatedMitigation || armor.stats.damageMitigation %></strong></span>
-                                <span class="stat">Condition: <strong><%= armor.stats.cardCondition %></strong></span>
-                            </div>
-                        <% } %>
+                        <h4><%= armor.name %></h4>
+                        <p class="equipment-description"><%= armor.flavorText %></p>
+                        <div class="equipment-stats">
+                            <span class="stat">Trigger Rate: <strong><%= armor.calculatedHitRate %></strong></span>
+                            <span class="stat">Mitigation: <strong><%= armor.calculatedMitigation %></strong></span>
+                            <span class="stat">Condition: <strong><%= armor.cardCondition %></strong></span>
+                        </div>
                     </div>
                     <div class="equipment-status">
                         <span class="equipment-type">Armor</span>
@@ -105,22 +113,18 @@
             <% } %>
 
             <!-- Artifacts -->
-            <% if (currentEquipment.artifacts && currentEquipment.artifacts.length > 0) { %>
+            <% if (currentEquipment.artifacts.length > 0) { %>
                 <% currentEquipment.artifacts.forEach(artifact => { %>
                 <div class="current-equipment-item">
                     <div class="equipment-icon">
-                        <span class="equipment-symbol">🏺</span>
+                        <span class="equipment-symbol"><%= artifact.emoji %></span>
                     </div>
                     <div class="equipment-info">
-                        <h4><%= artifact.displayName %></h4>
-                        <p class="equipment-description"><%= artifact.description %></p>
-                        <% if (artifact.stats) { %>
-                            <div class="equipment-stats">
-                                <% if (artifact.stats.effect) { %>
-                                    <span class="stat">Effect: <strong><%= artifact.stats.effect %></strong></span>
-                                <% } %>
-                            </div>
-                        <% } %>
+                        <h4><%= artifact.name %></h4>
+                        <p class="equipment-description"><%= artifact.flavorText %></p>
+                        <div class="equipment-stats">
+                            <span class="stat">Effect: <strong><%= artifact.effectText %></strong></span>
+                        </div>
                     </div>
                     <div class="equipment-status">
                         <span class="equipment-type">Artifact</span>
@@ -130,9 +134,7 @@
             <% } %>
 
             <!-- No Equipment Message -->
-            <% if ((!currentEquipment.weapons || currentEquipment.weapons.length === 0) && 
-                   (!currentEquipment.armor || currentEquipment.armor.length === 0) && 
-                   (!currentEquipment.artifacts || currentEquipment.artifacts.length === 0)) { %>
+            <% if (currentEquipment.weapons.length === 0 && currentEquipment.armor.length === 0 && currentEquipment.artifacts.length === 0) { %>
                 <div class="no-equipment">
                     <div class="no-equipment-icon">🥺</div>
                     <h3>Empty</h3>
@@ -168,8 +170,8 @@
                         <span class="equipment-symbol">⚔️</span>
                     </div>
                     <div class="equipment-info">
-                        <h4><%= weapon.displayName %></h4>
-                        <p class="equipment-description"><%= weapon.description %></p>
+                        <h4><%= weapon.name %></h4>
+                        <p class="equipment-description"><%= weapon.flavorText %></p>
                     </div>
                 </div>
                 <% }); %>
@@ -186,8 +188,8 @@
                         <span class="equipment-symbol">🛡️</span>
                     </div>
                     <div class="equipment-info">
-                        <h4><%= armor.displayName %></h4>
-                        <p class="equipment-description"><%= armor.description %></p>
+                        <h4><%= armor.name %></h4>
+                        <p class="equipment-description"><%= armor.flavorText %></p>
                     </div>
                 </div>
                 <% }); %>
@@ -237,4 +239,4 @@ window.purchasedUpgrades = <%- JSON.stringify(purchasedUpgrades) %>;
 </script>
 
 <!-- Explicitly load status.js -->
-<script src="/js/status.js"></script> 
+<script type="module" src="/js/status.js"></script> 

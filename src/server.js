@@ -15,6 +15,7 @@ import gameOverRouter from './routes/game-over.js';
 import statusRouter from './routes/status.js';
 import upgradesRouter from './routes/upgrades.js';
 import saveRouter from './routes/save.js';
+import deathRouter from './routes/death.js';
 
 import connectDB from './config/database.js';
 import { createErrorHandler, notFound } from './middlewares/errorHandler.js';
@@ -91,6 +92,7 @@ app.use('/game-over', gameOverRouter);
 app.use('/status', statusRouter);
 app.use('/upgrades', upgradesRouter);
 app.use('/save', saveRouter);
+app.use('/death', deathRouter);
 
 // Error handling middleware - 404 handler must come after all routes
 app.use(notFound);

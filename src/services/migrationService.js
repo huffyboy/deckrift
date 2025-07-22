@@ -314,12 +314,13 @@ class MigrationService {
           focus: 0,
         },
         equipment: oldState.equipment || [],
+        activeEffects: [], // Initialize empty active effects array
+        health: oldState.health || 40,
+        maxHealth: oldState.maxHealth || 40,
       },
       gameData: {
         version: this.migrationVersion,
         timestamp: Date.now(),
-        health: oldState.health || 40,
-        maxHealth: oldState.maxHealth || 40,
         saveCurrency: oldState.currency || 0,
         stats: oldState.stats || { power: 4, will: 4, craft: 4, focus: 4 },
         statXP: oldState.statXP || { power: 0, will: 0, craft: 0, focus: 0 },
@@ -351,12 +352,13 @@ class MigrationService {
         },
         statModifiers: { power: 0, will: 0, craft: 0, focus: 0 },
         equipment: [],
+        activeEffects: [], // Initialize empty active effects array
+        health: oldData.health || 40,
+        maxHealth: oldData.maxHealth || 40,
       },
       gameData: {
         version: this.migrationVersion,
         timestamp: Date.now(),
-        health: oldData.health || 40,
-        maxHealth: oldData.maxHealth || 40,
         saveCurrency: oldData.currency || 0,
         stats: oldData.stats || { power: 4, will: 4, craft: 4, focus: 4 },
         statXP: oldData.statXP || { power: 0, will: 0, craft: 0, focus: 0 },
@@ -399,12 +401,13 @@ class MigrationService {
           focus: 0,
         },
         equipment: oldData.equipment || [],
+        activeEffects: [], // Initialize empty active effects array
+        health: oldData.health || 40,
+        maxHealth: oldData.maxHealth || 40,
       },
       gameData: {
         version: this.migrationVersion,
         timestamp: Date.now(),
-        health: oldData.health || 40,
-        maxHealth: oldData.maxHealth || 40,
         saveCurrency: oldData.currency || 0,
         stats: oldData.stats || { power: 4, will: 4, craft: 4, focus: 4 },
         statXP: oldData.statXP || { power: 0, will: 0, craft: 0, focus: 0 },

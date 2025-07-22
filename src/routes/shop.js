@@ -123,11 +123,26 @@ router.get('/', requireAuth, async (req, res) => {
       ],
     };
 
+    // Create player object for the view
+    const player = {
+      currency: activeSave.runData.runCurrency || 0,
+      health: activeSave.runData.health,
+      maxHealth: activeSave.runData.maxHealth,
+      equipment: activeSave.runData.equipment || [],
+      currentWeapon: activeSave.runData.equipment?.find(
+        (e) => e.type === 'weapon'
+      )?.value,
+      currentArmor: activeSave.runData.equipment?.find(
+        (e) => e.type === 'armor'
+      )?.value,
+    };
+
     return res.render('shop', {
       title: 'Shop - Deckrift',
       user: { username: req.session.username },
       gameSave: activeSave ? { ...activeSave, isActive: true } : null,
-      shopCosts,
+      player,
+      shop: shopCosts,
       availableItems: generateShopItems(),
     });
   } catch (error) {
@@ -170,9 +185,9 @@ router.post('/heal', requireAuth, async (req, res) => {
 
     // Deduct currency and heal
     activeSave.runData.runCurrency -= healCost;
-    activeSave.gameData.health = Math.min(
-      activeSave.gameData.health + healAmount,
-      activeSave.gameData.maxHealth
+    activeSave.runData.health = Math.min(
+      activeSave.runData.health + healAmount,
+      activeSave.runData.maxHealth
     );
 
     await saveService.updateSave(userId, activeSave);
@@ -180,7 +195,7 @@ router.post('/heal', requireAuth, async (req, res) => {
     return res.json({
       success: true,
       message: `Healed for ${healAmount} health`,
-      newHealth: activeSave.gameData.health,
+      newHealth: activeSave.runData.health,
       newCurrency: activeSave.runData.runCurrency,
     });
   } catch (error) {

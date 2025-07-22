@@ -329,8 +329,6 @@ class SaveService {
           gameData: {
             version: SAVE_VERSION,
             timestamp: Date.now(),
-            health: 40,
-            maxHealth: 40,
             currency: 0,
             stats: {
               power: 4,
@@ -403,6 +401,80 @@ class SaveService {
       }
 
       return { success: false, error: 'No save to mark as completed' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Handle end of run - transfer run currency to save currency and perform cleanup
+   * @param {string} userId - User ID
+   * @param {Object} runResults - Optional run results (currency earned, stats gained, etc.)
+   * @returns {Promise<Object>} Result with success status and updated save data
+   */
+  async endOfRun(userId, runResults = {}) {
+    try {
+      const saveResult = await this.loadSave(userId);
+      if (!saveResult.success) {
+        return { success: false, error: 'No active save found' };
+      }
+
+      const saveData = saveResult.saveData;
+      const runCurrency = saveData.runData?.runCurrency || 0;
+      const currentSaveCurrency = saveData.gameData?.saveCurrency || 0;
+
+      // Transfer run currency to save currency
+      if (runCurrency > 0) {
+        saveData.gameData.saveCurrency = currentSaveCurrency + runCurrency;
+        saveData.runData.runCurrency = 0;
+      }
+
+      // Apply any additional run results
+      // if (runResults.xpGained) {
+      //   Object.keys(runResults.xpGained).forEach((stat) => {
+      //     saveData.gameData.statXP[stat] =
+      //       (saveData.gameData.statXP[stat] || 0) + runResults.xpGained[stat];
+      //   });
+      // }
+
+      // if (runResults.unlockedUpgrades) {
+      //   if (!saveData.gameData.upgrades) saveData.gameData.upgrades = [];
+      //   runResults.unlockedUpgrades.forEach(upgrade => {
+      //     if (!saveData.gameData.upgrades.includes(upgrade)) {
+      //       saveData.gameData.upgrades.push(upgrade);
+      //     }
+      //   });
+      // }
+
+      // if (runResults.unlockedEquipment) {
+      //   if (!saveData.gameData.unlockedEquipment) saveData.gameData.unlockedEquipment = [];
+      //   runResults.unlockedEquipment.forEach(equipment => {
+      //     if (!saveData.gameData.unlockedEquipment.includes(equipment)) {
+      //       saveData.gameData.unlockedEquipment.push(equipment);
+      //     }
+      //   });
+      // }
+
+      // Update timestamps
+      saveData.timestamp = Date.now();
+      saveData.gameData.timestamp = Date.now();
+      if (saveData.metadata) {
+        saveData.metadata.lastPlayed = new Date();
+      }
+
+      // Save the updated data
+      const updateResult = await this.updateSave(userId, saveData);
+      if (!updateResult.success) {
+        return { success: false, error: 'Failed to save end-of-run data' };
+      }
+
+      return {
+        success: true,
+        saveData: updateResult.saveData,
+        currencyTransferred: runCurrency,
+        newSaveCurrency: saveData.gameData.saveCurrency,
+        runResults,
+      };
     } catch (error) {
       return { success: false, error: error.message };
     }

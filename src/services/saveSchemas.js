@@ -111,6 +111,9 @@ export function createRunData(options = {}) {
     equipment: [],
     playerDeck: createStandardDeck(),
     runCurrency: 0, // Start each run with 0 currency
+    activeEffects: [], // List of active effect strings (e.g., 'xpBoost', 'currencyBoost')
+    health: options.health || 40, // Default health based on starting will (4 * 10)
+    maxHealth: options.maxHealth || 40, // Default max health based on starting will (4 * 10)
     ...options, // Allow overrides
   };
 }
@@ -245,6 +248,9 @@ export const RunDataSchema = {
   equipment: { type: 'array', items: EquipmentItemSchema, default: [] },
   playerDeck: { type: 'array', items: 'object', default: [] }, // All cards player owns for this run
   runCurrency: { type: 'number', required: true, min: 0, default: 0 }, // Currency earned during this run
+  activeEffects: { type: 'array', items: 'string', default: [] }, // List of active effect strings (e.g., 'xpBoost', 'currencyBoost')
+  health: { type: 'number', required: true, min: 0 }, // Current health during this run
+  maxHealth: { type: 'number', required: true, min: 1 }, // Max health during this run (can change due to artifacts)
 };
 
 /**
@@ -254,8 +260,6 @@ export const RunDataSchema = {
 export const GameDataSchema = {
   version: { type: 'string', required: true },
   timestamp: { type: 'number', required: true },
-  health: { type: 'number', required: true, min: 0 },
-  maxHealth: { type: 'number', required: true, min: 1 },
   saveCurrency: { type: 'number', required: true, min: 0, default: 0 }, // Currency outside of runs
   stats: {
     power: { type: 'number', required: true, min: 1 },
@@ -457,12 +461,12 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
         width: 7,
         height: 1,
       },
+      health: 40, // Starting health based on will (4 * 10)
+      maxHealth: 40, // Starting max health based on will (4 * 10)
     }),
     gameData: {
       version: SAVE_VERSION,
       timestamp: Date.now(),
-      health: 40,
-      maxHealth: 40,
       saveCurrency: 0,
       stats: {
         power: 4,

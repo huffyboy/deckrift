@@ -7,10 +7,11 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "gen": "node scripts/copyGameData.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "clean": "pnpm format && pnpm lint:fix",
+    "clean": "pnpm gen && pnpm format && pnpm lint:fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "build": "echo 'No build step required for this project'",

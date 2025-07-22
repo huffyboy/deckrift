@@ -1,17 +1,14 @@
 // status.js - Page-specific logic for Status page
 
+import {
+  TEXT_TO_VALUE_MAP,
+  SUIT_ORDER,
+  SUIT_TO_EMOJI_MAP,
+} from './modules/gameData.js';
+
 // Status state management
 let currentDeck = [];
 let sortByValue = true; // true = sort by value first, false = sort by suit first
-
-// Wait for gameData to be loaded
-function waitForGameData() {
-  if (window.gameData) {
-    initializeStatus();
-  } else {
-    setTimeout(waitForGameData, 100);
-  }
-}
 
 // Initialize status interface
 document.addEventListener('DOMContentLoaded', () => {
@@ -20,8 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentDeck = window.currentDeck;
   }
 
-  // Wait for gameData to be available before initializing
-  waitForGameData();
+  initializeStatus();
 });
 
 function initializeStatus() {
@@ -53,22 +49,14 @@ function sortDeck(deck) {
   return [...deck].sort((a, b) => {
     if (sortByValue) {
       // Sort by value first, then by suit
-      const valueDiff =
-        window.gameData.CARD_VALUES[b.value] -
-        window.gameData.CARD_VALUES[a.value];
+      const valueDiff = TEXT_TO_VALUE_MAP[b.value] - TEXT_TO_VALUE_MAP[a.value];
       if (valueDiff !== 0) return valueDiff;
-      return (
-        window.gameData.SUIT_ORDER[a.suit] - window.gameData.SUIT_ORDER[b.suit]
-      );
+      return SUIT_ORDER[a.suit] - SUIT_ORDER[b.suit];
     } else {
       // Sort by suit first, then by value
-      const suitDiff =
-        window.gameData.SUIT_ORDER[a.suit] - window.gameData.SUIT_ORDER[b.suit];
+      const suitDiff = SUIT_ORDER[a.suit] - SUIT_ORDER[b.suit];
       if (suitDiff !== 0) return suitDiff;
-      return (
-        window.gameData.CARD_VALUES[b.value] -
-        window.gameData.CARD_VALUES[a.value]
-      );
+      return TEXT_TO_VALUE_MAP[b.value] - TEXT_TO_VALUE_MAP[a.value];
     }
   });
 }
@@ -94,14 +82,15 @@ function displayDeck() {
       card.value +
       '</div>' +
       '<div class="card-suit">' +
-      window.gameData.SUIT_TO_EMOJI_MAP[card.suit] +
+      SUIT_TO_EMOJI_MAP[card.suit] +
       '</div>';
     deckDisplay.appendChild(cardElement);
   });
 }
 
 function updateDeckInfo() {
-  const deckSize = document.getElementById('deck-size');
-
-  if (deckSize) deckSize.textContent = currentDeck.length;
+  const deckSizeElement = document.getElementById('deck-size');
+  if (deckSizeElement) {
+    deckSizeElement.textContent = currentDeck.length;
+  }
 }

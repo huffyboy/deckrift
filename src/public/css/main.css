@@ -339,11 +339,7 @@ h6 {
   color: #d4af37;
 }
 
-.stat-item span:nth-child(2) {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #ffffff;
-}
+/* Stat value styling is now handled in status.css with .stat-value class */
 
 .stat-item span:nth-child(3),
 .stat-item span:nth-child(4) {

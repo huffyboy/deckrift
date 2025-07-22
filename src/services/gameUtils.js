@@ -4,10 +4,10 @@
 
 import {
   CHALLENGE_MODIFIERS,
-  MAP_CARD_VALUES,
-  MAP_CARD_SUITS,
   TEXT_TO_VALUE_MAP,
-} from '../public/js/modules/gameData.js';
+  MAP_CARD_SUITS,
+  MAP_CARD_VALUES,
+} from '../data/gameData.js';
 
 /**
  * Calculate XP threshold for a stat level

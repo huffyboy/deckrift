@@ -65,11 +65,21 @@ router.get('/', requireAuth, async (req, res) => {
       return res.redirect('/game');
     }
 
+    // Create player object for the view
+    const player = {
+      currency: activeSave.runData.runCurrency || 0,
+      health: activeSave.runData.health,
+      maxHealth: activeSave.runData.maxHealth,
+      stats: activeSave.gameData.stats,
+      equipment: activeSave.runData.equipment || [],
+    };
+
     return res.render('event', {
       title: 'Event - Deckrift',
       user: { username: req.session.username },
       gameSave: activeSave ? { ...activeSave, isActive: true } : null,
       event: activeSave.runData.eventStatus.currentEvent,
+      player,
     });
   } catch (error) {
     return res.status(500).render('errors/error', {

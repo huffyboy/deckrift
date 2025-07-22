@@ -1,11 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import SaveService from '../services/saveService.js';
-import {
-  createDefaultSaveData,
-  SAVE_VERSION,
-  createFightStatus,
-} from '../services/saveSchemas.js';
+import { createDefaultSaveData } from '../services/saveSchemas.js';
 
 const router = express.Router();
 
@@ -41,8 +37,8 @@ router.get('/', requireAuth, async (req, res) => {
 
     // Get final stats from the save
     const finalStats = {
-      health: saveData.gameData.health,
-      maxHealth: saveData.gameData.maxHealth,
+      health: saveData.runData.health,
+      maxHealth: saveData.runData.maxHealth,
       power: saveData.gameData.stats.power,
       will: saveData.gameData.stats.will,
       craft: saveData.gameData.stats.craft,
@@ -110,52 +106,22 @@ router.post('/new-run', requireAuth, async (req, res) => {
       });
     }
 
-    // Clear run data when starting a new run
-    // This preserves game data (stats, currency, unlocks) but clears run progress
+    // Handle end of current run if it exists
     const existingSave = await saveService.loadSave(userId);
     if (existingSave.success) {
-      // Clear run data but preserve game data
-      existingSave.saveData.runData = {
-        version: SAVE_VERSION,
-        timestamp: Date.now(),
-        map: {
-          tiles: [],
-          width: 0,
-          height: 0,
-        },
-        location: {
-          realm: parseInt(realmId, 10),
-          level: 1,
-          mapX: 0,
-          mapY: 0,
-        },
-        fightStatus: createFightStatus(),
-        eventStatus: {
-          currentEvent: null,
-          drawnCards: [],
-          eventStep: 0,
-          eventPhase: 'start',
-        },
-        statModifiers: {
-          power: 0,
-          will: 0,
-          craft: 0,
-          focus: 0,
-        },
-        equipment: [
-          {
-            type: 'weapon',
-            value: startingWeapon,
-            equipped: true,
-          },
-          {
-            type: 'armor',
-            value: startingArmor,
-            equipped: true,
-          },
-        ],
-      };
-      await saveService.updateSave(userId, existingSave.saveData);
+      // End the current run and transfer currency
+      const endOfRunResult = await saveService.endOfRun(userId, {
+        // You can add run results here if needed
+        // xpGained: { power: 0, will: 0, craft: 0, focus: 0 },
+        // unlockedUpgrades: [],
+        // unlockedEquipment: []
+      });
+
+      if (!endOfRunResult.success) {
+        return res.status(500).json({
+          error: 'Failed to end current run',
+        });
+      }
     }
 
     // Create initial save data using helper function

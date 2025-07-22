@@ -181,8 +181,6 @@ router.post('/new-run', requireAuth, async (req, res) => {
       initialSaveData.gameData = {
         version: SAVE_VERSION,
         timestamp: Date.now(),
-        health: STARTING_STATS.will * 10, // 10 HP per Will point
-        maxHealth: STARTING_STATS.will * 10,
         saveCurrency: 0, // Use saveCurrency instead of currency
         stats: STARTING_STATS,
         statXP: { power: 0, will: 0, craft: 0, focus: 0 },
@@ -235,6 +233,32 @@ router.post('/new-run', requireAuth, async (req, res) => {
       // Use the updated save for the response
       activeSave = metadataUpdateResult.saveData;
     } else {
+      // Check if there's an ongoing run and handle end-of-run logic
+      const hasOngoingRun =
+        activeSave.runData &&
+        (activeSave.runData.runCurrency > 0 ||
+          activeSave.runData.location.realm > 0 ||
+          activeSave.runData.location.level > 1);
+
+      if (hasOngoingRun) {
+        // End the current run and transfer currency
+        const endOfRunResult = await saveService.endOfRun(userId, {
+          // You can add run results here if needed
+          // xpGained: { power: 0, will: 0, craft: 0, focus: 0 },
+          // unlockedUpgrades: [],
+          // unlockedEquipment: []
+        });
+
+        if (!endOfRunResult.success) {
+          throw new Error(
+            `Failed to end current run: ${endOfRunResult.error || 'Unknown error'}`
+          );
+        }
+
+        // Update activeSave with the result
+        activeSave = endOfRunResult.saveData;
+      }
+
       // Import utility functions and game data
       const { MAP_CARD_SUITS } = await import(
         '../public/js/modules/gameData.js'
@@ -249,8 +273,10 @@ router.post('/new-run', requireAuth, async (req, res) => {
 
       // Generate actual cards for the map (excluding jokers)
       const availableCards = [];
-      // TEMPORARY: Only J and 2 for testing bane events
-      const testCardValues = ['J', '2'];
+      // TEST MODE: Change these values to control what events appear on the map
+      // Current: Only A for testing boon events
+      // Options: ['A'] for boons, ['2'] for banes, ['J', '2'] for mixed, etc.
+      const testCardValues = ['A'];
 
       // Create a deck of cards (excluding jokers)
       MAP_CARD_SUITS.forEach((suit) => {

@@ -87,8 +87,9 @@
 .stat-item strong {
   color: #d4af37;
   font-size: 1.1rem;
-  display: inline;
-  margin-right: 0.5rem;
+  display: inline-block;
+  min-width: 6rem;
+  text-align: left;
 }
 
 .stat-item small {
@@ -102,6 +103,18 @@
   font-weight: bold;
   margin-left: 0.25rem;
   display: inline;
+}
+
+.stat-value-container {
+  display: inline-block;
+  min-width: 2.5rem;
+  text-align: left;
+}
+
+.stat-value {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #ffffff;
 }
 
 .stat-adjustment.positive {

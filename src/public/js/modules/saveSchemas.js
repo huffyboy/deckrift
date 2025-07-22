@@ -80,14 +80,14 @@ export const RunDataSchema = {
   },
   equipment: { required: true, array: true },
   playerDeck: { required: true, array: true }, // All cards player owns for this run
+  health: { required: true, type: 'number' }, // Current health during this run
+  maxHealth: { required: true, type: 'number' }, // Max health during this run (can change due to artifacts)
 };
 
 // Game data schema (persistent data)
 export const GameDataSchema = {
   version: { required: true, type: 'string' },
   timestamp: { required: true, type: 'number' },
-  health: { required: true, type: 'number' },
-  maxHealth: { required: true, type: 'number' },
   saveCurrency: { required: true, type: 'number' },
   stats: { required: true, object: true, schema: 'StatsSchema' },
   statXP: { required: true, object: true, schema: 'StatXPSchema' },
@@ -280,6 +280,8 @@ export function createDefaultSaveData(saveName = 'Rift Walker') {
       },
       equipment: [],
       playerDeck: createStandardDeck(), // All cards player owns for this run
+      runCurrency: 0, // Currency earned during this run
+      activeEffects: [], // List of active effect strings (e.g., 'xpBoost', 'currencyBoost')
     },
     gameData: {
       version: SAVE_VERSION,

@@ -5,6 +5,10 @@ import {
   showNotification,
   showGameMessage,
   showDeckDrawingAnimation,
+  updateHealthDisplay,
+  showMultiCardChoiceDialog,
+  showMultiCardRemoveDialog,
+  showInventoryOverflowDialog,
 } from './uiUtils.js';
 import {
   EVENTS,
@@ -17,6 +21,10 @@ import {
   ARTIFACTS,
   CARD_ADDING_EFFECTS,
   NEGATIVE_CARD_VALUES,
+  ARTIFACT_MAPPINGS,
+  ARTIFACT_DETAILS,
+  ARTIFACT_POOL_ITEMS,
+  EQUIPMENT,
 } from './gameData.js';
 import {
   drawAndRemoveCardFromPlayerDeck,
@@ -30,7 +38,167 @@ import {
   getFaceCards,
   saveDeckToServer,
   saveGameStateToServer,
+  createShuffledStandardDeck,
 } from './deckService.js';
+import {
+  applyArtifactEffects,
+  removeArtifactEffects,
+} from './artifactService.js';
+
+/**
+ * Draw a random card from the standard deck
+ * @returns {Promise<Object>} - Random card from standard deck
+ */
+async function drawFromStandardDeck() {
+  // Generate a shuffled standard deck
+  const standardDeck = createShuffledStandardDeck();
+
+  // Pick a random card
+  const randomIndex = Math.floor(Math.random() * standardDeck.length);
+  const drawnCard = standardDeck[randomIndex];
+
+  return {
+    value: drawnCard.value,
+    suit: drawnCard.suit,
+    display: `${drawnCard.value}${SUIT_TO_EMOJI_MAP[drawnCard.suit] || drawnCard.suit}`,
+    code: `${drawnCard.value}${drawnCard.suit}`,
+  };
+}
+
+/**
+ * Draw a random card from the player's deck
+ * @param {Object} gameState - Current game state
+ * @returns {Promise<Object>} - Random card from player's deck
+ */
+async function drawFromPlayerDeck(gameState) {
+  if (!gameState || !gameState.runData?.playerDeck) {
+    return null;
+  }
+
+  const playerDeck = gameState.runData.playerDeck;
+
+  if (playerDeck.length === 0) {
+    return null;
+  }
+
+  // Pick a random card
+  const randomIndex = Math.floor(Math.random() * playerDeck.length);
+  const drawnCard = playerDeck[randomIndex];
+
+  return {
+    value: drawnCard.value,
+    suit: drawnCard.suit,
+    display: `${drawnCard.value}${SUIT_TO_EMOJI_MAP[drawnCard.suit] || drawnCard.suit}`,
+    code: `${drawnCard.value}${drawnCard.suit}`,
+  };
+}
+
+/**
+ * Check if a stat levels up when gaining XP
+ * @param {Object} gameState - Current game state
+ * @param {string} statName - Name of the stat that gained XP
+ * @param {number} xpGained - Amount of XP gained
+ * @returns {Object|null} - Level up result or null if no level up
+ */
+function checkForLevelUp(gameState, statName, xpGained) {
+  if (
+    !gameState.gameData ||
+    !gameState.gameData.statXP ||
+    !gameState.gameData.stats
+  ) {
+    return null;
+  }
+
+  const currentXP = gameState.gameData.statXP[statName];
+  const currentLevel = gameState.gameData.stats[statName];
+
+  // Calculate XP threshold for next level
+  const targetLevel = currentLevel + 1;
+  const xpThreshold = 40 * (targetLevel - 4); // Same formula as calculateXPThreshold
+
+  // Check if we've reached the threshold
+  if (currentXP >= xpThreshold) {
+    // Calculate how many levels we gained
+    let levelsGained = 0;
+    let remainingXP = currentXP;
+    let newLevel = currentLevel;
+
+    while (remainingXP >= xpThreshold) {
+      remainingXP -= xpThreshold;
+      newLevel++;
+      levelsGained++;
+
+      // Recalculate threshold for next level
+      const nextTargetLevel = newLevel + 1;
+      const nextXpThreshold = 40 * (nextTargetLevel - 4);
+      if (remainingXP < nextXpThreshold) break;
+    }
+
+    return {
+      statName,
+      oldLevel: currentLevel,
+      newLevel,
+      levelsGained,
+      remainingXP,
+      xpGained,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Apply stat level up and show notification
+ * @param {Object} gameState - Current game state
+ * @param {Object} levelUpResult - Result from checkForLevelUp
+ */
+async function applyStatLevelUp(gameState, levelUpResult) {
+  if (!levelUpResult) return;
+
+  const { statName, oldLevel, newLevel, remainingXP } = levelUpResult;
+
+  // Apply the stat increase directly to game state
+  gameState.gameData.stats[statName] = newLevel;
+
+  // Handle Will stat changes - affects max HP
+  if (statName === 'will') {
+    const oldMaxHealth = oldLevel * 10;
+    const newMaxHealth = newLevel * 10;
+    const healthIncrease = newMaxHealth - oldMaxHealth;
+
+    // Update max health
+    gameState.runData.maxHealth = newMaxHealth;
+
+    // Increase current HP by the same amount
+    gameState.runData.health = Math.min(
+      gameState.runData.health + healthIncrease,
+      newMaxHealth
+    );
+  }
+
+  // Note: Craft and Focus stat side effects (inventory capacity, hand size)
+  // are handled in gameUtils.js applyStatChanges function
+
+  // Update the XP to the remaining amount after level-up
+  gameState.gameData.statXP[statName] = remainingXP;
+
+  // Save the updated game state
+  await saveGameState(gameState);
+
+  // Update the health display UI if Will leveled up
+  if (statName === 'will') {
+    updateHealthDisplay(gameState.runData.health, gameState.runData.maxHealth);
+  }
+
+  // Show level up notification
+  const statDisplayName = statName.charAt(0).toUpperCase() + statName.slice(1);
+
+  showNotification(
+    `${statDisplayName} Level Up!`,
+    `Your ${statDisplayName} increased from ${oldLevel} to ${newLevel}!`,
+    'success'
+  );
+}
 
 /**
  * Save the current player deck to the server
@@ -113,19 +281,25 @@ export function handleCardEncounter(card, gameState, handlers) {
     case 'rest': {
       // Calculate heal amount using constant from gameData
       const healAmount = Math.floor(
-        gameState.maxHealth * GAME_CONSTANTS.REST_HEAL_PERCENTAGE
+        gameState.runData.maxHealth * GAME_CONSTANTS.REST_HEAL_PERCENTAGE
       );
       const actualHealAmount = Math.min(
         healAmount,
-        gameState.maxHealth - gameState.health
+        gameState.runData.maxHealth - gameState.runData.health
       );
       const newHealth = Math.min(
-        gameState.health + healAmount,
-        gameState.maxHealth
+        gameState.runData.health + healAmount,
+        gameState.runData.maxHealth
       );
 
       // Update game state health
-      gameState.health = newHealth;
+      gameState.runData.health = newHealth;
+
+      // Update the health display UI
+      updateHealthDisplay(
+        gameState.runData.health,
+        gameState.runData.maxHealth
+      );
 
       showGameMessage(
         'Rest Complete',
@@ -158,31 +332,322 @@ export function handleCardEncounter(card, gameState, handlers) {
         '✨',
         null, // No timeout
         () => {
-          // Draw from player's deck first
-          drawAndRemoveCardFromPlayerDeck().then((drawnCard) => {
+          // Draw from player's deck first (but don't remove the card)
+          getRandomCardFromPlayerDeck(null, 'boon').then((drawnCard) => {
             if (drawnCard) {
               // Show deck drawing animation with the actual drawn card
               showDeckDrawingAnimation(() => {
                 // Process the boon based on the drawn card
                 processBoon(drawnCard, gameState).then((boonResult) => {
-                  // Show the specific boon result using the header and description from gameData
-                  showGameMessage(
-                    boonResult.header,
-                    boonResult.description,
-                    'success',
-                    `${drawnCard.display} ${boonResult.icon}`,
-                    null, // No timeout
-                    () => {
-                      // Callback when message is dismissed
-                      if (handlers.resetBusyState) {
-                        handlers.resetBusyState();
-                        // Re-render the map after resetting busy state
-                        if (handlers.renderOverworldMap) {
-                          handlers.renderOverworldMap();
+                  // Check if this is a boon that needs a second card draw
+                  if (
+                    boonResult.needsSecondDraw &&
+                    boonResult.secondDrawMessage
+                  ) {
+                    // Show the main boon message first
+                    showGameMessage(
+                      boonResult.header,
+                      boonResult.description,
+                      'success',
+                      `${drawnCard.display} ${boonResult.icon}`,
+                      null, // No timeout
+                      () => {
+                        // Go directly to drawing the second card for currency gain
+                        let drawPromise;
+                        if (boonResult.secondDrawDeck === 'player') {
+                          // For currency gain, get card without removing it
+                          drawPromise = getRandomCardFromPlayerDeck(
+                            null,
+                            'boon'
+                          );
+                        } else if (boonResult.secondDrawDeck === 'standard') {
+                          // For addCard, draw from standard deck
+                          drawPromise = drawFromStandardDeck();
+                        } else {
+                          // Fallback to player's personal deck
+                          drawPromise = getRandomCardFromPlayerDeck(
+                            null,
+                            'boon'
+                          );
+                        }
+
+                        drawPromise.then((secondCard) => {
+                          if (secondCard) {
+                            // Handle add card case separately (no drawing animation)
+                            if (
+                              boonResult.header === 'You discover new potential'
+                            ) {
+                              // Add card - handle with dialog instead of promise
+                              (async () => {
+                                // Draw multiple cards based on hand size (Focus stat)
+                                const handSize =
+                                  gameState.gameData.stats.focus || 4;
+                                const drawnCards = [];
+
+                                // Draw multiple cards from standard deck
+                                for (let i = 0; i < handSize; i++) {
+                                  const card = await drawFromStandardDeck();
+                                  if (card) {
+                                    drawnCards.push(card);
+                                  }
+                                }
+
+                                // Show multi-card choice dialog (no drawing animation)
+                                showMultiCardChoiceDialog(
+                                  drawnCards,
+                                  gameState,
+                                  handlers,
+                                  applyAddCard
+                                );
+                              })();
+                              return; // Exit early, don't continue with promise handling
+                            }
+
+                            // Handle remove card case separately (no drawing animation)
+                            if (
+                              boonResult.header ===
+                              'You attempt to purge your weakness'
+                            ) {
+                              // Remove card - handle with dialog instead of promise
+                              (async () => {
+                                // Draw multiple cards based on hand size (Focus stat) or deck size, whichever is smaller
+                                const handSize =
+                                  gameState.gameData.stats.focus || 4;
+                                const deckSize =
+                                  gameState.runData?.playerDeck?.length || 0;
+                                const cardsToDraw = Math.min(
+                                  handSize,
+                                  deckSize
+                                );
+                                const drawnCards = [];
+
+                                // Draw multiple cards from player's deck
+                                for (let i = 0; i < cardsToDraw; i++) {
+                                  const card =
+                                    await drawFromPlayerDeck(gameState);
+                                  if (card) {
+                                    drawnCards.push(card);
+                                  }
+                                }
+
+                                // Show multi-card remove dialog (no drawing animation)
+                                showMultiCardRemoveDialog(
+                                  drawnCards,
+                                  gameState,
+                                  handlers,
+                                  applyRemoveCard
+                                );
+                              })();
+                              return; // Exit early, don't continue with promise handling
+                            }
+
+                            // Handle artifact case separately (no drawing animation)
+                            if (boonResult.header === 'You find an artifact') {
+                              // Show deck drawing animation for artifacts
+                              showDeckDrawingAnimation(() => {
+                                // Force draw a 10 for artifact events (charm pool)
+                                const secondCard = {
+                                  value: '10',
+                                  suit: '♠', // Default suit, will be randomized
+                                  display: '10♠',
+                                  code: '10♠',
+                                };
+
+                                // Randomize the suit for variety
+                                const suits = ['♠', '♥', '♦', '♣'];
+                                const randomSuit =
+                                  suits[
+                                    Math.floor(Math.random() * suits.length)
+                                  ];
+                                secondCard.suit = randomSuit;
+                                secondCard.display = `10${randomSuit}`;
+                                secondCard.code = `10${randomSuit}`;
+
+                                // Artifact - handle with promise
+                                const effectPromise = applyArtifact(
+                                  secondCard,
+                                  gameState
+                                );
+
+                                effectPromise.then(async (result) => {
+                                  const suitSymbol =
+                                    SUIT_TO_EMOJI_MAP[secondCard.suit] ||
+                                    secondCard.suit;
+                                  const cardDisplay = `${secondCard.value}${suitSymbol}`;
+
+                                  let cardIcon;
+                                  let artifactTitle;
+                                  let artifactDescription;
+                                  if (result.applied) {
+                                    const artifactDetails =
+                                      ARTIFACT_DETAILS[result.artifactGained];
+
+                                    cardIcon = cardDisplay;
+                                    artifactTitle = `${artifactDetails.emoji} ${artifactDetails.name}`;
+
+                                    if (artifactDetails.type === 'weapon') {
+                                      const weaponData =
+                                        EQUIPMENT.weapons[
+                                          result.artifactGained
+                                        ];
+                                      artifactDescription = `<strong style="color: #FFD700;">Weapon:</strong> ${weaponData.cardCondition}`;
+                                    } else if (
+                                      artifactDetails.type === 'armor'
+                                    ) {
+                                      const armorData =
+                                        EQUIPMENT.armor[result.artifactGained];
+                                      artifactDescription = `<strong style="color: #FFD700;">Armor:</strong> ${armorData.cardCondition}`;
+                                    } else {
+                                      artifactDescription =
+                                        artifactDetails.effectText;
+                                    }
+                                  } else {
+                                    artifactTitle = boonResult.header;
+                                    artifactDescription = `You draw ${cardDisplay} but find no artifact.`;
+                                  }
+
+                                  showGameMessage(
+                                    artifactTitle,
+                                    artifactDescription,
+                                    'info',
+                                    cardIcon,
+                                    null, // No timeout
+                                    () => {
+                                      // Callback when message is dismissed
+                                      if (handlers.resetBusyState) {
+                                        handlers.resetBusyState();
+                                        // Re-render the map after resetting busy state
+                                        if (handlers.renderOverworldMap) {
+                                          handlers.renderOverworldMap();
+                                        }
+                                      }
+                                    }
+                                  );
+                                });
+                              }, secondCard);
+                              return; // Exit early, don't continue with promise handling
+                            }
+
+                            // Show deck drawing animation for other boon types
+                            showDeckDrawingAnimation(() => {
+                              // Apply the appropriate effect based on boon type
+                              let effectPromise;
+                              if (
+                                boonResult.header ===
+                                'You find a bit of treasure'
+                              ) {
+                                // Apply currency gain
+                                effectPromise = applyCurrencyGain(
+                                  secondCard,
+                                  gameState
+                                );
+                              } else if (
+                                boonResult.header === 'You learn something new'
+                              ) {
+                                // Apply stat XP gain
+                                effectPromise = applyStatXpGain(
+                                  secondCard,
+                                  gameState
+                                );
+                              }
+
+                              // Only proceed with promise handling if we have an effectPromise
+                              if (effectPromise) {
+                                effectPromise.then(async (result) => {
+                                  const suitSymbol =
+                                    SUIT_TO_EMOJI_MAP[secondCard.suit] ||
+                                    secondCard.suit;
+                                  let message;
+
+                                  if (
+                                    boonResult.header ===
+                                    'You find a bit of treasure'
+                                  ) {
+                                    // Currency gain message - use the simplified description from the function
+                                    message = result.description;
+
+                                    // Update currency display in the UI
+                                    const { updateCurrencyDisplay } =
+                                      await import('./uiUtils.js');
+                                    updateCurrencyDisplay(
+                                      result.originalCurrency +
+                                        result.currencyGained
+                                    );
+                                  } else if (
+                                    boonResult.header ===
+                                    'You learn something new'
+                                  ) {
+                                    // Stat XP gain message - use the simplified description from the function
+                                    message = result.description;
+                                  }
+
+                                  // Build card display for all cards drawn
+                                  let cardDisplay;
+                                  if (
+                                    (boonResult.header ===
+                                      'You learn something new' ||
+                                      boonResult.header ===
+                                        'You find a bit of treasure') &&
+                                    result.allCardsDrawn
+                                  ) {
+                                    // Show all cards drawn for XP gain or currency gain
+                                    const allCardDisplays =
+                                      result.allCardsDrawn.map((card) => {
+                                        const cardSuitSymbol =
+                                          SUIT_TO_EMOJI_MAP[card.suit] ||
+                                          card.suit;
+                                        return `${card.value}${cardSuitSymbol}`;
+                                      });
+                                    cardDisplay = `${allCardDisplays.join(' ')} ${boonResult.icon}`;
+                                  } else {
+                                    // Show single card for other events
+                                    cardDisplay = `${secondCard.value}${suitSymbol} ${boonResult.icon}`;
+                                  }
+
+                                  showGameMessage(
+                                    boonResult.header,
+                                    message,
+                                    'info',
+                                    cardDisplay,
+                                    null, // No timeout
+                                    () => {
+                                      // Callback when message is dismissed
+                                      if (handlers.resetBusyState) {
+                                        handlers.resetBusyState();
+                                        // Re-render the map after resetting busy state
+                                        if (handlers.renderOverworldMap) {
+                                          handlers.renderOverworldMap();
+                                        }
+                                      }
+                                    }
+                                  );
+                                });
+                              }
+                            }, secondCard);
+                          }
+                        });
+                      }
+                    );
+                  } else {
+                    // Show the specific boon result using the header and description from gameData
+                    showGameMessage(
+                      boonResult.header,
+                      boonResult.description,
+                      'success',
+                      `${drawnCard.display} ${boonResult.icon}`,
+                      null, // No timeout
+                      () => {
+                        // Callback when message is dismissed
+                        if (handlers.resetBusyState) {
+                          handlers.resetBusyState();
+                          // Re-render the map after resetting busy state
+                          if (handlers.renderOverworldMap) {
+                            handlers.renderOverworldMap();
+                          }
                         }
                       }
-                    }
-                  );
+                    );
+                  }
                 });
               }, drawnCard);
             }
@@ -201,7 +666,7 @@ export function handleCardEncounter(card, gameState, handlers) {
         null, // No timeout
         () => {
           // Draw from player's deck first
-          getRandomCardFromPlayerDeck().then((drawnCard) => {
+          getRandomCardFromPlayerDeck(null, 'bane').then((drawnCard) => {
             if (drawnCard) {
               // Show deck drawing animation with the actual drawn card
               showDeckDrawingAnimation(() => {
@@ -226,7 +691,10 @@ export function handleCardEncounter(card, gameState, handlers) {
                         if (baneResult.secondDrawDeck === 'player') {
                           // For both stat loss and currency loss, get card without removing it
                           // The card is just used to determine the effect, not actually lost
-                          drawPromise = getRandomCardFromPlayerDeck();
+                          drawPromise = getRandomCardFromPlayerDeck(
+                            null,
+                            'bane'
+                          );
                         } else if (
                           baneResult.secondDrawDeck === 'playerHighCards'
                         ) {
@@ -668,7 +1136,7 @@ export function startBossBattle(newPosition, renderBattleInterface) {
  * @returns {Object} - Boon result with header, description, icon and applied effects
  */
 async function processBoon(card, gameState) {
-  const cardValue = getCardValue(card);
+  const cardValue = card.value;
   const cardSuit = card.suit;
 
   // Convert suit symbols to suit names for BOONS lookup
@@ -702,6 +1170,71 @@ async function processBoon(card, gameState) {
   // Get the proper header and description from BANE_AND_BOON_EFFECTS
   const effectData =
     BANE_AND_BOON_EFFECTS[boonEffect?.type] || BANE_AND_BOON_EFFECTS.nothing;
+
+  // Special handling for currencyGain to show what card was drawn and how much was gained
+  if (boonEffect?.type === 'currencyGain') {
+    return {
+      header: effectData.header,
+      description: effectData.description,
+      icon: effectData.icon,
+      applied: true,
+      needsSecondDraw: true, // Signal that we need to draw a second card
+      secondDrawMessage: effectData.secondDrawMessage,
+      secondDrawDeck: effectData.secondDrawDeck,
+    };
+  }
+
+  // Special handling for statXpGain to show what card was drawn and how much XP was gained
+  if (boonEffect?.type === 'statXpGain') {
+    return {
+      header: effectData.header,
+      description: effectData.description,
+      icon: effectData.icon,
+      applied: true,
+      needsSecondDraw: true, // Signal that we need to draw a second card
+      secondDrawMessage: effectData.secondDrawMessage,
+      secondDrawDeck: effectData.secondDrawDeck,
+    };
+  }
+
+  // Special handling for addCard to show what card was drawn and offer to add it
+  if (boonEffect?.type === 'addCard') {
+    return {
+      header: effectData.header,
+      description: effectData.description,
+      icon: effectData.icon,
+      applied: true,
+      needsSecondDraw: true, // Signal that we need to draw a second card
+      secondDrawMessage: effectData.secondDrawMessage,
+      secondDrawDeck: effectData.secondDrawDeck,
+    };
+  }
+
+  // Special handling for removeCard to show what card was drawn and offer to remove it
+  if (boonEffect?.type === 'removeCard') {
+    return {
+      header: effectData.header,
+      description: effectData.description,
+      icon: effectData.icon,
+      applied: true,
+      needsSecondDraw: true, // Signal that we need to draw a second card
+      secondDrawMessage: effectData.secondDrawMessage,
+      secondDrawDeck: effectData.secondDrawDeck,
+    };
+  }
+
+  // Special handling for artifact to show what card was drawn and which artifact was gained
+  if (boonEffect?.type === 'artifact') {
+    return {
+      header: effectData.header,
+      description: effectData.description,
+      icon: effectData.icon,
+      applied: true,
+      needsSecondDraw: true, // Signal that we need to draw a second card
+      secondDrawMessage: effectData.secondDrawMessage,
+      secondDrawDeck: effectData.secondDrawDeck,
+    };
+  }
 
   return {
     header: effectData.header,
@@ -890,21 +1423,18 @@ async function applyBoonEffect(boonEffect, card, gameState) {
     }
 
     case 'statXpGain': {
-      const xpGain = getCardValue(card);
-      // For now, add to power XP as default
-      gameState.powerXP = (gameState.powerXP || 0) + xpGain;
+      // For statXpGain, we don't process the first card here
+      // The second card draw is handled in the main boon flow
       return {
-        description: `+${xpGain} Power XP`,
+        description: 'Stat XP gain effect triggered',
         applied: true,
       };
     }
 
     case 'currencyGain': {
-      const currencyGain = getCardValue(card);
-      gameState.runData.runCurrency =
-        (gameState.runData.runCurrency || 0) + currencyGain;
+      // Currency gain is now handled with second draws, so this should not be reached
       return {
-        description: `+${currencyGain} currency`,
+        description: 'Currency gain effect triggered',
         applied: true,
       };
     }
@@ -1037,6 +1567,17 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 
       // Remove the item from the equipment array
       equipment.splice(randomIndex, 1);
+
+      // If it's an artifact, remove its effects
+      if (lostItem.type === 'artifact') {
+        const effectResult = await removeArtifactEffects(
+          lostItem.value,
+          gameState
+        );
+        if (!effectResult.success) {
+          // Failed to remove artifact effects
+        }
+      }
 
       // Save the updated game state to the server
       await saveGameState(gameState);
@@ -1180,6 +1721,150 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 }
 
 /**
+ * Apply stat XP gain to the game state.
+ * This function is called when a 'statXpGain' boon effect is processed.
+ * It draws a second card to determine which stat gains XP and how much.
+ * @param {Object} card - The drawn card for the stat and XP amount.
+ * @param {Object} gameState - Current game state.
+ * @returns {Promise<Object>} - Result with description, applied flag, xpGained, statGained, and cardValue.
+ */
+async function applyStatXpGain(card, gameState) {
+  // Check if it's a joker (no XP gain for jokers)
+  if (card.suit === 'joker' || card.value === '𝕁') {
+    return {
+      description: 'You draw a joker and gain no experience.',
+      applied: false,
+      xpGained: 0,
+      statGained: null,
+      cardValue: 0,
+    };
+  }
+
+  const cardValue = getCardValue(card);
+  const statToGain = SUIT_TO_STAT_MAP[card.suit] || 'power';
+
+  // Check for XP boost effect - draw additional cards instead of doubling
+  let totalXpGain = cardValue;
+  const additionalCards = [];
+
+  if (
+    gameState.runData.activeEffects &&
+    gameState.runData.activeEffects.includes('xpBoost')
+  ) {
+    // Draw one additional card for XP boost
+    const additionalCard = await drawFromStandardDeck();
+    if (additionalCard) {
+      const additionalValue = getCardValue(additionalCard);
+      const additionalStat = SUIT_TO_STAT_MAP[additionalCard.suit] || 'power';
+      totalXpGain += additionalValue;
+      additionalCards.push({
+        card: additionalCard,
+        value: additionalValue,
+        stat: additionalStat,
+      });
+    }
+  }
+
+  // Add XP to the appropriate stat
+  if (!gameState.gameData.statXP) {
+    gameState.gameData.statXP = { power: 0, will: 0, craft: 0, focus: 0 };
+  }
+  gameState.gameData.statXP[statToGain] =
+    (gameState.gameData.statXP[statToGain] || 0) + totalXpGain;
+
+  // Save the updated game state
+  await saveGameState(gameState);
+
+  // Check for level up
+  const levelUpResult = checkForLevelUp(gameState, statToGain, totalXpGain);
+  if (levelUpResult) {
+    await applyStatLevelUp(gameState, levelUpResult);
+  }
+
+  // Build description based on whether additional cards were drawn
+  const description = `You gained ${totalXpGain} ${statToGain.charAt(0).toUpperCase() + statToGain.slice(1)} XP.`;
+
+  // Collect all cards drawn for display
+  const allCardsDrawn = [card, ...additionalCards.map((ac) => ac.card)];
+
+  return {
+    description,
+    applied: true,
+    xpGained: totalXpGain,
+    statGained: statToGain,
+    cardValue: cardValue,
+    additionalCards,
+    allCardsDrawn,
+    bonusXp: totalXpGain - cardValue,
+  };
+}
+
+/**
+ * Apply currency gain to the game state.
+ * This function is called when a 'currencyGain' boon effect is processed.
+ * It draws a second card to determine the exact amount of currency to gain.
+ * @param {Object} card - The drawn card for the currency amount.
+ * @param {Object} gameState - Current game state.
+ * @returns {Promise<Object>} - Result with description, applied flag, currencyGained, cardValue, and originalCurrency.
+ */
+async function applyCurrencyGain(card, gameState) {
+  // Check if it's a joker (no currency gain for jokers)
+  if (card.suit === 'joker' || card.value === '𝕁') {
+    return {
+      description: 'You draw a joker and gain no currency.',
+      applied: false,
+      currencyGained: 0,
+      cardValue: 0,
+      originalCurrency: gameState.runData?.runCurrency || 0,
+    };
+  }
+
+  const cardValue = getCardValue(card);
+  const currentCurrency = gameState.runData?.runCurrency || 0;
+
+  // Check for currency boost effect - draw additional cards instead of doubling
+  let totalCurrencyGain = cardValue;
+  const additionalCards = [];
+
+  if (
+    gameState.runData.activeEffects &&
+    gameState.runData.activeEffects.includes('currencyBoost')
+  ) {
+    // Draw one additional card for currency boost
+    const additionalCard = await drawFromStandardDeck();
+    if (additionalCard) {
+      const additionalValue = getCardValue(additionalCard);
+      totalCurrencyGain += additionalValue;
+      additionalCards.push({
+        card: additionalCard,
+        value: additionalValue,
+      });
+    }
+  }
+
+  gameState.runData.runCurrency = currentCurrency + totalCurrencyGain;
+
+  await saveGameState(gameState);
+
+  // Build description based on whether additional cards were drawn
+  const description = `You gained ${totalCurrencyGain} currency.`;
+
+  // Collect all cards drawn for display
+  const allCardsDrawn = [card, ...additionalCards.map((ac) => ac.card)];
+
+  return {
+    description,
+    applied: true,
+    currencyGained: totalCurrencyGain,
+    cardValue: cardValue,
+    originalCurrency: currentCurrency,
+    additionalCards,
+    allCardsDrawn,
+    bonusCurrency: totalCurrencyGain - cardValue,
+  };
+}
+
+/**
  * Apply currency loss to the game state.
  * This function is called when a 'loseCurrency' bane effect is processed.
  * It draws a second card to determine the exact amount of currency to lose.
@@ -1225,6 +1910,13 @@ async function applyStatLoss(card, gameState) {
   Object.assign(gameState, result.gameState);
 
   await saveGameState(gameState);
+
+  // If Craft stat was decreased, check for inventory overflow
+  if (statToLose === 'craft') {
+    await handleInventoryOverflow(gameState, () => {
+      // This callback runs after inventory overflow is handled (if any)
+    });
+  }
 
   return {
     description: `Lost 1 ${statToLose} (${card.value}${card.suit})`,
@@ -1295,6 +1987,273 @@ async function applyFaceCardLoss(drawnCard, gameState) {
 }
 
 /**
+ * Apply add card effect to the game state.
+ * This function is called when a 'addCard' boon effect is processed.
+ * It draws a second card to determine which card to add.
+ * @param {Object} card - The drawn card for the card to add.
+ * @param {Object} gameState - Current game state.
+ * @returns {Promise<Object>} - Result with description, applied flag, cardToAdd, and cardValue.
+ */
+async function applyAddCard(card, gameState) {
+  // Check if it's a joker (no card to add for jokers)
+  if (card.suit === 'joker' || card.value === '𝕁') {
+    return {
+      description: 'You draw a joker and gain no new card.',
+      applied: false,
+      cardToAdd: null,
+      cardValue: 0,
+    };
+  }
+
+  const cardValue = getCardValue(card);
+  const cardDisplay = `${card.value}${SUIT_TO_EMOJI_MAP[card.suit] || card.suit}`;
+
+  // Add the card to the player's main deck
+  if (!gameState.runData.playerDeck) {
+    gameState.runData.playerDeck = [];
+  }
+
+  // Add the card to the player's deck
+  gameState.runData.playerDeck.push({
+    value: card.value,
+    suit: card.suit,
+    type: 'standard',
+  });
+
+  // Save the updated deck to the server
+  await savePlayerDeck(gameState.runData.playerDeck);
+
+  return {
+    description: `Added ${cardDisplay} to your deck.`,
+    applied: true,
+    cardToAdd: cardDisplay,
+    cardValue: cardValue,
+  };
+}
+
+/**
+ * Apply remove card effect to the game state.
+ * This function is called when a 'removeCard' boon effect is processed.
+ * It removes the selected card from the player's deck.
+ * @param {Object} card - The card to remove from the deck.
+ * @param {Object} gameState - Current game state.
+ * @returns {Promise<Object>} - Result with description, applied flag, cardRemoved, and cardValue.
+ */
+async function applyRemoveCard(card, gameState) {
+  const cardValue = getCardValue(card);
+  const cardDisplay = `${card.value}${SUIT_TO_EMOJI_MAP[card.suit] || card.suit}`;
+
+  // Use deck service to remove the card from the main player deck
+  const { gameState: updatedGameState, removedCard } = removeCardFromDeck(
+    gameState,
+    DECK_TYPES.PLAYER_MAIN,
+    card
+  );
+
+  if (removedCard) {
+    // Update the game state
+    Object.assign(gameState, updatedGameState);
+
+    // Save the updated deck to the server
+    await saveDeckToServer(gameState.runData.playerDeck);
+
+    return {
+      description: `Removed ${cardDisplay} from your deck.`,
+      applied: true,
+      cardRemoved: cardDisplay,
+      cardValue: cardValue,
+    };
+  } else {
+    return {
+      description: `Failed to remove ${cardDisplay} from your deck.`,
+      applied: false,
+      cardRemoved: null,
+      cardValue: cardValue,
+    };
+  }
+}
+
+/**
+ * Apply artifact effect to the game state.
+ * This function is called when an 'artifact' boon effect is processed.
+ * It determines which artifact to give based on the drawn card.
+ * @param {Object} card - The drawn card that determines the artifact.
+ * @param {Object} gameState - Current game state.
+ * @returns {Promise<Object>} - Result with description, applied flag, artifactGained, and cardValue.
+ */
+async function applyArtifact(card, gameState) {
+  const cardValue = card.value;
+  const cardSuit = card.suit;
+  const cardDisplay = `${card.value}${SUIT_TO_EMOJI_MAP[card.suit] || card.suit}`;
+
+  // Get the artifact key from mappings
+  let artifactKey = ARTIFACT_MAPPINGS[cardValue];
+
+  if (!artifactKey) {
+    return {
+      description: `No artifact found for ${cardDisplay}.`,
+      applied: false,
+      artifactGained: null,
+      cardValue: getCardValue(card),
+    };
+  }
+
+  // Handle suit-specific mappings
+  if (typeof artifactKey === 'object') {
+    artifactKey = selectArtifactKeyFromSuit(artifactKey, cardSuit);
+  }
+
+  if (!artifactKey) {
+    return {
+      description: `No artifact found for ${cardDisplay}.`,
+      applied: false,
+      artifactGained: null,
+      cardValue: getCardValue(card),
+    };
+  }
+
+  // Handle random pools first
+  let finalArtifact = null;
+  let artifactKeyToStore = artifactKey;
+
+  const poolItems = ARTIFACT_POOL_ITEMS[artifactKey];
+  if (poolItems && poolItems.length > 0) {
+    // This is a pool - select a random artifact from it
+    const randomIndex = Math.floor(Math.random() * poolItems.length);
+    const selectedPoolKey = poolItems[randomIndex];
+    finalArtifact = ARTIFACT_DETAILS[selectedPoolKey];
+    artifactKeyToStore = selectedPoolKey;
+  } else {
+    // This is a direct artifact - get its details
+    finalArtifact = ARTIFACT_DETAILS[artifactKey];
+  }
+
+  if (!finalArtifact) {
+    return {
+      description: `No artifact details found for ${artifactKey}.`,
+      applied: false,
+      artifactGained: null,
+      cardValue: getCardValue(card),
+    };
+  }
+
+  // Add the artifact to the player's equipment
+  if (!gameState.runData.equipment) {
+    gameState.runData.equipment = [];
+  }
+
+  // For weapons and armor, get the cardCondition from EQUIPMENT
+  let effectText = finalArtifact.effectText;
+  if (finalArtifact.type === 'weapon' || finalArtifact.type === 'armor') {
+    const equipmentData =
+      finalArtifact.type === 'weapon'
+        ? EQUIPMENT.weapons[artifactKeyToStore]
+        : EQUIPMENT.armor[artifactKeyToStore];
+    if (equipmentData && equipmentData.cardCondition) {
+      effectText = equipmentData.cardCondition;
+    }
+  }
+
+  const artifactItem = {
+    type: finalArtifact.type || 'artifact',
+    value: artifactKeyToStore, // Store the artifact key, not the display name
+    equipped: false, // Default to not equipped
+  };
+
+  // Store only the essential data in the save
+  gameState.runData.equipment.push(artifactItem);
+
+  // Force an immediate save to ensure the artifact is persisted
+  await saveGameState(gameState);
+
+  // Create full artifact data for display/effects (not stored in save)
+  const fullArtifactData = {
+    ...artifactItem,
+    emoji: finalArtifact.emoji || '🧿',
+    effect: finalArtifact.effect,
+    effectText: effectText,
+    description:
+      finalArtifact.flavorText && finalArtifact.effectText
+        ? `<p><strong>${finalArtifact.effectText}</strong></p><p>${finalArtifact.flavorText}</p>`
+        : finalArtifact.description,
+  };
+
+  // Apply artifact effects (cards, stat modifiers, boosts) - only for actual artifacts
+  let effectResult = { success: true };
+  if (finalArtifact.type === 'artifact') {
+    effectResult = await applyArtifactEffects(artifactKeyToStore, gameState);
+
+    if (!effectResult.success) {
+      // Failed to apply artifact effects
+    }
+  }
+
+  // Check for inventory overflow and handle it
+  await handleInventoryOverflow(gameState, () => {
+    // This callback runs after inventory overflow is handled (if any)
+  });
+
+  // Add a small delay to simulate drawing animation
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  return {
+    description: `Gained ${fullArtifactData.emoji} ${finalArtifact.name}!`,
+    applied: true,
+    artifactGained: fullArtifactData.value,
+    artifactEmoji: fullArtifactData.emoji,
+    artifactName: finalArtifact.name,
+    cardValue: getCardValue(card),
+    effectResult: effectResult, // Include effect results for debugging
+  };
+}
+
+/**
+ * Select artifact key based on suit from a suit-specific mapping
+ * @param {Object} suitMapping - The suit-specific artifact mapping
+ * @param {string} cardSuit - The suit of the drawn card
+ * @returns {string|null} - The artifact key or null if none found
+ */
+function selectArtifactKeyFromSuit(suitMapping, cardSuit) {
+  // Check for exact suit match first
+  if (cardSuit && suitMapping[cardSuit]) {
+    return suitMapping[cardSuit];
+  }
+
+  // Check for color-based selection
+  const isRed = cardSuit === '♥' || cardSuit === '♦';
+  const isBlack = cardSuit === '♠' || cardSuit === '♣';
+
+  if (isRed && suitMapping.red) {
+    return suitMapping.red;
+  } else if (isBlack && suitMapping.black) {
+    return suitMapping.black;
+  }
+
+  // Check for specific suit names (for database compatibility)
+  const suitName = getSuitName(cardSuit);
+  if (suitName && suitMapping[suitName]) {
+    return suitMapping[suitName];
+  }
+
+  return null;
+}
+
+/**
+ * Convert suit symbol to suit name for database compatibility
+ * @param {string} suitSymbol - The suit symbol (♠, ♥, ♦, ♣)
+ * @returns {string} - The suit name (spades, hearts, diamonds, clubs)
+ */
+function getSuitName(suitSymbol) {
+  const suitMap = {
+    '♠': 'spade',
+    '♥': 'heart',
+    '♦': 'diamond',
+    '♣': 'club',
+  };
+  return suitMap[suitSymbol];
+}
+
+/**
  * Pick a random high card from the provided array
  * @param {Array} highCards - Array of high cards (10, J, Q, K, A) from player's personal deck
  * @returns {Promise<Object|null>} The picked high card or null if no high cards available
@@ -1336,4 +2295,139 @@ function pickRandomFaceCard(faceCards) {
       resolve(pickedCard);
     }, 1000);
   });
+}
+
+/**
+ * Handle inventory overflow by letting the player choose which artifacts to remove
+ * @param {Object} gameState - Current game state
+ * @param {Function} onComplete - Callback when selection is complete
+ */
+export async function handleInventoryOverflow(gameState, onComplete) {
+  if (!gameState.runData?.equipment) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  // Calculate current inventory capacity
+  const baseCraftStat = gameState.gameData?.stats?.craft || 4;
+  const craftModifier = gameState.runData?.statModifiers?.craft || 0;
+  const totalCraftStat = baseCraftStat + craftModifier;
+  const maxCapacity = totalCraftStat;
+  const currentCount = gameState.runData.equipment.length;
+
+  // Check if we're over capacity
+  if (currentCount <= maxCapacity) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  const overflowCount = currentCount - maxCapacity;
+
+  // Get all equipment items (weapons, armor, artifacts)
+  const allEquipment = gameState.runData.equipment;
+
+  if (allEquipment.length === 0) {
+    // No equipment to remove, but we're over capacity
+    // This shouldn't happen, but handle gracefully
+    if (onComplete) onComplete();
+    return;
+  }
+
+  // Create equipment cards for selection
+  const equipmentCards = allEquipment.map((item) => {
+    let itemDetails = null;
+    let displayName = item.value;
+    let emoji = '🧿';
+    let description = 'An item with mysterious properties.';
+
+    if (item.type === 'artifact') {
+      // Look up artifact details
+      itemDetails = ARTIFACT_DETAILS[item.value];
+      if (itemDetails) {
+        displayName = itemDetails.name;
+        emoji = itemDetails.emoji;
+        description = itemDetails.description;
+      }
+    } else if (item.type === 'weapon') {
+      // Look up weapon details
+      itemDetails = EQUIPMENT.weapons[item.value.toLowerCase()];
+      if (itemDetails) {
+        displayName = itemDetails.name;
+        emoji = '⚔️';
+        description = itemDetails.description;
+      } else {
+        displayName = item.value;
+        emoji = '⚔️';
+        description = 'A weapon of unknown origin.';
+      }
+    } else if (item.type === 'armor') {
+      // Look up armor details
+      itemDetails = EQUIPMENT.armor[item.value.toLowerCase()];
+      if (itemDetails) {
+        displayName = itemDetails.name;
+        emoji = '🛡️';
+        description = itemDetails.description;
+      } else {
+        displayName = item.value;
+        emoji = '🛡️';
+        description = 'Armor of unknown origin.';
+      }
+    }
+
+    return {
+      value: item.value,
+      name: displayName,
+      emoji: emoji,
+      description: description,
+      type: item.type,
+    };
+  });
+
+  // Show the equipment selection dialog
+  showInventoryOverflowDialog(
+    equipmentCards,
+    overflowCount,
+    `You have ${overflowCount} more item${overflowCount > 1 ? 's' : ''} than your inventory can hold. Choose which item${overflowCount > 1 ? 's' : ''} to remove:`,
+    async (selectedItems) => {
+      // If no items selected (canceled), don't remove anything
+      if (selectedItems.length === 0) {
+        if (onComplete) onComplete();
+        return;
+      }
+
+      // Remove the selected items
+      for (const selectedItem of selectedItems) {
+        const index = gameState.runData.equipment.findIndex(
+          (item) =>
+            item.value === selectedItem.value && item.type === selectedItem.type
+        );
+        if (index !== -1) {
+          const removedItem = gameState.runData.equipment[index];
+          gameState.runData.equipment.splice(index, 1);
+
+          // If it's an artifact, remove its effects
+          if (removedItem.type === 'artifact') {
+            const effectResult = await removeArtifactEffects(
+              removedItem.value,
+              gameState
+            );
+            if (!effectResult.success) {
+              // Failed to remove artifact effects
+            }
+          }
+        }
+      }
+
+      // Save the updated game state
+      await saveGameState(gameState);
+
+      // Show confirmation message
+      const removedNames = selectedItems
+        .map((a) => `${a.emoji} ${a.name}`)
+        .join(', ');
+      showNotification(`Removed: ${removedNames}`, 'info');
+
+      if (onComplete) onComplete();
+    }
+  );
 }

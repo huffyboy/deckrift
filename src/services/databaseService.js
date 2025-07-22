@@ -370,12 +370,12 @@ class DatabaseService {
             focus: 0,
           },
           equipment: oldSave.equipment || [],
+          health: oldSave.health || 40,
+          maxHealth: oldSave.maxHealth || 40,
         },
         gameData: {
           version: SAVE_VERSION,
           timestamp: Date.now(),
-          health: oldSave.health || 40,
-          maxHealth: oldSave.maxHealth || 40,
           saveCurrency: oldSave.currency || 0,
           stats: oldSave.stats || {
             power: 4,

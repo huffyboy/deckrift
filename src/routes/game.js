@@ -83,8 +83,17 @@ router.get('/new', requireAuth, async (req, res) => {
       );
 
       // Calculate health based on Will stat (10 HP per Will point)
-      const willStat = STARTING_STATS.will;
+      const baseWill = activeSave.gameData.stats.will || STARTING_STATS.will;
+      const willModifier = activeSave.runData.statModifiers?.will || 0;
+      const willStat = baseWill + willModifier;
       const calculatedMaxHealth = willStat * 10;
+
+      // Update the save's health to reflect the correct max health
+      activeSave.runData.maxHealth = calculatedMaxHealth;
+      // If current health is at max, update it too
+      if (activeSave.runData.health === activeSave.runData.maxHealth) {
+        activeSave.runData.health = calculatedMaxHealth;
+      }
 
       // Initialize player deck using deck service
       const playerDeck = createShuffledStandardDeck().map((card) => ({
@@ -101,8 +110,10 @@ router.get('/new', requireAuth, async (req, res) => {
 
       // Generate actual cards for the map (excluding jokers)
       const availableCards = [];
-      // TEMPORARY: Only J and 2 for testing bane events
-      const testCardValues = ['J', '2'];
+      // TEST MODE: Change these values to control what events appear on the map
+      // Current: Only A for testing boon events
+      // Options: ['A'] for boons, ['2'] for banes, ['J', '2'] for mixed, etc.
+      const testCardValues = ['A'];
 
       // Create a deck of cards (excluding jokers)
       MAP_CARD_SUITS.forEach((suit) => {
@@ -220,12 +231,12 @@ router.get('/new', requireAuth, async (req, res) => {
             focus: 0,
           },
           equipment: startingEquipment,
+          health: calculatedMaxHealth,
+          maxHealth: calculatedMaxHealth,
         },
         gameData: {
           version: SAVE_VERSION,
           timestamp: Date.now(),
-          health: calculatedMaxHealth,
-          maxHealth: calculatedMaxHealth,
           currency: 0,
           stats: activeSave.gameData.stats,
           statXP: activeSave.gameData.statXP,

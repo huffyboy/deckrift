@@ -10,6 +10,7 @@ import {
   API_VALUE_CONVERSION_MAP,
   INTERNAL_SUIT_TO_API_MAP,
 } from './gameData.js';
+import { updateHealthDisplay } from './uiUtils.js';
 
 /**
  * Calculate challenge modifier for a given realm and level
@@ -378,20 +379,28 @@ export function applyStatChanges(gameState, statChanges, isTemporary = true) {
         const newMaxHealth = newValue * 10;
 
         // Update max health
-        updatedGameState.maxHealth = newMaxHealth;
+        updatedGameState.runData.maxHealth = newMaxHealth;
 
         // If max HP increased, increase current HP by the same amount
         if (change > 0) {
-          updatedGameState.health = Math.min(
-            updatedGameState.health + change * 10,
+          updatedGameState.runData.health = Math.min(
+            updatedGameState.runData.health + change * 10,
             newMaxHealth
           );
         }
         // If max HP decreased, cap current HP to new max
         else if (change < 0) {
-          updatedGameState.health = Math.min(
-            updatedGameState.health,
+          updatedGameState.runData.health = Math.min(
+            updatedGameState.runData.health,
             newMaxHealth
+          );
+        }
+
+        // Update health display if available
+        if (typeof updateHealthDisplay === 'function') {
+          updateHealthDisplay(
+            updatedGameState.runData.health,
+            updatedGameState.runData.maxHealth
           );
         }
       }

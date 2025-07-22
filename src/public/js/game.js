@@ -17,7 +17,7 @@ import {
   generateBaneEffect as generateBaneEffectUtil,
 } from './modules/gameUtils.js';
 
-import { showNotification } from './modules/uiUtils.js';
+import { showNotification, updateHealthDisplay } from './modules/uiUtils.js';
 
 // Import event handler functions
 import {
@@ -40,8 +40,8 @@ let playerDirection = 'right'; // Track player direction: 'left' or 'right'
 // Test mode configuration
 const testMode = {
   enabled: true,
-  baneCard: { value: '2', suit: '♠' }, // Default test card for bane events
-  boonCard: { value: 'A', suit: '♥' }, // Default test card for boon events
+  baneCard: { value: '2', suit: '♠' }, // Default test card for bane events (2 for currencyGain)
+  boonCard: { value: 'J', suit: '♥' }, // Default test card for boon events
 };
 
 // Deck management functions
@@ -85,10 +85,10 @@ async function initializeDeck(customCards = null) {
 async function initializeTestingDeck() {
   // Create a deck with only J cards (4 suits)
   const jCards = [
-    { value: 'J', suit: '♠', display: 'J♠' },
-    { value: 'J', suit: '♥', display: 'J♥' },
-    { value: 'J', suit: '♦', display: 'J♦' },
-    { value: 'J', suit: '♣', display: 'J♣' },
+    { value: 'A', suit: '♠', display: 'A♠' },
+    { value: 'A', suit: '♥', display: 'A♥' },
+    { value: 'A', suit: '♦', display: 'A♦' },
+    { value: 'A', suit: '♣', display: 'A♣' },
   ];
 
   return initializeDeck(jCards);
@@ -127,7 +127,7 @@ window.createCustomDeck = createCustomDeck;
 // Test mode control functions
 window.enableTestMode = (
   baneCard = { value: '2', suit: '♠' },
-  boonCard = { value: 'A', suit: '♥' }
+  boonCard = { value: '2', suit: '♠' }
 ) => {
   testMode.enabled = true;
   testMode.baneCard = baneCard;
@@ -142,8 +142,29 @@ window.setTestBaneCard = (card) => {
   testMode.baneCard = card;
 };
 
+window.setTestBoonCard = (card) => {
+  testMode.boonCard = card;
+};
+
 window.getTestMode = () => {
   return { ...testMode };
+};
+
+// Helper function to quickly set test cards
+window.setTestCard = (value, suit, eventType = 'boon') => {
+  testMode.enabled = true;
+  if (eventType === 'boon') {
+    testMode.boonCard = { value, suit };
+  } else {
+    testMode.baneCard = { value, suit };
+  }
+};
+
+// Helper function to set both test cards at once
+window.setTestCards = (boonValue, boonSuit, baneValue, baneSuit) => {
+  testMode.enabled = true;
+  testMode.boonCard = { value: boonValue, suit: boonSuit };
+  testMode.baneCard = { value: baneValue, suit: baneSuit };
 };
 
 async function drawCard() {
@@ -187,7 +208,10 @@ async function drawCard() {
  * Get a random card from the player deck for display (without removing it)
  * Used for bane/boon trigger cards
  */
-async function getRandomCardFromPlayerDeck(testCard = null) {
+async function getRandomCardFromPlayerDeck(
+  testCard = null,
+  eventType = 'bane'
+) {
   // Test mode: return the specified test card
   if (testCard) {
     return {
@@ -198,13 +222,15 @@ async function getRandomCardFromPlayerDeck(testCard = null) {
     };
   }
 
-  // Global test mode: return the configured test card for bane events
+  // Global test mode: return the configured test card based on event type
   if (testMode.enabled) {
+    const testCard =
+      eventType === 'boon' ? testMode.boonCard : testMode.baneCard;
     return {
-      value: testMode.baneCard.value,
-      suit: testMode.baneCard.suit,
-      display: `${testMode.baneCard.value}${SUIT_TO_EMOJI_MAP[testMode.baneCard.suit] || testMode.baneCard.suit}`,
-      code: `${testMode.baneCard.value}${testMode.baneCard.suit}`,
+      value: testCard.value,
+      suit: testCard.suit,
+      display: `${testCard.value}${SUIT_TO_EMOJI_MAP[testCard.suit] || testCard.suit}`,
+      code: `${testCard.value}${testCard.suit}`,
     };
   }
 
@@ -737,7 +763,7 @@ function startShop(_newPosition) {
 
 function handleRest(_newPosition) {
   // Calculate heal amount (50% of max HP)
-  const healAmount = Math.floor(currentGameState.gameData.maxHealth / 2);
+  const healAmount = Math.floor(currentGameState.runData.maxHealth / 2);
 
   fetch('/event/start', {
     method: 'POST',
@@ -755,14 +781,18 @@ function handleRest(_newPosition) {
     .then((data) => {
       if (data.success) {
         // Apply healing immediately
-        currentGameState.gameData.health = Math.min(
-          currentGameState.gameData.maxHealth,
-          currentGameState.gameData.health + healAmount
+        currentGameState.runData.health = Math.min(
+          currentGameState.runData.maxHealth,
+          currentGameState.runData.health + healAmount
         );
         showNotification(
           'Rest Complete',
           `Healed for ${healAmount} HP`,
           'success'
+        );
+        updateHealthDisplay(
+          currentGameState.runData.health,
+          currentGameState.runData.maxHealth
         );
         renderOverworldMap();
       } else {

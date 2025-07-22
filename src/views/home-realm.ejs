@@ -24,7 +24,7 @@
                 <%= REALMS[activeSave.runData.location.realm] ? REALMS[activeSave.runData.location.realm].name : `Realm ${activeSave.runData.location.realm}` %>
             </p>
             <p><strong>Level:</strong> <%= activeSave.runData.location.level %></p>
-            <p><strong>Health:</strong> <%= activeSave.gameData.health %>/<%= activeSave.gameData.maxHealth %></p>
+            <p><strong>Health:</strong> <%= activeSave.runData.health %>/<%= activeSave.runData.maxHealth %></p>
         </div>
         <button class="btn btn-primary" id="resume-run-btn">Resume Run</button>
     </div>

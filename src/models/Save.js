@@ -112,14 +112,16 @@ const saveSchema = new mongoose.Schema(
         },
       ],
       playerDeck: [{ type: mongoose.Schema.Types.Mixed }], // All cards player owns for this run
+      runCurrency: { type: Number, required: true, min: 0, default: 0 }, // Currency earned during this run
+      activeEffects: [{ type: String }], // List of active effect strings (e.g., 'xpBoost', 'currencyBoost')
+      health: { type: Number, required: true, min: 0 }, // Current health during this run
+      maxHealth: { type: Number, required: true, min: 1 }, // Max health during this run (can change due to artifacts)
     },
 
     // New save system structure - Game Data (Persistent)
     gameData: {
       version: { type: String, required: true },
       timestamp: { type: Number, required: true },
-      health: { type: Number, required: true, min: 0 },
-      maxHealth: { type: Number, required: true, min: 1 },
       saveCurrency: { type: Number, required: true, min: 0, default: 0 }, // Currency outside of runs
       stats: {
         power: { type: Number, required: true, min: 1 },

@@ -43,10 +43,6 @@ const userSchema = new mongoose.Schema(
         default: true,
       },
     },
-    currency: {
-      type: Number,
-      default: 0,
-    },
     // Indicates which save slot is currently active for this user
     // Since users can have multiple save slots, only one should be active at a time
     activeSaveSlot: {
