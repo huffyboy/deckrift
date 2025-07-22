@@ -702,36 +702,12 @@ function startBattle(enemyType, _newPosition) {
     });
 }
 
-function startChallenge(statType, _newPosition) {
-  // Calculate challenge difficulty based on current level
-  const challengeModifier = currentGameState.runData?.location?.level || 1;
-  const target = 12 + challengeModifier;
-
-  fetch('/event/start', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      eventType: 'challenge',
-      eventData: {
-        stat: statType,
-        difficulty: challengeModifier,
-        target,
-      },
-    }),
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        window.location.href = '/event';
-      } else {
-        // Handle error silently
-      }
-    })
-    .catch((_error) => {
-      // Handle error silently
-    });
+function startChallenge(_statType, _newPosition) {
+  // The new challenge system is handled directly in eventHandler.js
+  // This function is kept for compatibility but should not be called
+  // console.warn(
+  //   'startChallenge called - this should be handled by the new challenge system'
+  // );
 }
 
 function startShop(_newPosition) {

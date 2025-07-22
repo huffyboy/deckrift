@@ -9,6 +9,7 @@ import {
   showMultiCardChoiceDialog,
   showMultiCardRemoveDialog,
   showInventoryOverflowDialog,
+  showChallengeCardDialog,
 } from './uiUtils.js';
 import {
   EVENTS,
@@ -275,9 +276,11 @@ export function handleCardEncounter(card, gameState, handlers) {
     case 'fight':
       handlers.startBattle(event.enemy, gameState.playerPosition);
       break;
-    case 'challenge':
-      handlers.startChallenge(event.stat, gameState.playerPosition);
+    case 'challenge': {
+      // Start challenge with new multi-stage system
+      handleChallenge(event.stat, gameState, handlers);
       break;
+    }
     case 'rest': {
       // Calculate heal amount using constant from gameData
       const healAmount = Math.floor(
@@ -2430,4 +2433,288 @@ export async function handleInventoryOverflow(gameState, onComplete) {
       if (onComplete) onComplete();
     }
   );
+}
+
+/**
+ * Handle a stat challenge with multi-stage card drawing and selection
+ * @param {string} statType - Type of stat to challenge (power, will, craft, focus)
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+async function handleChallenge(statType, gameState, handlers) {
+  // Calculate challenge difficulty based on current level
+  const challengeModifier = gameState.runData?.location?.level || 1;
+  const targetValue = 12 + challengeModifier;
+
+  // Show initial challenge message
+  showGameMessage(
+    `${statType.charAt(0).toUpperCase() + statType.slice(1)} Challenge`,
+    `Circumstances require you to exert your ${statType}. See if you can meet the challenge.`,
+    'warning',
+    '🎲',
+    null, // No timeout - player must click to continue
+    async () => {
+      // After initial message, start the card drawing phase
+      await startChallengeCardPhase(statType, targetValue, gameState, handlers);
+    }
+  );
+}
+
+/**
+ * Start the card drawing phase of a challenge
+ * @param {string} statType - Type of stat being challenged
+ * @param {number} targetValue - Target value needed to succeed
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+async function startChallengeCardPhase(
+  statType,
+  targetValue,
+  gameState,
+  handlers
+) {
+  // Get hand size (Focus stat)
+  const handSize = gameState.gameData.stats.focus || 4;
+
+  // Draw cards up to hand limit from player's deck
+  const drawnCards = [];
+
+  for (let i = 0; i < handSize; i++) {
+    const card = await drawFromPlayerDeck(gameState);
+    if (card) {
+      drawnCards.push(card);
+    }
+  }
+
+  if (drawnCards.length === 0) {
+    // No cards to draw - automatic failure
+    await handleChallengeResult(
+      null,
+      false,
+      0,
+      targetValue,
+      statType,
+      gameState,
+      handlers
+    );
+    return;
+  }
+
+  // Show challenge card selection dialog
+  showChallengeCardDialog(
+    drawnCards,
+    gameState,
+    handlers,
+    statType,
+    targetValue,
+    async (selectedCard, success, totalValue, target) => {
+      await handleChallengeResult(
+        selectedCard,
+        success,
+        totalValue,
+        target,
+        statType,
+        gameState,
+        handlers
+      );
+    }
+  );
+}
+
+/**
+ * Handle the result of a challenge
+ * @param {Object} selectedCard - The card that was played
+ * @param {boolean} success - Whether the challenge succeeded
+ * @param {number} totalValue - Total value achieved (stat + card)
+ * @param {number} targetValue - Target value needed
+ * @param {string} statType - Type of stat challenged
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+async function handleChallengeResult(
+  selectedCard,
+  success,
+  totalValue,
+  targetValue,
+  statType,
+  gameState,
+  handlers
+) {
+  if (success) {
+    // Challenge succeeded - gain XP and trigger boon
+    const cardValue = selectedCard ? getCardValue(selectedCard) : 0;
+
+    // Gain XP in the challenged stat
+    const currentXP = gameState.gameData.statXP[statType] || 0;
+    gameState.gameData.statXP[statType] = currentXP + cardValue;
+
+    // Remove the selected card from the player's deck
+    if (selectedCard) {
+      removeSelectedCardFromDeck(selectedCard, gameState);
+    }
+
+    // Save the game state
+    await saveGameState(gameState);
+
+    // Show success message
+    showGameMessage(
+      'Challenge Succeeded!',
+      `You gain ${cardValue} XP. Draw a card to determine your boon.`,
+      'success',
+      '🎯',
+      null, // No timeout - player must click to continue
+      async () => {
+        // After success message, trigger boon
+        await triggerChallengeBoon(gameState, handlers);
+      }
+    );
+  } else {
+    // Challenge failed - trigger bane
+    // Remove the selected card from the player's deck even on failure
+    if (selectedCard) {
+      removeSelectedCardFromDeck(selectedCard, gameState);
+    }
+
+    // Save the game state
+    await saveGameState(gameState);
+
+    showGameMessage(
+      'Challenge Failed!',
+      'You failed. Draw a card to determine your bane.',
+      'error',
+      '💥',
+      null, // No timeout - player must click to continue
+      async () => {
+        // After failure message, trigger bane
+        await triggerChallengeBane(gameState, handlers);
+      }
+    );
+  }
+}
+
+/**
+ * Remove a selected card from the player's deck
+ * @param {Object} selectedCard - The card to remove
+ * @param {Object} gameState - Current game state
+ */
+function removeSelectedCardFromDeck(selectedCard, gameState) {
+  if (!gameState.runData?.playerDeck) return;
+
+  // Find and remove the card from the deck
+  const cardIndex = gameState.runData.playerDeck.findIndex(
+    (card) =>
+      card.value === selectedCard.value && card.suit === selectedCard.suit
+  );
+
+  if (cardIndex !== -1) {
+    const removedCard = gameState.runData.playerDeck.splice(cardIndex, 1)[0];
+
+    // Add to discard pile
+    if (!gameState.runData.playerDiscard) {
+      gameState.runData.playerDiscard = [];
+    }
+    gameState.runData.playerDiscard.push(removedCard);
+  }
+}
+
+/**
+ * Trigger a boon after successful challenge
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+async function triggerChallengeBoon(gameState, handlers) {
+  // Draw a boon card from standard deck (like artifact system)
+  const drawnCard = await drawFromStandardDeck();
+
+  if (drawnCard) {
+    showDeckDrawingAnimation(() => {
+      processBoon(drawnCard, gameState).then((boonResult) => {
+        showGameMessage(
+          boonResult.header,
+          boonResult.description,
+          'success',
+          `${drawnCard.display} ${boonResult.icon}`,
+          null, // No timeout
+          () => {
+            // Callback when message is dismissed
+            if (handlers.resetBusyState) {
+              handlers.resetBusyState();
+              // Re-render the map after resetting busy state
+              if (handlers.renderOverworldMap) {
+                handlers.renderOverworldMap();
+              }
+            }
+          }
+        );
+      });
+    }, drawnCard);
+  } else {
+    // No boon card available
+    showGameMessage(
+      'No Boon Available',
+      'You succeeded in the challenge but no boon was available.',
+      'info',
+      '🎯',
+      null,
+      () => {
+        if (handlers.resetBusyState) {
+          handlers.resetBusyState();
+          if (handlers.renderOverworldMap) {
+            handlers.renderOverworldMap();
+          }
+        }
+      }
+    );
+  }
+}
+
+/**
+ * Trigger a bane after failed challenge
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+async function triggerChallengeBane(gameState, handlers) {
+  // Draw a bane card from player's deck??
+  const drawnCard = await getRandomCardFromPlayerDeck(null, 'bane');
+
+  if (drawnCard) {
+    showDeckDrawingAnimation(() => {
+      processBane(drawnCard, gameState).then((baneResult) => {
+        showGameMessage(
+          baneResult.header,
+          baneResult.description,
+          'error',
+          `${drawnCard.display} ${baneResult.icon}`,
+          null, // No timeout
+          () => {
+            // Callback when message is dismissed
+            if (handlers.resetBusyState) {
+              handlers.resetBusyState();
+              // Re-render the map after resetting busy state
+              if (handlers.renderOverworldMap) {
+                handlers.renderOverworldMap();
+              }
+            }
+          }
+        );
+      });
+    }, drawnCard);
+  } else {
+    // No bane card available
+    showGameMessage(
+      'No Bane Available',
+      'You failed the challenge but no bane was available.',
+      'info',
+      '💥',
+      null,
+      () => {
+        if (handlers.resetBusyState) {
+          handlers.resetBusyState();
+          if (handlers.renderOverworldMap) {
+            handlers.renderOverworldMap();
+          }
+        }
+      }
+    );
+  }
 }

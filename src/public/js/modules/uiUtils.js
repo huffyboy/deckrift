@@ -1,6 +1,7 @@
 // uiUtils.js - Shared UI utility functions
 
 import { SUIT_TO_EMOJI_MAP } from './gameData.js';
+import { getCardValue } from './gameUtils.js';
 
 /**
  * Show a stylized game message (fantasy/roguelike themed)
@@ -1058,6 +1059,183 @@ export async function showInventoryOverflowDialog(
   buttonContainer.appendChild(confirmButton);
   dialog.appendChild(buttonContainer);
 
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+}
+
+/**
+ * Show a challenge card selection dialog where players draw up to their hand limit and choose one card to play
+ * @param {Array} cards - Array of card objects to show (drawn up to hand limit)
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ * @param {string} challengeStat - The stat being challenged (power, will, craft, focus)
+ * @param {number} targetValue - The target value needed to succeed
+ * @param {Function} onChallengeComplete - Callback when challenge is complete
+ */
+export function showChallengeCardDialog(
+  cards,
+  gameState,
+  handlers,
+  challengeStat,
+  targetValue,
+  onChallengeComplete
+) {
+  // Create dialog overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'challenge-card-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+  `;
+
+  // Create dialog content
+  const dialog = document.createElement('div');
+  dialog.className = 'challenge-card-dialog';
+  dialog.style.cssText = `
+    background: linear-gradient(135deg, #2a2a2a, #1e1e1e);
+    border: 3px solid #ffc107;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    max-width: 800px;
+    color: white;
+    font-family: 'Cinzel', serif;
+  `;
+
+  // Get current stat value
+  const currentStat = gameState.gameData.stats[challengeStat] || 0;
+  const statModifier = gameState.runData.statModifiers?.[challengeStat] || 0;
+  const totalStat = currentStat + statModifier;
+
+  // Create challenge info section
+  const challengeInfo = document.createElement('div');
+  challengeInfo.style.cssText = `
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 193, 7, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+  `;
+  challengeInfo.innerHTML = `
+    <h3 style="margin-bottom: 1rem; color: #ffc107;">${challengeStat.charAt(0).toUpperCase() + challengeStat.slice(1)} Challenge</h3>
+    <p style="margin-bottom: 0.5rem;"><strong>Target:</strong> ${targetValue}</p>
+    <p style="margin-bottom: 0.5rem;"><strong>${challengeStat.charAt(0).toUpperCase() + challengeStat.slice(1)}:</strong> ${currentStat} (+${statModifier})</p>
+  `;
+
+  // Create cards row (horizontal layout)
+  const cardsRow = document.createElement('div');
+  cardsRow.style.cssText = `
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  `;
+
+  // Add each card to the row
+  cards.forEach((card) => {
+    const cardElement = document.createElement('div');
+    cardElement.className = 'challenge-choice-card';
+    cardElement.style.cssText = `
+      background: linear-gradient(135deg, #ffffff, #f0f0f0);
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      padding: 1rem 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #1e1e1e;
+      width: 60px;
+      height: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    `;
+
+    const cardDisplay = `${card.value}${SUIT_TO_EMOJI_MAP[card.suit] || card.suit}`;
+    const cardValue = getCardValue(card);
+    const totalValue = totalStat + cardValue;
+    const willSucceed = totalValue >= targetValue;
+
+    cardElement.innerHTML = `
+      <div style="font-size: 1.2em; transition: transform 0.2s ease;">${cardDisplay}</div>
+      <div style="font-size: 0.7em; margin-top: 0.5rem; color: ${willSucceed ? '#28a745' : '#dc3545'};">
+        ${totalValue} ${willSucceed ? '✓' : '✗'}
+      </div>
+    `;
+
+    // Add hover effect
+    cardElement.addEventListener('mouseenter', () => {
+      cardElement.style.transform = 'translateY(-4px) scale(1.05)';
+      cardElement.style.borderColor = willSucceed ? '#28a745' : '#dc3545';
+      cardElement.style.boxShadow = `0 4px 12px rgba(${willSucceed ? '40, 167, 69' : '220, 53, 69'}, 0.3)`;
+    });
+
+    cardElement.addEventListener('mouseleave', () => {
+      cardElement.style.transform = 'translateY(0) scale(1)';
+      cardElement.style.borderColor = '#ffc107';
+      cardElement.style.boxShadow = 'none';
+    });
+
+    // Add click handler with satisfying feedback
+    cardElement.addEventListener('click', async () => {
+      // Immediate visual feedback
+      cardElement.style.transform = 'translateY(-2px) scale(0.95)';
+      cardElement.style.borderColor = willSucceed ? '#28a745' : '#dc3545';
+      cardElement.style.background = willSucceed
+        ? 'linear-gradient(135deg, #d4edda, #c3e6cb)'
+        : 'linear-gradient(135deg, #f8d7da, #f5c6cb)';
+      cardElement.style.boxShadow = `0 2px 8px rgba(${willSucceed ? '40, 167, 69' : '220, 53, 69'}, 0.4)`;
+
+      // Add a subtle glow effect
+      cardElement.style.filter = 'brightness(1.1)';
+
+      // Disable pointer events to prevent double-clicks
+      cardElement.style.pointerEvents = 'none';
+
+      // Small delay for visual feedback, then proceed
+      setTimeout(async () => {
+        // Call the challenge completion callback
+        await onChallengeComplete(card, willSucceed, totalValue, targetValue);
+
+        // Fade out the overlay with a satisfying animation
+        overlay.style.transition = 'opacity 0.3s ease';
+        overlay.style.opacity = '0';
+
+        setTimeout(() => {
+          overlay.remove();
+          // Continue after choice
+          if (handlers.resetBusyState) {
+            handlers.resetBusyState();
+            if (handlers.renderOverworldMap) {
+              handlers.renderOverworldMap();
+            }
+          }
+        }, 300);
+      }, 150); // Short delay for visual feedback
+    });
+
+    cardsRow.appendChild(cardElement);
+  });
+
+  dialog.appendChild(challengeInfo);
+  dialog.appendChild(cardsRow);
+
+  // Add to page
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
 }
