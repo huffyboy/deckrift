@@ -90,7 +90,6 @@
     
     <!-- Page-specific JS -->
     <% if (typeof pageScript !== 'undefined' && pageScript) { %>
-      <script>console.log('Loading pageScript:', '<%= pageScript %>');</script>
       <script type="module" src="<%= pageScript %>"></script>
     <% } else if (typeof page !== 'undefined' && page === 'home') { %>
       <script type="module" src="/js/main.js"></script>

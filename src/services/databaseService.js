@@ -101,6 +101,7 @@ class DatabaseService {
    */
   async updateExistingSave(save, saveData) {
     // Update with new save format directly
+    save.saveName = saveData.saveName;
     save.runData = saveData.runData;
     save.gameData = saveData.gameData;
     save.version = saveData.version;

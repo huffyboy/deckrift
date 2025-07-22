@@ -7,6 +7,7 @@ import {
   STAT_EFFECTS,
   ARTIFACT_DETAILS,
   STARTING_EQUIPMENT,
+  REALMS,
 } from '../data/gameData.js';
 import {
   getCardValue,
@@ -300,6 +301,8 @@ router.get('/', requireAuth, async (req, res) => {
       xpThresholds,
       statModifiers,
       statEffects: STAT_EFFECTS,
+      REALMS,
+      EQUIPMENT,
     };
 
     return res.render('status', renderData);

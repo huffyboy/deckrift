@@ -1,10 +1,47 @@
 <% var pageScript = '/js/status.js'; var page = 'status'; %>
-<script>console.log('Status page - pageScript:', '<%= pageScript %>');</script>
+
 <div class="status-container">
     <!-- Status Header -->
     <div class="status-header">
         <h1>Status</h1>
-        <p class="status-subtitle">View your current deck, equipment, and upgrades.</p>
+    </div>
+
+    <!-- Player Info Section -->
+    <div class="player-info-section">
+        <h2><%= gameSave.saveName %></h2>
+        
+        <div class="info-subsection">
+            <h4>Current Run</h4>
+            <div class="player-info-grid">
+                <div class="player-info-item">
+                    <strong>Health:</strong> <%= gameSave.runData.health %>/<%= gameSave.runData.maxHealth %>
+                </div>
+                <div class="player-info-item">
+                    <strong>Run Currency:</strong> <%= gameSave.runData.currency || 0 %>
+                </div>
+                <div class="player-info-item">
+                    <strong>Realm:</strong> <%= REALMS[gameSave.runData.location.realm] ? REALMS[gameSave.runData.location.realm].name : `Realm ${gameSave.runData.location.realm}` %>
+                </div>
+                <div class="player-info-item">
+                    <strong>Level:</strong> <%= gameSave.runData.location.level %>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-subsection">
+            <h4>Game Progress</h4>
+            <div class="player-info-grid">
+                <div class="player-info-item">
+                    <strong>Currency:</strong> <%= gameSave.gameData.saveCurrency || 0 %>
+                </div>
+                <div class="player-info-item">
+                    <strong>Realms Completed:</strong> <%= gameSave.gameData.completedRealms ? gameSave.gameData.completedRealms.length : 0 %>/4
+                </div>
+                <div class="player-info-item">
+                    <strong>Upgrades Purchased:</strong> <%= purchasedUpgrades.length %>/15
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Character Stats Section -->

@@ -1,6 +1,7 @@
 import express from 'express';
 import gameRoutes from './game.js';
 import authRoutes from './auth.js';
+import saveRoutes from './save.js';
 import { optionalAuth, requireGuest } from '../middlewares/auth.js';
 import { SAVE_VERSION } from '../services/saveSchemas.js';
 
@@ -115,5 +116,6 @@ router.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
 // Routes
 router.use('/auth', authRoutes);
 router.use('/game', gameRoutes);
+router.use('/save', saveRoutes);
 
 export default router;

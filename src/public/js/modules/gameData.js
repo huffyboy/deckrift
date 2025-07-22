@@ -338,7 +338,7 @@ export const REALMS = {
     name: 'Speed',
     description:
       'In a blink of an eye everything can change. Speed is the only thing that matters here. ' +
-      'The underbelly rages for a chance race. A chance at freedom. ' +
+      'The underbelly rages for a chance to race. A chance at freedom. ' +
       'A chance to break through the limits of the realms.',
     ruler: 'Ace of Speed',
     unlocked: false,

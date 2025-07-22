@@ -1255,6 +1255,129 @@
   align-self: flex-start;
 }
 
+/* ===== PLAYER INFO SECTION ===== */
+.player-info-section {
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+  border: 2px solid #4a2c8f;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  color: #e0e0e0;
+}
+
+.player-info-section h2 {
+  color: #d4af37;
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.player-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.player-info-item {
+  padding: 0.75rem;
+  background: rgba(74, 44, 143, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(74, 44, 143, 0.3);
+}
+
+.player-info-item strong {
+  color: #d4af37;
+  font-family: 'Cinzel', serif;
+}
+
+.info-subsection {
+  margin-bottom: 1.5rem;
+}
+
+.info-subsection:last-child {
+  margin-bottom: 0;
+}
+
+.info-subsection h4 {
+  color: #e0e0e0;
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  padding-bottom: 0.25rem;
+}
+
+/* ===== RUN INFO SECTION ===== */
+.run-info-section {
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+  border: 2px solid #32cd32;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  color: #e0e0e0;
+}
+
+.run-info-section h3 {
+  color: #32cd32;
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.run-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.run-info-item {
+  padding: 0.75rem;
+  background: rgba(50, 205, 50, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(50, 205, 50, 0.3);
+}
+
+.run-info-item strong {
+  color: #32cd32;
+  font-family: 'Cinzel', serif;
+}
+
+/* ===== GAME PROGRESS SECTION ===== */
+.game-progress-section {
+  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+  border: 2px solid #d4af37;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  color: #e0e0e0;
+}
+
+.game-progress-section h3 {
+  color: #d4af37;
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.game-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.game-progress-item {
+  padding: 0.75rem;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.game-progress-item strong {
+  color: #d4af37;
+  font-family: 'Cinzel', serif;
+}
+
 /* ===== REALM CARDS ===== */
 .realm-card {
   border: 2px solid #4a2c8f;
@@ -1262,9 +1385,11 @@
   background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
   color: #e0e0e0;
   padding: 1.5rem;
-  margin-bottom: 1rem;
   transition: all 0.3s ease;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .realm-card:hover {
@@ -1293,6 +1418,13 @@
   font-family: 'Cardo', serif;
   line-height: 1.5;
   margin-bottom: 0.5rem;
+  flex: 1;
+}
+
+.realm-card .btn,
+.realm-card .locked-badge {
+  margin-top: auto;
+  align-self: flex-start;
 }
 
 .locked-badge {

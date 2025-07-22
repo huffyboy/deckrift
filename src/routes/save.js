@@ -94,6 +94,54 @@ router.post('/export', async (req, res) => {
 });
 
 /**
+ * Update save name
+ * PUT /save/update-name
+ */
+router.put('/update-name', async (req, res) => {
+  try {
+    const userId = req.session.userId || req.user?.id;
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ success: false, error: 'Authentication required' });
+    }
+
+    const { saveName } = req.body;
+
+    if (!saveName || saveName.trim() === '') {
+      return res
+        .status(400)
+        .json({ success: false, error: 'Save name is required' });
+    }
+
+    const saveService = new SaveService();
+    const loadResult = await saveService.loadSave(userId);
+
+    if (!loadResult.success) {
+      return res.status(404).json({ success: false, error: 'Save not found' });
+    }
+
+    // Update the save name
+    const updatedSaveData = {
+      ...loadResult.saveData,
+      saveName: saveName.trim(),
+    };
+
+    const updateResult = await saveService.updateSave(userId, updatedSaveData);
+
+    if (updateResult.success) {
+      res.json({ success: true, message: 'Save name updated successfully' });
+    } else {
+      res
+        .status(500)
+        .json({ success: false, error: 'Failed to update save name' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+/**
  * Import save data
  * POST /save/import
  */

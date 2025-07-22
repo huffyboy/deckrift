@@ -13,10 +13,10 @@
                     <h5 class="card-title">Settings</h5>
                     <form id="settingsForm">
                         <div class="mb-3">
-                            <label for="displayName" class="form-label">Display Name</label>
-                            <input type="text" class="form-input" id="displayName" 
-                                   value="<%= settings.displayName || '' %>" 
-                                   placeholder="Enter display name">
+                            <label for="saveName" class="form-label">Save Name</label>
+                            <input type="text" class="form-input" id="saveName" 
+                                   value="<%= gameSave ? gameSave.saveName : '' %>" 
+                                   placeholder="Enter save name">
                         </div>
                         
                         <div class="mb-3">
@@ -67,7 +67,7 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     e.preventDefault();
     
     const formData = {
-        displayName: document.getElementById('displayName').value,
+        saveName: document.getElementById('saveName').value,
         preferences: {
             autoSave: document.getElementById('autoSave').checked,
             soundEnabled: document.getElementById('soundEnabled').checked
@@ -75,12 +75,29 @@ document.getElementById('settingsForm').addEventListener('submit', async (e) => 
     };
     
     try {
+        // Handle save name update separately
+        if (formData.saveName) {
+            const saveResponse = await fetch('/save/update-name', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ saveName: formData.saveName })
+            });
+            
+            if (!saveResponse.ok) {
+                showNotification('Error', 'Failed to update save name', 'error');
+                return;
+            }
+        }
+        
+        // Handle preferences update
         const response = await fetch('/auth/settings', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(formData)
+            body: JSON.stringify({ preferences: formData.preferences })
         });
         
         if (response.ok) {

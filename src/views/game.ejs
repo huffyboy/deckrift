@@ -1,44 +1,10 @@
 <div class="game-container">
-    <!-- Game Header -->
-    <div class="game-header">
-        <div class="row">
-            <div class="col-md-3">
-                <div class="game-stat">
-                    <h5>Health</h5>
-                    <div class="health-bar">
-                        <div class="health-fill" style="width: <%= (gameSave.runData.health / gameSave.runData.maxHealth) * 100 %>%"></div>
-                    </div>
-                    <span><%= gameSave.runData.health %>/<%= gameSave.runData.maxHealth %></span>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="game-stat">
-                    <h5>Currency</h5>
-                    <span class="currency-value">
-  <% if (gameSave && gameSave.runData && gameSave.runData.runCurrency !== undefined) { %>
-    <%= gameSave.runData.runCurrency %>
-  <% } else if (gameSave && gameSave.gameData && gameSave.gameData.saveCurrency !== undefined) { %>
-    <%= gameSave.gameData.saveCurrency %>
-  <% } else { %>
-    0
-  <% } %>
-</span>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="game-stat">
-                    <h5>Realm</h5>
-                    <span><%= REALMS[gameSave.runData.location.realm]?.name || `Realm ${gameSave.runData.location.realm}` %></span>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="game-stat">
-                    <h5>Level</h5>
-                    <span><%= gameSave.runData.location.level %></span>
-                </div>
-            </div>
-        </div>
+    <!-- Current Location -->
+    <div class="location-header">
+        <h2>Realm of <%= REALMS[gameSave.runData.location.realm]?.name || `Realm ${gameSave.runData.location.realm}` %> - Level <%= gameSave.runData.location.level %></h2>
     </div>
+
+
 
     <!-- Game Content -->
     <div class="game-content">
@@ -62,7 +28,35 @@
         <% } else if (gameSave.runData.currentScreen === 'overworld' || !gameSave.runData.currentScreen) { %>
             <!-- Overworld Map -->
             <div class="overworld-section">
-                <h3>Overworld Map</h3>
+                <!-- Stats at top of map -->
+                <div class="map-stats">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="game-stat">
+                                <h5>Health</h5>
+                                <div class="health-bar">
+                                    <div class="health-fill" style="width: <%= (gameSave.runData.health / gameSave.runData.maxHealth) * 100 %>%"></div>
+                                </div>
+                                <span><%= gameSave.runData.health %>/<%= gameSave.runData.maxHealth %></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="game-stat">
+                                <h5>Currency</h5>
+                                <span class="currency-value">
+  <% if (gameSave && gameSave.runData && gameSave.runData.runCurrency !== undefined) { %>
+    <%= gameSave.runData.runCurrency %>
+  <% } else if (gameSave && gameSave.gameData && gameSave.gameData.saveCurrency !== undefined) { %>
+    <%= gameSave.gameData.saveCurrency %>
+  <% } else { %>
+    0
+  <% } %>
+</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="map-container">
                     <div class="map-grid" id="map-grid">
                         <!-- Map cards will be populated by JavaScript -->
