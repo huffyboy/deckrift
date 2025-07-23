@@ -273,14 +273,31 @@ router.post('/new-run', requireAuth, async (req, res) => {
 
       // Generate actual cards for the map (excluding jokers)
       const availableCards = [];
+      /* CARD_TEST
       // TEST MODE: Change these values to control what events appear on the map
       // Current: Only 7, 8, 9, 10 for testing challenge events
       // Options: ['A'] for boons, ['2'] for banes, ['Q'] for rest, ['7', '8', '9', '10'] for challenges, etc.
       const testCardValues = ['7', '8', '9', '10'];
+      */
 
-      // Create a deck of cards (excluding jokers)
+      // Create a deck of cards (excluding jokers) - using all standard values
+      const standardCardValues = [
+        'A',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+        '10',
+        'J',
+        'Q',
+        'K',
+      ];
       MAP_CARD_SUITS.forEach((suit) => {
-        testCardValues.forEach((value) => {
+        standardCardValues.forEach((value) => {
           availableCards.push({ value, suit });
         });
       });

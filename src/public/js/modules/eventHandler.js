@@ -296,7 +296,23 @@ export function handleCardEncounter(card, gameState, handlers) {
 
   switch (event.type) {
     case 'fight':
-      handlers.startBattle(event.enemy, gameState.playerPosition);
+      showGameMessage(
+        'Battle',
+        'A battle appears! TODO',
+        'fight',
+        '⚔️',
+        ANIMATION_TIMING.MESSAGE_TIMEOUT,
+        () => {
+          // Callback when message is dismissed (either by timeout or click)
+          if (handlers.resetBusyState) {
+            handlers.resetBusyState();
+            // Re-render the map after resetting busy state
+            if (handlers.renderOverworldMap) {
+              handlers.renderOverworldMap();
+            }
+          }
+        }
+      );
       break;
     case 'challenge': {
       // Start challenge with new multi-stage system
@@ -349,7 +365,23 @@ export function handleCardEncounter(card, gameState, handlers) {
       break;
     }
     case 'shop':
-      handlers.startShop(gameState.playerPosition);
+      showGameMessage(
+        'Shop',
+        'A shop appears! TODO',
+        'shop',
+        '�',
+        ANIMATION_TIMING.MESSAGE_TIMEOUT,
+        () => {
+          // Callback when message is dismissed (either by timeout or click)
+          if (handlers.resetBusyState) {
+            handlers.resetBusyState();
+            // Re-render the map after resetting busy state
+            if (handlers.renderOverworldMap) {
+              handlers.renderOverworldMap();
+            }
+          }
+        }
+      );
       break;
     case 'boon': {
       // Show initial blessing message
@@ -957,7 +989,23 @@ export function handleCardEncounter(card, gameState, handlers) {
       );
       break;
     case 'boss':
-      handlers.startBossBattle(gameState.playerPosition);
+      showGameMessage(
+        'Boss Battle',
+        'A powerful boss appears! TODO',
+        'boss',
+        '👹',
+        ANIMATION_TIMING.MESSAGE_TIMEOUT,
+        () => {
+          // Callback when message is dismissed (either by timeout or click)
+          if (handlers.resetBusyState) {
+            handlers.resetBusyState();
+            // Re-render the map after resetting busy state
+            if (handlers.renderOverworldMap) {
+              handlers.renderOverworldMap();
+            }
+          }
+        }
+      );
       break;
   }
 }

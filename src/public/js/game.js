@@ -37,12 +37,14 @@ let currentDeck = null; // Store the current deck state
 let isCardSequenceInProgress = false; // Track if card flip/movement is happening
 let playerDirection = 'right'; // Track player direction: 'left' or 'right'
 
+/* CARD_TEST
 // Test mode configuration
 const testMode = {
   enabled: true,
   baneCard: { value: '2', suit: '♠' }, // Default test card for bane events (2 for currencyGain)
   boonCard: { value: 'J', suit: '♥' }, // Default test card for boon events
 };
+*/
 
 // Deck management functions
 async function initializeDeck(customCards = null) {
@@ -120,6 +122,7 @@ async function createCustomDeck(cardStrings) {
   return initializeDeck(customCards);
 }
 
+/* CARD_TEST
 // Make testing functions available globally for debugging
 window.initializeTestingDeck = initializeTestingDeck;
 window.createCustomDeck = createCustomDeck;
@@ -166,6 +169,7 @@ window.setTestCards = (boonValue, boonSuit, baneValue, baneSuit) => {
   testMode.boonCard = { value: boonValue, suit: boonSuit };
   testMode.baneCard = { value: baneValue, suit: baneSuit };
 };
+*/
 
 async function drawCard() {
   if (!currentDeck) {
@@ -222,6 +226,7 @@ async function getRandomCardFromPlayerDeck(
     };
   }
 
+  /* CARD_TEST
   // Global test mode: return the configured test card based on event type
   if (testMode.enabled) {
     const testCard =
@@ -233,6 +238,7 @@ async function getRandomCardFromPlayerDeck(
       code: `${testCard.value}${testCard.suit}`,
     };
   }
+  */
 
   if (!currentGameState) {
     // If no game state, fallback to random card
