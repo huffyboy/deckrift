@@ -383,7 +383,7 @@ router.post('/new-run', requireAuth, async (req, res) => {
           mapY: 0,
         },
         fightStatus: {
-          playerDeck: playerDeck,
+          playerDeck: [],
         },
         equipment: [
           {
