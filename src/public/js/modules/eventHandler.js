@@ -296,23 +296,7 @@ export function handleCardEncounter(card, gameState, handlers) {
 
   switch (event.type) {
     case 'fight':
-      showGameMessage(
-        'Battle',
-        'A battle appears! TODO',
-        'fight',
-        '⚔️',
-        ANIMATION_TIMING.MESSAGE_TIMEOUT,
-        () => {
-          // Callback when message is dismissed (either by timeout or click)
-          if (handlers.resetBusyState) {
-            handlers.resetBusyState();
-            // Re-render the map after resetting busy state
-            if (handlers.renderOverworldMap) {
-              handlers.renderOverworldMap();
-            }
-          }
-        }
-      );
+      handleFightEvent(event, gameState, handlers);
       break;
     case 'challenge': {
       // Start challenge with new multi-stage system
@@ -320,692 +304,25 @@ export function handleCardEncounter(card, gameState, handlers) {
       break;
     }
     case 'rest': {
-      // Calculate heal amount using constant from gameData
-      const healAmount = Math.floor(
-        gameState.runData.maxHealth * GAME_CONSTANTS.REST_HEAL_PERCENTAGE
-      );
-      const actualHealAmount = Math.min(
-        healAmount,
-        gameState.runData.maxHealth - gameState.runData.health
-      );
-      const newHealth = Math.min(
-        gameState.runData.health + healAmount,
-        gameState.runData.maxHealth
-      );
-
-      // Update game state health
-      gameState.runData.health = newHealth;
-
-      // Update the health display UI
-      updateHealthDisplay(
-        gameState.runData.health,
-        gameState.runData.maxHealth
-      );
-
-      const restMessage = getUIMessage('EVENTS', 'REST', {
-        amount: actualHealAmount,
-      });
-      showGameMessage(
-        restMessage.title,
-        restMessage.message,
-        restMessage.type,
-        restMessage.icon,
-        null, // No timeout
-        () => {
-          // Callback when message is dismissed (either by timeout or click)
-          if (handlers.resetBusyState) {
-            handlers.resetBusyState();
-            // Re-render the map after resetting busy state
-            if (handlers.renderOverworldMap) {
-              handlers.renderOverworldMap();
-            }
-          }
-        }
-      );
+      handleRestEvent(event, gameState, handlers);
       break;
     }
     case 'shop':
-      showGameMessage(
-        'Shop',
-        'A shop appears! TODO',
-        'shop',
-        '�',
-        ANIMATION_TIMING.MESSAGE_TIMEOUT,
-        () => {
-          // Callback when message is dismissed (either by timeout or click)
-          if (handlers.resetBusyState) {
-            handlers.resetBusyState();
-            // Re-render the map after resetting busy state
-            if (handlers.renderOverworldMap) {
-              handlers.renderOverworldMap();
-            }
-          }
-        }
-      );
+      handleShopEvent(event, gameState, handlers);
       break;
     case 'boon': {
-      // Show initial blessing message
-      const blessingMessage = getUIMessage('EVENTS', 'BLESSING');
-      showGameMessage(
-        blessingMessage.title,
-        blessingMessage.message,
-        blessingMessage.type,
-        blessingMessage.icon,
-        null, // No timeout
-        () => {
-          // Draw from player's deck first (but don't remove the card)
-          getRandomCardFromPlayerDeck(null, 'boon').then((drawnCard) => {
-            if (drawnCard) {
-              // Show deck drawing animation with the actual drawn card
-              showDeckDrawingAnimation(() => {
-                // Process the boon based on the drawn card
-                processBoon(drawnCard, gameState).then((boonResult) => {
-                  // Check if this is a boon that needs a second card draw
-                  if (
-                    boonResult.needsSecondDraw &&
-                    boonResult.secondDrawMessage
-                  ) {
-                    // Show the main boon message first
-                    showGameMessage(
-                      boonResult.header,
-                      boonResult.description,
-                      'success',
-                      `${drawnCard.display} ${boonResult.icon}`,
-                      null, // No timeout
-                      () => {
-                        // Go directly to drawing the second card for currency gain
-                        let drawPromise;
-                        if (boonResult.secondDrawDeck === 'player') {
-                          // For currency gain, get card without removing it
-                          drawPromise = getRandomCardFromPlayerDeck(
-                            null,
-                            'boon'
-                          );
-                        } else if (boonResult.secondDrawDeck === 'standard') {
-                          // For addCard, draw from standard deck
-                          drawPromise = drawFromStandardDeck();
-                        } else {
-                          // Fallback to player's personal deck
-                          drawPromise = getRandomCardFromPlayerDeck(
-                            null,
-                            'boon'
-                          );
-                        }
-
-                        drawPromise.then((secondCard) => {
-                          if (secondCard) {
-                            // Handle add card case separately (no drawing animation)
-                            if (
-                              boonResult.header ===
-                              UI_MESSAGES.BOON_HEADERS.DISCOVER_POTENTIAL
-                            ) {
-                              // Add card - handle with dialog instead of promise
-                              (async () => {
-                                // Draw multiple cards based on hand size (Focus stat)
-                                const handSize =
-                                  gameState.gameData.stats.focus || 4;
-                                const drawnCards = [];
-
-                                // Draw multiple cards from standard deck
-                                for (let i = 0; i < handSize; i++) {
-                                  const card = await drawFromStandardDeck();
-                                  if (card) {
-                                    drawnCards.push(card);
-                                  }
-                                }
-
-                                // Show multi-card choice dialog (no drawing animation)
-                                showMultiCardChoiceDialog(
-                                  drawnCards,
-                                  gameState,
-                                  handlers,
-                                  applyAddCard
-                                );
-                              })();
-                              return; // Exit early, don't continue with promise handling
-                            }
-
-                            // Handle remove card case separately (no drawing animation)
-                            if (
-                              boonResult.header ===
-                              UI_MESSAGES.BOON_HEADERS.PURGE_WEAKNESS
-                            ) {
-                              // Remove card - handle with dialog instead of promise
-                              (async () => {
-                                // Draw multiple cards based on hand size (Focus stat) or deck size, whichever is smaller
-                                const handSize =
-                                  gameState.gameData.stats.focus || 4;
-                                const deckSize =
-                                  gameState.runData?.playerDeck?.length || 0;
-                                const cardsToDraw = Math.min(
-                                  handSize,
-                                  deckSize
-                                );
-                                const drawnCards = [];
-
-                                // Draw multiple cards from player's deck
-                                for (let i = 0; i < cardsToDraw; i++) {
-                                  const card =
-                                    await drawFromPlayerDeck(gameState);
-                                  if (card) {
-                                    drawnCards.push(card);
-                                  }
-                                }
-
-                                // Show multi-card remove dialog (no drawing animation)
-                                showMultiCardRemoveDialog(
-                                  drawnCards,
-                                  gameState,
-                                  handlers,
-                                  applyRemoveCard
-                                );
-                              })();
-                              return; // Exit early, don't continue with promise handling
-                            }
-
-                            // Handle artifact case separately (no drawing animation)
-                            if (
-                              boonResult.header ===
-                              UI_MESSAGES.BOON_HEADERS.FIND_ARTIFACT
-                            ) {
-                              // Show deck drawing animation for artifacts
-                              showDeckDrawingAnimation(() => {
-                                // Force draw a 10 for artifact events (charm pool)
-                                const secondCard = {
-                                  value: '10',
-                                  suit: '♠', // Default suit, will be randomized
-                                  display: '10♠',
-                                  code: '10♠',
-                                };
-
-                                // Randomize the suit for variety
-                                const randomSuit =
-                                  getRandomElement(STANDARD_SUITS);
-                                secondCard.suit = randomSuit;
-                                secondCard.display = `10${randomSuit}`;
-                                secondCard.code = `10${randomSuit}`;
-
-                                // Artifact - handle with promise
-                                const effectPromise = applyArtifact(
-                                  secondCard,
-                                  gameState
-                                );
-
-                                effectPromise.then(async (result) => {
-                                  const suitSymbol =
-                                    SUIT_TO_EMOJI_MAP[secondCard.suit] ||
-                                    secondCard.suit;
-                                  const cardDisplay = `${secondCard.value}${suitSymbol}`;
-
-                                  let cardIcon;
-                                  let artifactTitle;
-                                  let artifactDescription;
-                                  if (result.applied) {
-                                    const artifactDetails =
-                                      ARTIFACT_DETAILS[result.artifactGained];
-
-                                    cardIcon = cardDisplay;
-                                    artifactTitle = `${artifactDetails.emoji} ${artifactDetails.name}`;
-
-                                    if (artifactDetails.type === 'weapon') {
-                                      const weaponData =
-                                        EQUIPMENT.weapons[
-                                          result.artifactGained
-                                        ];
-                                      artifactDescription = `<strong style="color: #FFD700;">Weapon:</strong> ${weaponData.cardCondition}`;
-                                    } else if (
-                                      artifactDetails.type === 'armor'
-                                    ) {
-                                      const armorData =
-                                        EQUIPMENT.armor[result.artifactGained];
-                                      artifactDescription = `<strong style="color: #FFD700;">Armor:</strong> ${armorData.cardCondition}`;
-                                    } else {
-                                      artifactDescription =
-                                        artifactDetails.effectText;
-                                    }
-                                  } else {
-                                    artifactTitle = boonResult.header;
-                                    artifactDescription =
-                                      UI_MESSAGES.CARD_EFFECTS.DRAW_NO_ARTIFACT.replace(
-                                        '{card}',
-                                        cardDisplay
-                                      );
-                                  }
-
-                                  showGameMessage(
-                                    artifactTitle,
-                                    artifactDescription,
-                                    'info',
-                                    cardIcon,
-                                    null, // No timeout
-                                    () => {
-                                      // Callback when message is dismissed
-                                      if (handlers.resetBusyState) {
-                                        handlers.resetBusyState();
-                                        // Re-render the map after resetting busy state
-                                        if (handlers.renderOverworldMap) {
-                                          handlers.renderOverworldMap();
-                                        }
-                                      }
-                                    }
-                                  );
-                                });
-                              }, secondCard);
-                              return; // Exit early, don't continue with promise handling
-                            }
-
-                            // Show deck drawing animation for other boon types
-                            showDeckDrawingAnimation(() => {
-                              // Apply the appropriate effect based on boon type
-                              let effectPromise;
-                              if (
-                                boonResult.header ===
-                                UI_MESSAGES.BOON_HEADERS.FIND_TREASURE
-                              ) {
-                                // Apply currency gain
-                                effectPromise = applyCurrencyGain(
-                                  secondCard,
-                                  gameState
-                                );
-                              } else if (
-                                boonResult.header ===
-                                UI_MESSAGES.BOON_HEADERS.LEARN_SOMETHING
-                              ) {
-                                // Apply stat XP gain
-                                effectPromise = applyStatXpGain(
-                                  secondCard,
-                                  gameState
-                                );
-                              }
-
-                              // Only proceed with promise handling if we have an effectPromise
-                              if (effectPromise) {
-                                effectPromise.then(async (result) => {
-                                  const suitSymbol =
-                                    SUIT_TO_EMOJI_MAP[secondCard.suit] ||
-                                    secondCard.suit;
-                                  let message;
-
-                                  if (
-                                    boonResult.header ===
-                                    UI_MESSAGES.BOON_HEADERS.FIND_TREASURE
-                                  ) {
-                                    // Currency gain message - use the simplified description from the function
-                                    message = result.description;
-
-                                    // Update currency display in the UI
-                                    const { updateCurrencyDisplay } =
-                                      await import('./uiUtils.js');
-                                    updateCurrencyDisplay(
-                                      result.originalCurrency +
-                                        result.currencyGained
-                                    );
-                                  } else if (
-                                    boonResult.header ===
-                                    UI_MESSAGES.BOON_HEADERS.LEARN_SOMETHING
-                                  ) {
-                                    // Stat XP gain message - use the simplified description from the function
-                                    message = result.description;
-                                  }
-
-                                  // Build card display for all cards drawn
-                                  let cardDisplay;
-                                  if (
-                                    (boonResult.header ===
-                                      UI_MESSAGES.BOON_HEADERS
-                                        .LEARN_SOMETHING ||
-                                      boonResult.header ===
-                                        UI_MESSAGES.BOON_HEADERS
-                                          .FIND_TREASURE) &&
-                                    result.allCardsDrawn
-                                  ) {
-                                    // Show all cards drawn for XP gain or currency gain
-                                    const allCardDisplays =
-                                      result.allCardsDrawn.map((card) => {
-                                        const cardSuitSymbol =
-                                          SUIT_TO_EMOJI_MAP[card.suit] ||
-                                          card.suit;
-                                        return `${card.value}${cardSuitSymbol}`;
-                                      });
-                                    cardDisplay = `${allCardDisplays.join(' ')} ${boonResult.icon}`;
-                                  } else {
-                                    // Show single card for other events
-                                    cardDisplay = `${secondCard.value}${suitSymbol} ${boonResult.icon}`;
-                                  }
-
-                                  showGameMessage(
-                                    boonResult.header,
-                                    message,
-                                    'info',
-                                    cardDisplay,
-                                    null, // No timeout
-                                    () => {
-                                      // Callback when message is dismissed
-                                      if (handlers.resetBusyState) {
-                                        handlers.resetBusyState();
-                                        // Re-render the map after resetting busy state
-                                        if (handlers.renderOverworldMap) {
-                                          handlers.renderOverworldMap();
-                                        }
-                                      }
-                                    }
-                                  );
-                                });
-                              }
-                            }, secondCard);
-                          }
-                        });
-                      }
-                    );
-                  } else {
-                    // Show the specific boon result using the header and description from gameData
-                    showGameMessage(
-                      boonResult.header,
-                      boonResult.description,
-                      'success',
-                      `${drawnCard.display} ${boonResult.icon}`,
-                      null, // No timeout
-                      () => {
-                        // Callback when message is dismissed
-                        if (handlers.resetBusyState) {
-                          handlers.resetBusyState();
-                          // Re-render the map after resetting busy state
-                          if (handlers.renderOverworldMap) {
-                            handlers.renderOverworldMap();
-                          }
-                        }
-                      }
-                    );
-                  }
-                });
-              }, drawnCard);
-            }
-          });
-        }
-      );
+      handleBoonEvent(event, gameState, handlers);
       break;
     }
     case 'bane': {
-      // Show initial misfortune message
-      const misfortuneMessage = getUIMessage('EVENTS', 'MISFORTUNE');
-      showGameMessage(
-        misfortuneMessage.title,
-        misfortuneMessage.message,
-        misfortuneMessage.type,
-        misfortuneMessage.icon,
-        null, // No timeout
-        () => {
-          // Draw from player's deck first
-          getRandomCardFromPlayerDeck(null, 'bane').then((drawnCard) => {
-            if (drawnCard) {
-              // Show deck drawing animation with the actual drawn card
-              showDeckDrawingAnimation(() => {
-                // Process the bane based on the drawn card
-                processBane(drawnCard, gameState).then((baneResult) => {
-                  // Check if this is a bane that needs a second card draw
-                  if (
-                    baneResult.needsSecondDraw &&
-                    baneResult.secondDrawMessage
-                  ) {
-                    // Show the main bane message first
-                    showGameMessage(
-                      baneResult.header,
-                      baneResult.description,
-                      'error',
-                      `${drawnCard.display} ${baneResult.icon}`,
-                      null, // No timeout
-                      () => {
-                        // Go directly to drawing the second card for all bane effects
-                        // Determine which deck to draw from based on secondDrawDeck
-                        let drawPromise;
-                        if (baneResult.secondDrawDeck === 'player') {
-                          // For both stat loss and currency loss, get card without removing it
-                          // The card is just used to determine the effect, not actually lost
-                          drawPromise = getRandomCardFromPlayerDeck(
-                            null,
-                            'bane'
-                          );
-                        } else if (
-                          baneResult.secondDrawDeck === 'playerHighCards'
-                        ) {
-                          // Pick from high cards in player's personal deck (for loseHighCard)
-                          drawPromise = pickRandomHighCard(
-                            baneResult.highCards
-                          );
-                        } else if (
-                          baneResult.secondDrawDeck === 'playerFaceCards'
-                        ) {
-                          // Pick from face cards in player's personal deck (for loseFaceCard)
-                          drawPromise = pickRandomFaceCard(
-                            baneResult.faceCards
-                          );
-                        } else {
-                          // Fallback to player's personal deck
-                          drawPromise = drawAndRemoveCardFromPlayerDeck();
-                        }
-
-                        drawPromise.then((secondCard) => {
-                          if (secondCard) {
-                            // Show deck drawing animation for second card
-                            showDeckDrawingAnimation(() => {
-                              // Apply the appropriate effect based on bane type
-                              let effectPromise;
-                              if (baneResult.secondDrawDeck === 'player') {
-                                // Check if this is a stat loss or currency loss
-                                if (
-                                  baneResult.header ===
-                                  UI_MESSAGES.BANE_HEADERS.FEEL_WEAKER
-                                ) {
-                                  // Apply stat loss
-                                  effectPromise = applyStatLoss(
-                                    secondCard,
-                                    gameState
-                                  );
-                                } else {
-                                  // Apply currency loss
-                                  effectPromise = applyCurrencyLoss(
-                                    secondCard,
-                                    gameState
-                                  );
-                                }
-                              } else if (
-                                baneResult.secondDrawDeck === 'playerHighCards'
-                              ) {
-                                // Apply high card loss
-                                effectPromise = applyHighCardLoss(
-                                  secondCard,
-                                  gameState
-                                );
-                              } else if (
-                                baneResult.secondDrawDeck === 'playerFaceCards'
-                              ) {
-                                // Apply face card loss
-                                effectPromise = applyFaceCardLoss(
-                                  secondCard,
-                                  gameState
-                                );
-                              }
-
-                              effectPromise.then((result) => {
-                                const suitSymbol =
-                                  SUIT_TO_EMOJI_MAP[secondCard.suit] ||
-                                  secondCard.suit;
-                                let message;
-                                let messageTitle = baneResult.header; // Default title
-
-                                if (baneResult.secondDrawDeck === 'player') {
-                                  // Currency loss message
-                                  const cardDisplay = `${secondCard.value}${suitSymbol}`;
-
-                                  let messageConfig;
-                                  if (result.currencyLost === 0) {
-                                    // No currency to lose
-                                    messageConfig = baneResult.messages
-                                      ?.noCurrency || {
-                                      title:
-                                        UI_MESSAGES.CARD_EFFECTS.EMPTY_POCKETS
-                                          .title,
-                                      message:
-                                        UI_MESSAGES.CARD_EFFECTS.EMPTY_POCKETS
-                                          .message,
-                                    };
-                                  } else if (
-                                    result.currencyLost < result.cardValue
-                                  ) {
-                                    // Partial loss
-                                    messageConfig = baneResult.messages
-                                      ?.partialLoss || {
-                                      title:
-                                        UI_MESSAGES.CARD_EFFECTS
-                                          .MISSING_TREASURE.title,
-                                      message:
-                                        UI_MESSAGES.CARD_EFFECTS
-                                          .MISSING_TREASURE.message,
-                                    };
-                                  } else {
-                                    // Full loss
-                                    messageConfig = baneResult.messages
-                                      ?.fullLoss || {
-                                      title:
-                                        UI_MESSAGES.CARD_EFFECTS
-                                          .MISSING_TREASURE_FULL.title,
-                                      message:
-                                        UI_MESSAGES.CARD_EFFECTS.MISSING_TREASURE_FULL.message
-                                          .replace('{card}', cardDisplay)
-                                          .replace(
-                                            '{amount}',
-                                            result.currencyLost
-                                          ),
-                                    };
-                                    if (
-                                      messageConfig.message.includes('{card}')
-                                    ) {
-                                      messageConfig.message =
-                                        messageConfig.message
-                                          .replace('{card}', cardDisplay)
-                                          .replace(
-                                            '{amount}',
-                                            result.currencyLost
-                                          );
-                                    }
-                                  }
-
-                                  message = messageConfig.message;
-                                  messageTitle = messageConfig.title;
-                                } else {
-                                  // Card loss message
-                                  message =
-                                    UI_MESSAGES.CARD_EFFECTS.CARD_LOST.replace(
-                                      '{card}',
-                                      `${secondCard.value}${suitSymbol}`
-                                    );
-                                }
-
-                                // Handle stat loss message
-                                if (
-                                  baneResult.header ===
-                                  UI_MESSAGES.BANE_HEADERS.FEEL_WEAKER
-                                ) {
-                                  // Stat loss message
-                                  const statToLose =
-                                    SUIT_TO_STAT_MAP[secondCard.suit] ||
-                                    'power';
-                                  message =
-                                    UI_MESSAGES.CARD_EFFECTS.DRAW_AND_LOSE_STAT.replace(
-                                      '{card}',
-                                      suitSymbol
-                                    ).replace('{stat}', statToLose);
-                                  messageTitle = baneResult.header;
-                                }
-
-                                showGameMessage(
-                                  messageTitle,
-                                  message,
-                                  'error',
-                                  `${secondCard.value}${suitSymbol} ${baneResult.icon}`,
-                                  null, // No timeout
-                                  () => {
-                                    // Callback when message is dismissed
-                                    if (handlers.resetBusyState) {
-                                      handlers.resetBusyState();
-                                      // Re-render the map after resetting busy state
-                                      if (handlers.renderOverworldMap) {
-                                        handlers.renderOverworldMap();
-                                      }
-                                    }
-                                  }
-                                );
-                              });
-                            }, secondCard);
-                          }
-                        });
-                      }
-                    );
-                  } else {
-                    // Show the specific bane result using the header and description from gameData
-                    showGameMessage(
-                      baneResult.header,
-                      baneResult.description,
-                      'error',
-                      `${drawnCard.display} ${baneResult.icon}`,
-                      null, // No timeout
-                      () => {
-                        // Callback when message is dismissed
-                        if (handlers.resetBusyState) {
-                          handlers.resetBusyState();
-                          // Re-render the map after resetting busy state
-                          if (handlers.renderOverworldMap) {
-                            handlers.renderOverworldMap();
-                          }
-                        }
-                      }
-                    );
-                  }
-                });
-              }, drawnCard);
-            }
-          });
-        }
-      );
+      handleBaneEvent(event, gameState, handlers);
       break;
     }
     case 'nothing':
-      showGameMessage(
-        'Nothing Happens',
-        'You find nothing of interest in this place.',
-        'nothing',
-        '🍂',
-        ANIMATION_TIMING.MESSAGE_TIMEOUT,
-        () => {
-          // Callback when message is dismissed (either by timeout or click)
-          if (handlers.resetBusyState) {
-            handlers.resetBusyState();
-            // Re-render the map after resetting busy state
-            if (handlers.renderOverworldMap) {
-              handlers.renderOverworldMap();
-            }
-          }
-        }
-      );
+      handleNothingEvent(event, gameState, handlers);
       break;
     case 'boss':
-      showGameMessage(
-        'Boss Battle',
-        'A powerful boss appears! TODO',
-        'boss',
-        '👹',
-        ANIMATION_TIMING.MESSAGE_TIMEOUT,
-        () => {
-          // Callback when message is dismissed (either by timeout or click)
-          if (handlers.resetBusyState) {
-            handlers.resetBusyState();
-            // Re-render the map after resetting busy state
-            if (handlers.renderOverworldMap) {
-              handlers.renderOverworldMap();
-            }
-          }
-        }
-      );
+      handleBossEvent(event, gameState, handlers);
       break;
   }
 }
@@ -2879,5 +2196,683 @@ async function triggerChallengeBane(gameState, handlers) {
         }
       }
     );
+  }
+}
+
+/**
+ * Handle fight event
+ * @param {Object} event - Event object
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleFightEvent(event, gameState, handlers) {
+  showGameMessage(
+    'Battle',
+    'A battle appears! TODO',
+    'fight',
+    '⚔️',
+    ANIMATION_TIMING.MESSAGE_TIMEOUT,
+    () => {
+      // Callback when message is dismissed (either by timeout or click)
+      if (handlers.resetBusyState) {
+        handlers.resetBusyState();
+        // Re-render the map after resetting busy state
+        if (handlers.renderOverworldMap) {
+          handlers.renderOverworldMap();
+        }
+      }
+    }
+  );
+}
+
+/**
+ * Handle rest event
+ * @param {Object} event - Event object
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleRestEvent(event, gameState, handlers) {
+  // Calculate heal amount using constant from gameData
+  const healAmount = Math.floor(
+    gameState.runData.maxHealth * GAME_CONSTANTS.REST_HEAL_PERCENTAGE
+  );
+  const actualHealAmount = Math.min(
+    healAmount,
+    gameState.runData.maxHealth - gameState.runData.health
+  );
+  const newHealth = Math.min(
+    gameState.runData.health + healAmount,
+    gameState.runData.maxHealth
+  );
+
+  // Update game state health
+  gameState.runData.health = newHealth;
+
+  // Update the health display UI
+  updateHealthDisplay(gameState.runData.health, gameState.runData.maxHealth);
+
+  const restMessage = getUIMessage('EVENTS', 'REST', {
+    amount: actualHealAmount,
+  });
+  showGameMessage(
+    restMessage.title,
+    restMessage.message,
+    restMessage.type,
+    restMessage.icon,
+    null, // No timeout
+    () => {
+      // Callback when message is dismissed (either by timeout or click)
+      if (handlers.resetBusyState) {
+        handlers.resetBusyState();
+        // Re-render the map after resetting busy state
+        if (handlers.renderOverworldMap) {
+          handlers.renderOverworldMap();
+        }
+      }
+    }
+  );
+}
+
+/**
+ * Handle shop event
+ * @param {Object} event - Event object
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleShopEvent(event, gameState, handlers) {
+  showGameMessage(
+    'Shop',
+    'A shop appears! TODO',
+    'shop',
+    '⚖️',
+    ANIMATION_TIMING.MESSAGE_TIMEOUT,
+    () => {
+      // Callback when message is dismissed (either by timeout or click)
+      if (handlers.resetBusyState) {
+        handlers.resetBusyState();
+        // Re-render the map after resetting busy state
+        if (handlers.renderOverworldMap) {
+          handlers.renderOverworldMap();
+        }
+      }
+    }
+  );
+}
+
+/**
+ * Handle add card boon effect
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+async function handleAddCardBoon(gameState, handlers) {
+  // Draw multiple cards based on hand size (Focus stat)
+  const handSize = gameState.gameData.stats.focus || 4;
+  const drawnCards = [];
+
+  // Draw multiple cards from standard deck
+  for (let i = 0; i < handSize; i++) {
+    const card = await drawFromStandardDeck();
+    if (card) {
+      drawnCards.push(card);
+    }
+  }
+
+  // Show multi-card choice dialog (no drawing animation)
+  showMultiCardChoiceDialog(drawnCards, gameState, handlers, applyAddCard);
+}
+
+/**
+ * Handle remove card boon effect
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+async function handleRemoveCardBoon(gameState, handlers) {
+  // Draw multiple cards based on hand size (Focus stat) or deck size, whichever is smaller
+  const handSize = gameState.gameData.stats.focus || 4;
+  const deckSize = gameState.runData?.playerDeck?.length || 0;
+  const cardsToDraw = Math.min(handSize, deckSize);
+  const drawnCards = [];
+
+  // Draw multiple cards from player's deck
+  for (let i = 0; i < cardsToDraw; i++) {
+    const card = await drawFromPlayerDeck(gameState);
+    if (card) {
+      drawnCards.push(card);
+    }
+  }
+
+  // Show multi-card remove dialog (no drawing animation)
+  showMultiCardRemoveDialog(drawnCards, gameState, handlers, applyRemoveCard);
+}
+
+/**
+ * Handle artifact boon effect
+ * @param {Object} boonResult - Boon result object
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleArtifactBoon(boonResult, gameState, handlers) {
+  // Force draw a 10 for artifact events (charm pool)
+  const secondCard = {
+    value: '10',
+    suit: '♠', // Default suit, will be randomized
+    display: '10♠',
+    code: '10♠',
+  };
+
+  // Randomize the suit for variety
+  const randomSuit = getRandomElement(STANDARD_SUITS);
+  secondCard.suit = randomSuit;
+  secondCard.display = `10${randomSuit}`;
+  secondCard.code = `10${randomSuit}`;
+
+  // Show deck drawing animation for artifacts
+  showDeckDrawingAnimation(() => {
+    // Artifact - handle with promise
+    const effectPromise = applyArtifact(secondCard, gameState);
+
+    effectPromise.then(async (result) => {
+      const suitSymbol = SUIT_TO_EMOJI_MAP[secondCard.suit] || secondCard.suit;
+      const cardDisplay = `${secondCard.value}${suitSymbol}`;
+
+      let cardIcon;
+      let artifactTitle;
+      let artifactDescription;
+      if (result.applied) {
+        const artifactDetails = ARTIFACT_DETAILS[result.artifactGained];
+
+        cardIcon = cardDisplay;
+        artifactTitle = `${artifactDetails.emoji} ${artifactDetails.name}`;
+
+        if (artifactDetails.type === 'weapon') {
+          const weaponData = EQUIPMENT.weapons[result.artifactGained];
+          artifactDescription = `<strong style="color: #FFD700;">Weapon:</strong> ${weaponData.cardCondition}`;
+        } else if (artifactDetails.type === 'armor') {
+          const armorData = EQUIPMENT.armor[result.artifactGained];
+          artifactDescription = `<strong style="color: #FFD700;">Armor:</strong> ${armorData.cardCondition}`;
+        } else {
+          artifactDescription = artifactDetails.effectText;
+        }
+      } else {
+        artifactTitle = boonResult.header;
+        artifactDescription = UI_MESSAGES.CARD_EFFECTS.DRAW_NO_ARTIFACT.replace(
+          '{card}',
+          cardDisplay
+        );
+      }
+
+      showGameMessage(
+        artifactTitle,
+        artifactDescription,
+        'info',
+        cardIcon,
+        null, // No timeout
+        () => handleEventCompletion(handlers)
+      );
+    });
+  }, secondCard);
+}
+
+/**
+ * Handle standard boon effects (currency gain, stat XP gain)
+ * @param {Object} boonResult - Boon result object
+ * @param {Object} secondCard - Second drawn card
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleStandardBoonEffect(boonResult, secondCard, gameState, handlers) {
+  // Show deck drawing animation for other boon types
+  showDeckDrawingAnimation(() => {
+    // Apply the appropriate effect based on boon type
+    let effectPromise;
+    if (boonResult.header === UI_MESSAGES.BOON_HEADERS.FIND_TREASURE) {
+      // Apply currency gain
+      effectPromise = applyCurrencyGain(secondCard, gameState);
+    } else if (boonResult.header === UI_MESSAGES.BOON_HEADERS.LEARN_SOMETHING) {
+      // Apply stat XP gain
+      effectPromise = applyStatXpGain(secondCard, gameState);
+    }
+
+    // Only proceed with promise handling if we have an effectPromise
+    if (effectPromise) {
+      effectPromise.then(async (result) => {
+        const suitSymbol =
+          SUIT_TO_EMOJI_MAP[secondCard.suit] || secondCard.suit;
+        let message;
+
+        if (boonResult.header === UI_MESSAGES.BOON_HEADERS.FIND_TREASURE) {
+          // Currency gain message - use the simplified description from the function
+          message = result.description;
+
+          // Update currency display in the UI
+          const { updateCurrencyDisplay } = await import('./uiUtils.js');
+          updateCurrencyDisplay(
+            result.originalCurrency + result.currencyGained
+          );
+        } else if (
+          boonResult.header === UI_MESSAGES.BOON_HEADERS.LEARN_SOMETHING
+        ) {
+          // Stat XP gain message - use the simplified description from the function
+          message = result.description;
+        }
+
+        // Build card display for all cards drawn
+        let cardDisplay;
+        if (
+          (boonResult.header === UI_MESSAGES.BOON_HEADERS.LEARN_SOMETHING ||
+            boonResult.header === UI_MESSAGES.BOON_HEADERS.FIND_TREASURE) &&
+          result.allCardsDrawn
+        ) {
+          // Show all cards drawn for XP gain or currency gain
+          const allCardDisplays = result.allCardsDrawn.map((card) => {
+            const cardSuitSymbol = SUIT_TO_EMOJI_MAP[card.suit] || card.suit;
+            return `${card.value}${cardSuitSymbol}`;
+          });
+          cardDisplay = `${allCardDisplays.join(' ')} ${boonResult.icon}`;
+        } else {
+          // Show single card for other events
+          cardDisplay = `${secondCard.value}${suitSymbol} ${boonResult.icon}`;
+        }
+
+        showGameMessage(
+          boonResult.header,
+          message,
+          'info',
+          cardDisplay,
+          null, // No timeout
+          () => handleEventCompletion(handlers)
+        );
+      });
+    }
+  }, secondCard);
+}
+
+/**
+ * Handle second card draw for boon effects
+ * @param {Object} boonResult - Boon result object
+ * @param {Object} drawnCard - First drawn card
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleBoonSecondDraw(boonResult, drawnCard, gameState, handlers) {
+  // Go directly to drawing the second card for currency gain
+  let drawPromise;
+  if (boonResult.secondDrawDeck === 'player') {
+    // For currency gain, get card without removing it
+    drawPromise = getRandomCardFromPlayerDeck(null, 'boon');
+  } else if (boonResult.secondDrawDeck === 'standard') {
+    // For addCard, draw from standard deck
+    drawPromise = drawFromStandardDeck();
+  } else {
+    // Fallback to player's personal deck
+    drawPromise = getRandomCardFromPlayerDeck(null, 'boon');
+  }
+
+  drawPromise.then((secondCard) => {
+    if (secondCard) {
+      // Handle add card case separately (no drawing animation)
+      if (boonResult.header === UI_MESSAGES.BOON_HEADERS.DISCOVER_POTENTIAL) {
+        handleAddCardBoon(gameState, handlers);
+        return; // Exit early, don't continue with promise handling
+      }
+
+      // Handle remove card case separately (no drawing animation)
+      if (boonResult.header === UI_MESSAGES.BOON_HEADERS.PURGE_WEAKNESS) {
+        handleRemoveCardBoon(gameState, handlers);
+        return; // Exit early, don't continue with promise handling
+      }
+
+      // Handle artifact case separately (no drawing animation)
+      if (boonResult.header === UI_MESSAGES.BOON_HEADERS.FIND_ARTIFACT) {
+        handleArtifactBoon(boonResult, gameState, handlers);
+        return; // Exit early, don't continue with promise handling
+      }
+
+      // Handle standard boon effects
+      handleStandardBoonEffect(boonResult, secondCard, gameState, handlers);
+    }
+  });
+}
+
+/**
+ * Handle boon event
+ * @param {Object} event - Event object
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleBoonEvent(event, gameState, handlers) {
+  // Show initial blessing message
+  const blessingMessage = getUIMessage('EVENTS', 'BLESSING');
+  showGameMessage(
+    blessingMessage.title,
+    blessingMessage.message,
+    blessingMessage.type,
+    blessingMessage.icon,
+    null, // No timeout
+    () => {
+      // Draw from player's deck first (but don't remove the card)
+      getRandomCardFromPlayerDeck(null, 'boon').then((drawnCard) => {
+        if (drawnCard) {
+          // Show deck drawing animation with the actual drawn card
+          showDeckDrawingAnimation(() => {
+            // Process the boon based on the drawn card
+            processBoon(drawnCard, gameState).then((boonResult) => {
+              // Check if this is a boon that needs a second card draw
+              if (boonResult.needsSecondDraw && boonResult.secondDrawMessage) {
+                // Show the main boon message first
+                showGameMessage(
+                  boonResult.header,
+                  boonResult.description,
+                  'success',
+                  `${drawnCard.display} ${boonResult.icon}`,
+                  null, // No timeout
+                  () =>
+                    handleBoonSecondDraw(
+                      boonResult,
+                      drawnCard,
+                      gameState,
+                      handlers
+                    )
+                );
+              } else {
+                // Show the specific boon result using the header and description from gameData
+                showGameMessage(
+                  boonResult.header,
+                  boonResult.description,
+                  'success',
+                  `${drawnCard.display} ${boonResult.icon}`,
+                  null, // No timeout
+                  () => handleEventCompletion(handlers)
+                );
+              }
+            });
+          }, drawnCard);
+        }
+      });
+    }
+  );
+}
+
+/**
+ * Get the appropriate draw promise for bane effects
+ * @param {Object} baneResult - Bane result object
+ * @returns {Promise} - Draw promise
+ */
+function getBaneDrawPromise(baneResult) {
+  if (baneResult.secondDrawDeck === 'player') {
+    // For both stat loss and currency loss, get card without removing it
+    // The card is just used to determine the effect, not actually lost
+    return getRandomCardFromPlayerDeck(null, 'bane');
+  } else if (baneResult.secondDrawDeck === 'playerHighCards') {
+    // Pick from high cards in player's personal deck (for loseHighCard)
+    return pickRandomHighCard(baneResult.highCards);
+  } else if (baneResult.secondDrawDeck === 'playerFaceCards') {
+    // Pick from face cards in player's personal deck (for loseFaceCard)
+    return pickRandomFaceCard(baneResult.faceCards);
+  } else {
+    // Fallback to player's personal deck
+    return drawAndRemoveCardFromPlayerDeck();
+  }
+}
+
+/**
+ * Get the appropriate effect promise for bane effects
+ * @param {Object} baneResult - Bane result object
+ * @param {Object} secondCard - Second drawn card
+ * @param {Object} gameState - Current game state
+ * @returns {Promise} - Effect promise
+ */
+function getBaneEffectPromise(baneResult, secondCard, gameState) {
+  if (baneResult.secondDrawDeck === 'player') {
+    // Check if this is a stat loss or currency loss
+    if (baneResult.header === UI_MESSAGES.BANE_HEADERS.FEEL_WEAKER) {
+      // Apply stat loss
+      return applyStatLoss(secondCard, gameState);
+    } else {
+      // Apply currency loss
+      return applyCurrencyLoss(secondCard, gameState);
+    }
+  } else if (baneResult.secondDrawDeck === 'playerHighCards') {
+    // Apply high card loss
+    return applyHighCardLoss(secondCard, gameState);
+  } else if (baneResult.secondDrawDeck === 'playerFaceCards') {
+    // Apply face card loss
+    return applyFaceCardLoss(secondCard, gameState);
+  }
+  return null;
+}
+
+/**
+ * Build bane result message
+ * @param {Object} baneResult - Bane result object
+ * @param {Object} secondCard - Second drawn card
+ * @param {Object} result - Effect result
+ * @returns {Object} - Message object with title and message
+ */
+function buildBaneResultMessage(baneResult, secondCard, result) {
+  const suitSymbol = SUIT_TO_EMOJI_MAP[secondCard.suit] || secondCard.suit;
+  let message;
+  let messageTitle = baneResult.header; // Default title
+
+  if (baneResult.secondDrawDeck === 'player') {
+    // Currency loss message
+    const cardDisplay = `${secondCard.value}${suitSymbol}`;
+
+    let messageConfig;
+    if (result.currencyLost === 0) {
+      // No currency to lose
+      messageConfig = baneResult.messages?.noCurrency || {
+        title: UI_MESSAGES.CARD_EFFECTS.EMPTY_POCKETS.title,
+        message: UI_MESSAGES.CARD_EFFECTS.EMPTY_POCKETS.message,
+      };
+    } else if (result.currencyLost < result.cardValue) {
+      // Partial loss
+      messageConfig = baneResult.messages?.partialLoss || {
+        title: UI_MESSAGES.CARD_EFFECTS.MISSING_TREASURE.title,
+        message: UI_MESSAGES.CARD_EFFECTS.MISSING_TREASURE.message,
+      };
+    } else {
+      // Full loss
+      messageConfig = baneResult.messages?.fullLoss || {
+        title: UI_MESSAGES.CARD_EFFECTS.MISSING_TREASURE_FULL.title,
+        message: UI_MESSAGES.CARD_EFFECTS.MISSING_TREASURE_FULL.message
+          .replace('{card}', cardDisplay)
+          .replace('{amount}', result.currencyLost),
+      };
+      if (messageConfig.message.includes('{card}')) {
+        messageConfig.message = messageConfig.message
+          .replace('{card}', cardDisplay)
+          .replace('{amount}', result.currencyLost);
+      }
+    }
+
+    message = messageConfig.message;
+    messageTitle = messageConfig.title;
+  } else {
+    // Card loss message
+    message = UI_MESSAGES.CARD_EFFECTS.CARD_LOST.replace(
+      '{card}',
+      `${secondCard.value}${suitSymbol}`
+    );
+  }
+
+  // Handle stat loss message
+  if (baneResult.header === UI_MESSAGES.BANE_HEADERS.FEEL_WEAKER) {
+    // Stat loss message
+    const statToLose = SUIT_TO_STAT_MAP[secondCard.suit] || 'power';
+    message = UI_MESSAGES.CARD_EFFECTS.DRAW_AND_LOSE_STAT.replace(
+      '{card}',
+      suitSymbol
+    ).replace('{stat}', statToLose);
+    messageTitle = baneResult.header;
+  }
+
+  return { message, messageTitle, suitSymbol };
+}
+
+/**
+ * Handle second card draw for bane effects
+ * @param {Object} baneResult - Bane result object
+ * @param {Object} drawnCard - First drawn card
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleBaneSecondDraw(baneResult, drawnCard, gameState, handlers) {
+  // Go directly to drawing the second card for all bane effects
+  const drawPromise = getBaneDrawPromise(baneResult);
+
+  drawPromise.then((secondCard) => {
+    if (secondCard) {
+      // Show deck drawing animation for second card
+      showDeckDrawingAnimation(() => {
+        // Apply the appropriate effect based on bane type
+        const effectPromise = getBaneEffectPromise(
+          baneResult,
+          secondCard,
+          gameState
+        );
+
+        if (effectPromise) {
+          effectPromise.then((result) => {
+            const { message, messageTitle, suitSymbol } =
+              buildBaneResultMessage(baneResult, secondCard, result);
+
+            showGameMessage(
+              messageTitle,
+              message,
+              'error',
+              `${secondCard.value}${suitSymbol} ${baneResult.icon}`,
+              null, // No timeout
+              () => handleEventCompletion(handlers)
+            );
+          });
+        }
+      }, secondCard);
+    }
+  });
+}
+
+/**
+ * Handle bane event
+ * @param {Object} event - Event object
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleBaneEvent(event, gameState, handlers) {
+  // Show initial misfortune message
+  const misfortuneMessage = getUIMessage('EVENTS', 'MISFORTUNE');
+  showGameMessage(
+    misfortuneMessage.title,
+    misfortuneMessage.message,
+    misfortuneMessage.type,
+    misfortuneMessage.icon,
+    null, // No timeout
+    () => {
+      // Draw from player's deck first
+      getRandomCardFromPlayerDeck(null, 'bane').then((drawnCard) => {
+        if (drawnCard) {
+          // Show deck drawing animation with the actual drawn card
+          showDeckDrawingAnimation(() => {
+            // Process the bane based on the drawn card
+            processBane(drawnCard, gameState).then((baneResult) => {
+              // Check if this is a bane that needs a second card draw
+              if (baneResult.needsSecondDraw && baneResult.secondDrawMessage) {
+                // Show the main bane message first
+                showGameMessage(
+                  baneResult.header,
+                  baneResult.description,
+                  'error',
+                  `${drawnCard.display} ${baneResult.icon}`,
+                  null, // No timeout
+                  () =>
+                    handleBaneSecondDraw(
+                      baneResult,
+                      drawnCard,
+                      gameState,
+                      handlers
+                    )
+                );
+              } else {
+                // Show the specific bane result using the header and description from gameData
+                showGameMessage(
+                  baneResult.header,
+                  baneResult.description,
+                  'error',
+                  `${drawnCard.display} ${baneResult.icon}`,
+                  null, // No timeout
+                  () => handleEventCompletion(handlers)
+                );
+              }
+            });
+          }, drawnCard);
+        }
+      });
+    }
+  );
+}
+
+/**
+ * Handle nothing event
+ * @param {Object} event - Event object
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleNothingEvent(event, gameState, handlers) {
+  showGameMessage(
+    'Nothing Happens',
+    'You find nothing of interest in this place.',
+    'nothing',
+    '🍂',
+    ANIMATION_TIMING.MESSAGE_TIMEOUT,
+    () => {
+      // Callback when message is dismissed (either by timeout or click)
+      if (handlers.resetBusyState) {
+        handlers.resetBusyState();
+        // Re-render the map after resetting busy state
+        if (handlers.renderOverworldMap) {
+          handlers.renderOverworldMap();
+        }
+      }
+    }
+  );
+}
+
+/**
+ * Handle boss event
+ * @param {Object} event - Event object
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function handleBossEvent(event, gameState, handlers) {
+  showGameMessage(
+    'Boss Battle',
+    'A powerful boss appears! TODO',
+    'boss',
+    '👹',
+    ANIMATION_TIMING.MESSAGE_TIMEOUT,
+    () => {
+      // Callback when message is dismissed (either by timeout or click)
+      if (handlers.resetBusyState) {
+        handlers.resetBusyState();
+        // Re-render the map after resetting busy state
+        if (handlers.renderOverworldMap) {
+          handlers.renderOverworldMap();
+        }
+      }
+    }
+  );
+}
+
+/**
+ * Common callback function for resetting busy state and re-rendering map
+ * @param {Object} handlers - Handler functions
+ */
+function handleEventCompletion(handlers) {
+  if (handlers.resetBusyState) {
+    handlers.resetBusyState();
+    // Re-render the map after resetting busy state
+    if (handlers.renderOverworldMap) {
+      handlers.renderOverworldMap();
+    }
   }
 }
