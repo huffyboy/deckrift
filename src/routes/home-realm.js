@@ -5,6 +5,7 @@ import {
   calculateAllXPThresholds,
   getChallengeModifier,
 } from '../services/gameUtils.js';
+import { getRandomInt } from '../shared/sharedGameUtils.js';
 import SaveService from '../services/saveService.js';
 import migrationService from '../services/migrationService.js';
 import {
@@ -94,8 +95,7 @@ router.get('/', requireAuth, async (req, res) => {
     const saveResult = await saveService.loadSave(userId);
     const activeSave = saveResult.success ? saveResult.saveData : null;
 
-    // Import realm data from gameData.js
-    const { REALMS } = await import('../public/js/modules/gameData.js');
+    const { REALMS } = await import('../public/js/modules/gameConstants.js');
 
     // Calculate XP thresholds for each stat
     const stats = activeSave
@@ -104,7 +104,7 @@ router.get('/', requireAuth, async (req, res) => {
     const xpThresholds = calculateAllXPThresholds(stats);
 
     const { HOME_REALM_UPGRADES } = await import(
-      '../public/js/modules/gameData.js'
+      '../public/js/modules/gameConstants.js'
     );
 
     const renderData = {
@@ -157,7 +157,7 @@ router.post('/new-run', requireAuth, async (req, res) => {
     if (!activeSave) {
       // Import game data constants
       const { STARTING_STATS } = await import(
-        '../public/js/modules/gameData.js'
+        '../public/js/modules/gameConstants.js'
       );
 
       // Create initial save data using helper function
@@ -261,7 +261,7 @@ router.post('/new-run', requireAuth, async (req, res) => {
 
       // Import utility functions and game data
       const { MAP_CARD_SUITS } = await import(
-        '../public/js/modules/gameData.js'
+        '../public/js/modules/gameConstants.js'
       );
 
       // Generate basic overworld map
@@ -287,7 +287,7 @@ router.post('/new-run', requireAuth, async (req, res) => {
 
       // Shuffle the cards
       for (let i = availableCards.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = getRandomInt(0, i);
         [availableCards[i], availableCards[j]] = [
           availableCards[j],
           availableCards[i],
@@ -510,7 +510,7 @@ router.post('/purchase-upgrade', requireAuth, async (req, res) => {
 
   // Get upgrade details from game data
   const { HOME_REALM_UPGRADES } = await import(
-    '../public/js/modules/gameData.js'
+    '../public/js/modules/gameConstants.js'
   );
   const upgrade = HOME_REALM_UPGRADES[upgradeId];
 

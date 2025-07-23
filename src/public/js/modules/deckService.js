@@ -1,4 +1,4 @@
-import { generateStandardDeck, shuffleDeck } from './gameUtils.js';
+import { generateStandardDeck, shuffleDeck } from './sharedGameUtils.js';
 
 /**
  * Frontend Deck Service

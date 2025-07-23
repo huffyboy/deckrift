@@ -4,7 +4,7 @@ import {
   TEXT_TO_VALUE_MAP,
   SUIT_ORDER,
   SUIT_TO_EMOJI_MAP,
-} from './modules/gameData.js';
+} from './modules/gameConstants.js';
 
 // Status state management
 let currentDeck = [];

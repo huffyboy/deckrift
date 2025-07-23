@@ -29,7 +29,7 @@ router.get('/', requireAuth, async (req, res) => {
 
     // Get upgrade data and filter based on what's already purchased
     const { HOME_REALM_UPGRADES } = await import(
-      '../public/js/modules/gameData.js'
+      '../public/js/modules/gameConstants.js'
     );
 
     // Filter upgrades to only show level 2 if level 1 is purchased
@@ -88,7 +88,7 @@ router.post('/purchase-upgrade', requireAuth, async (req, res) => {
 
     // Get upgrade details from game data
     const { HOME_REALM_UPGRADES } = await import(
-      '../public/js/modules/gameData.js'
+      '../public/js/modules/gameConstants.js'
     );
     const upgrade = HOME_REALM_UPGRADES[upgradeId];
 

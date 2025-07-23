@@ -9,7 +9,7 @@ import {
   TEXT_TO_VALUE_MAP,
   API_VALUE_CONVERSION_MAP,
   INTERNAL_SUIT_TO_API_MAP,
-} from './gameData.js';
+} from './gameConstants.js';
 import { updateHealthDisplay } from './uiUtils.js';
 
 /**

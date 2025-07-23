@@ -6,6 +6,7 @@ import {
   removeCardFromDeck,
   DECK_TYPES,
 } from '../services/deckService.js';
+import { getRandomInt } from '../shared/sharedGameUtils.js';
 
 const router = express.Router();
 
@@ -39,7 +40,7 @@ function generateShopItems() {
   const usedIndices = new Set();
 
   while (selectedItems.length < 3 && usedIndices.size < allItems.length) {
-    const index = Math.floor(Math.random() * allItems.length);
+    const index = getRandomInt(0, allItems.length - 1);
     if (!usedIndices.has(index)) {
       usedIndices.add(index);
       selectedItems.push(allItems[index]);

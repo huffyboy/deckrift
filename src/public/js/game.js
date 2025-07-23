@@ -1,7 +1,7 @@
 // game.js - Page-specific logic for Game
 
 // Import game data constants
-import { EVENTS, SUIT_TO_EMOJI_MAP } from './modules/gameData.js';
+import { EVENTS, SUIT_TO_EMOJI_MAP } from './modules/gameConstants.js';
 
 // Import game utility functions
 import {
@@ -15,7 +15,7 @@ import {
   generateShopItems as generateShopItemsUtil,
   calculateShopCosts as calculateShopCostsUtil,
   generateBaneEffect as generateBaneEffectUtil,
-} from './modules/gameUtils.js';
+} from './modules/sharedGameUtils.js';
 
 import { showNotification, updateHealthDisplay } from './modules/uiUtils.js';
 

@@ -1,6 +1,18 @@
 // eventHandler.js - Event processing logic
 
-import { getCardValue, applyStatChanges } from './gameUtils.js';
+import {
+  getCardValue,
+  applyStatChanges,
+  // Utility functions
+  isRedSuit,
+  isBlackSuit,
+  getSuitName,
+  capitalizeFirst,
+  getRandomElement,
+  clamp,
+  formatPlural,
+  getUIMessage,
+} from './sharedGameUtils.js';
 import {
   showNotification,
   showGameMessage,
@@ -14,6 +26,10 @@ import {
 import {
   EVENTS,
   GAME_CONSTANTS,
+  XP_CONSTANTS,
+  CHALLENGE_CONSTANTS,
+  ANIMATION_TIMING,
+  UI_MESSAGES,
   BOONS,
   BANES,
   BANE_AND_BOON_EFFECTS,
@@ -26,7 +42,8 @@ import {
   ARTIFACT_DETAILS,
   ARTIFACT_POOL_ITEMS,
   EQUIPMENT,
-} from './gameData.js';
+  STANDARD_SUITS,
+} from './gameConstants.js';
 import {
   drawAndRemoveCardFromPlayerDeck,
   getRandomCardFromPlayerDeck,
@@ -55,8 +72,7 @@ async function drawFromStandardDeck() {
   const standardDeck = createShuffledStandardDeck();
 
   // Pick a random card
-  const randomIndex = Math.floor(Math.random() * standardDeck.length);
-  const drawnCard = standardDeck[randomIndex];
+  const drawnCard = getRandomElement(standardDeck);
 
   return {
     value: drawnCard.value,
@@ -83,8 +99,7 @@ async function drawFromPlayerDeck(gameState) {
   }
 
   // Pick a random card
-  const randomIndex = Math.floor(Math.random() * playerDeck.length);
-  const drawnCard = playerDeck[randomIndex];
+  const drawnCard = getRandomElement(playerDeck);
 
   return {
     value: drawnCard.value,
@@ -115,7 +130,7 @@ function checkForLevelUp(gameState, statName, xpGained) {
 
   // Calculate XP threshold for next level
   const targetLevel = currentLevel + 1;
-  const xpThreshold = 40 * (targetLevel - 4); // Same formula as calculateXPThreshold
+  const xpThreshold = XP_CONSTANTS.XP_FORMULA(targetLevel);
 
   // Check if we've reached the threshold
   if (currentXP >= xpThreshold) {
@@ -131,7 +146,7 @@ function checkForLevelUp(gameState, statName, xpGained) {
 
       // Recalculate threshold for next level
       const nextTargetLevel = newLevel + 1;
-      const nextXpThreshold = 40 * (nextTargetLevel - 4);
+      const nextXpThreshold = XP_CONSTANTS.XP_FORMULA(nextTargetLevel);
       if (remainingXP < nextXpThreshold) break;
     }
 
@@ -192,13 +207,19 @@ async function applyStatLevelUp(gameState, levelUpResult) {
   }
 
   // Show level up notification
-  const statDisplayName = statName.charAt(0).toUpperCase() + statName.slice(1);
-
-  showNotification(
-    `${statDisplayName} Level Up!`,
-    `Your ${statDisplayName} increased from ${oldLevel} to ${newLevel}!`,
-    'success'
+  const statDisplayName = capitalizeFirst(statName);
+  const levelUpTitle = UI_MESSAGES.LEVEL_UP.TITLE.replace(
+    '{statName}',
+    statDisplayName
   );
+  const levelUpMessage = UI_MESSAGES.LEVEL_UP.MESSAGE.replace(
+    '{statName}',
+    statDisplayName
+  )
+    .replace('{oldLevel}', oldLevel)
+    .replace('{newLevel}', newLevel);
+
+  showNotification(levelUpTitle, levelUpMessage, UI_MESSAGES.LEVEL_UP.TYPE);
 }
 
 /**
@@ -252,12 +273,13 @@ export function handleCardEncounter(card, gameState, handlers) {
 
   // Default to 'nothing' event if no event is found for this card value
   if (!event) {
+    const nothingMessage = getUIMessage('EVENTS', 'NOTHING');
     showGameMessage(
-      'Nothing Happens',
-      'You find nothing of interest in this place.',
-      'nothing',
-      '🍂',
-      4000,
+      nothingMessage.title,
+      nothingMessage.message,
+      nothingMessage.type,
+      nothingMessage.icon,
+      ANIMATION_TIMING.MESSAGE_TIMEOUT,
       () => {
         // Callback when message is dismissed (either by timeout or click)
         if (handlers.resetBusyState) {
@@ -304,11 +326,14 @@ export function handleCardEncounter(card, gameState, handlers) {
         gameState.runData.maxHealth
       );
 
+      const restMessage = getUIMessage('EVENTS', 'REST', {
+        amount: actualHealAmount,
+      });
       showGameMessage(
-        'Rest Complete',
-        `You rest and recover ${actualHealAmount} health.`,
-        'success',
-        '🏕️',
+        restMessage.title,
+        restMessage.message,
+        restMessage.type,
+        restMessage.icon,
         null, // No timeout
         () => {
           // Callback when message is dismissed (either by timeout or click)
@@ -328,11 +353,12 @@ export function handleCardEncounter(card, gameState, handlers) {
       break;
     case 'boon': {
       // Show initial blessing message
+      const blessingMessage = getUIMessage('EVENTS', 'BLESSING');
       showGameMessage(
-        'Blessing',
-        'The fates smile upon you! Draw a card from your deck to receive a boon.',
-        'success',
-        '✨',
+        blessingMessage.title,
+        blessingMessage.message,
+        blessingMessage.type,
+        blessingMessage.icon,
         null, // No timeout
         () => {
           // Draw from player's deck first (but don't remove the card)
@@ -378,7 +404,8 @@ export function handleCardEncounter(card, gameState, handlers) {
                           if (secondCard) {
                             // Handle add card case separately (no drawing animation)
                             if (
-                              boonResult.header === 'You discover new potential'
+                              boonResult.header ===
+                              UI_MESSAGES.BOON_HEADERS.DISCOVER_POTENTIAL
                             ) {
                               // Add card - handle with dialog instead of promise
                               (async () => {
@@ -409,7 +436,7 @@ export function handleCardEncounter(card, gameState, handlers) {
                             // Handle remove card case separately (no drawing animation)
                             if (
                               boonResult.header ===
-                              'You attempt to purge your weakness'
+                              UI_MESSAGES.BOON_HEADERS.PURGE_WEAKNESS
                             ) {
                               // Remove card - handle with dialog instead of promise
                               (async () => {
@@ -445,7 +472,10 @@ export function handleCardEncounter(card, gameState, handlers) {
                             }
 
                             // Handle artifact case separately (no drawing animation)
-                            if (boonResult.header === 'You find an artifact') {
+                            if (
+                              boonResult.header ===
+                              UI_MESSAGES.BOON_HEADERS.FIND_ARTIFACT
+                            ) {
                               // Show deck drawing animation for artifacts
                               showDeckDrawingAnimation(() => {
                                 // Force draw a 10 for artifact events (charm pool)
@@ -457,11 +487,8 @@ export function handleCardEncounter(card, gameState, handlers) {
                                 };
 
                                 // Randomize the suit for variety
-                                const suits = ['♠', '♥', '♦', '♣'];
                                 const randomSuit =
-                                  suits[
-                                    Math.floor(Math.random() * suits.length)
-                                  ];
+                                  getRandomElement(STANDARD_SUITS);
                                 secondCard.suit = randomSuit;
                                 secondCard.display = `10${randomSuit}`;
                                 secondCard.code = `10${randomSuit}`;
@@ -506,7 +533,11 @@ export function handleCardEncounter(card, gameState, handlers) {
                                     }
                                   } else {
                                     artifactTitle = boonResult.header;
-                                    artifactDescription = `You draw ${cardDisplay} but find no artifact.`;
+                                    artifactDescription =
+                                      UI_MESSAGES.CARD_EFFECTS.DRAW_NO_ARTIFACT.replace(
+                                        '{card}',
+                                        cardDisplay
+                                      );
                                   }
 
                                   showGameMessage(
@@ -537,7 +568,7 @@ export function handleCardEncounter(card, gameState, handlers) {
                               let effectPromise;
                               if (
                                 boonResult.header ===
-                                'You find a bit of treasure'
+                                UI_MESSAGES.BOON_HEADERS.FIND_TREASURE
                               ) {
                                 // Apply currency gain
                                 effectPromise = applyCurrencyGain(
@@ -545,7 +576,8 @@ export function handleCardEncounter(card, gameState, handlers) {
                                   gameState
                                 );
                               } else if (
-                                boonResult.header === 'You learn something new'
+                                boonResult.header ===
+                                UI_MESSAGES.BOON_HEADERS.LEARN_SOMETHING
                               ) {
                                 // Apply stat XP gain
                                 effectPromise = applyStatXpGain(
@@ -564,7 +596,7 @@ export function handleCardEncounter(card, gameState, handlers) {
 
                                   if (
                                     boonResult.header ===
-                                    'You find a bit of treasure'
+                                    UI_MESSAGES.BOON_HEADERS.FIND_TREASURE
                                   ) {
                                     // Currency gain message - use the simplified description from the function
                                     message = result.description;
@@ -578,7 +610,7 @@ export function handleCardEncounter(card, gameState, handlers) {
                                     );
                                   } else if (
                                     boonResult.header ===
-                                    'You learn something new'
+                                    UI_MESSAGES.BOON_HEADERS.LEARN_SOMETHING
                                   ) {
                                     // Stat XP gain message - use the simplified description from the function
                                     message = result.description;
@@ -588,9 +620,11 @@ export function handleCardEncounter(card, gameState, handlers) {
                                   let cardDisplay;
                                   if (
                                     (boonResult.header ===
-                                      'You learn something new' ||
+                                      UI_MESSAGES.BOON_HEADERS
+                                        .LEARN_SOMETHING ||
                                       boonResult.header ===
-                                        'You find a bit of treasure') &&
+                                        UI_MESSAGES.BOON_HEADERS
+                                          .FIND_TREASURE) &&
                                     result.allCardsDrawn
                                   ) {
                                     // Show all cards drawn for XP gain or currency gain
@@ -661,11 +695,12 @@ export function handleCardEncounter(card, gameState, handlers) {
     }
     case 'bane': {
       // Show initial misfortune message
+      const misfortuneMessage = getUIMessage('EVENTS', 'MISFORTUNE');
       showGameMessage(
-        'Misfortune',
-        'The fates frown upon you! Draw a card from your deck to receive a bane.',
-        'error',
-        '🌩️',
+        misfortuneMessage.title,
+        misfortuneMessage.message,
+        misfortuneMessage.type,
+        misfortuneMessage.icon,
         null, // No timeout
         () => {
           // Draw from player's deck first
@@ -726,7 +761,8 @@ export function handleCardEncounter(card, gameState, handlers) {
                               if (baneResult.secondDrawDeck === 'player') {
                                 // Check if this is a stat loss or currency loss
                                 if (
-                                  baneResult.header === 'You feel a bit weaker'
+                                  baneResult.header ===
+                                  UI_MESSAGES.BANE_HEADERS.FEEL_WEAKER
                                 ) {
                                   // Apply stat loss
                                   effectPromise = applyStatLoss(
@@ -774,9 +810,12 @@ export function handleCardEncounter(card, gameState, handlers) {
                                     // No currency to lose
                                     messageConfig = baneResult.messages
                                       ?.noCurrency || {
-                                      title: 'Empty pockets',
+                                      title:
+                                        UI_MESSAGES.CARD_EFFECTS.EMPTY_POCKETS
+                                          .title,
                                       message:
-                                        'You realize you had nothing to lose.',
+                                        UI_MESSAGES.CARD_EFFECTS.EMPTY_POCKETS
+                                          .message,
                                     };
                                   } else if (
                                     result.currencyLost < result.cardValue
@@ -784,15 +823,27 @@ export function handleCardEncounter(card, gameState, handlers) {
                                     // Partial loss
                                     messageConfig = baneResult.messages
                                       ?.partialLoss || {
-                                      title: 'Missing treasure',
-                                      message: 'You lost what little you had.',
+                                      title:
+                                        UI_MESSAGES.CARD_EFFECTS
+                                          .MISSING_TREASURE.title,
+                                      message:
+                                        UI_MESSAGES.CARD_EFFECTS
+                                          .MISSING_TREASURE.message,
                                     };
                                   } else {
                                     // Full loss
                                     messageConfig = baneResult.messages
                                       ?.fullLoss || {
-                                      title: 'Missing treasure',
-                                      message: `You draw ${cardDisplay} and lose ${result.currencyLost} currency.`,
+                                      title:
+                                        UI_MESSAGES.CARD_EFFECTS
+                                          .MISSING_TREASURE_FULL.title,
+                                      message:
+                                        UI_MESSAGES.CARD_EFFECTS.MISSING_TREASURE_FULL.message
+                                          .replace('{card}', cardDisplay)
+                                          .replace(
+                                            '{amount}',
+                                            result.currencyLost
+                                          ),
                                     };
                                     if (
                                       messageConfig.message.includes('{card}')
@@ -811,18 +862,27 @@ export function handleCardEncounter(card, gameState, handlers) {
                                   messageTitle = messageConfig.title;
                                 } else {
                                   // Card loss message
-                                  message = `You lose your ${secondCard.value}${suitSymbol}.`;
+                                  message =
+                                    UI_MESSAGES.CARD_EFFECTS.CARD_LOST.replace(
+                                      '{card}',
+                                      `${secondCard.value}${suitSymbol}`
+                                    );
                                 }
 
                                 // Handle stat loss message
                                 if (
-                                  baneResult.header === 'You feel a bit weaker'
+                                  baneResult.header ===
+                                  UI_MESSAGES.BANE_HEADERS.FEEL_WEAKER
                                 ) {
                                   // Stat loss message
                                   const statToLose =
                                     SUIT_TO_STAT_MAP[secondCard.suit] ||
                                     'power';
-                                  message = `You drew ${suitSymbol} and lose 1 ${statToLose}.`;
+                                  message =
+                                    UI_MESSAGES.CARD_EFFECTS.DRAW_AND_LOSE_STAT.replace(
+                                      '{card}',
+                                      suitSymbol
+                                    ).replace('{stat}', statToLose);
                                   messageTitle = baneResult.header;
                                 }
 
@@ -883,7 +943,7 @@ export function handleCardEncounter(card, gameState, handlers) {
         'You find nothing of interest in this place.',
         'nothing',
         '🍂',
-        4000,
+        ANIMATION_TIMING.MESSAGE_TIMEOUT,
         () => {
           // Callback when message is dismissed (either by timeout or click)
           if (handlers.resetBusyState) {
@@ -934,7 +994,7 @@ export function handleCardFlip(mapCell, newPosition, gameState, handlers) {
     // Update the map display to show the revealed card (player still on old position)
     handlers.renderOverworldMap();
 
-    // Wait 0.5 seconds for player to see the revealed card
+    // Wait for player to see the revealed card
     setTimeout(() => {
       // Move player to the revealed card position
       if (gameState.runData && gameState.runData.location) {
@@ -948,12 +1008,12 @@ export function handleCardFlip(mapCell, newPosition, gameState, handlers) {
       // Update the map display to show player on new position
       handlers.renderOverworldMap();
 
-      // Wait another 0.5 seconds for player to see they moved
+      // Wait for player to see they moved
       setTimeout(() => {
         // Trigger the encounter
         handleCardEvent(updatedMapCell, newPosition, gameState, handlers);
-      }, 500);
-    }, 500);
+      }, ANIMATION_TIMING.CARD_FLIP_DELAY);
+    }, ANIMATION_TIMING.CARD_FLIP_DELAY);
   }
 }
 
@@ -1011,10 +1071,11 @@ export function handleCardEvent(mapCell, newPosition, gameState, handlers) {
  * @param {Function} renderBattleInterface - Battle interface renderer
  */
 export function startBattle(enemyType, newPosition, renderBattleInterface) {
+  const battleMessage = getUIMessage('ENCOUNTERS', 'BATTLE', { enemyType });
   showNotification(
-    'Battle Encounter',
-    `A ${enemyType}-focused enemy appears!`,
-    'warning'
+    battleMessage.title,
+    battleMessage.message,
+    battleMessage.type
   );
 
   // Render battle interface
@@ -1028,10 +1089,13 @@ export function startBattle(enemyType, newPosition, renderBattleInterface) {
  * @param {Function} renderEventInterface - Event interface renderer
  */
 export function startChallenge(statType, newPosition, renderEventInterface) {
+  const challengeMessage = getUIMessage('ENCOUNTERS', 'CHALLENGE', {
+    statType,
+  });
   showNotification(
-    'Stat Challenge',
-    `You must prove your ${statType}!`,
-    'info'
+    challengeMessage.title,
+    challengeMessage.message,
+    challengeMessage.type
   );
 
   // Render event interface
@@ -1044,7 +1108,8 @@ export function startChallenge(statType, newPosition, renderEventInterface) {
  * @param {Function} renderShopInterface - Shop interface renderer
  */
 export function startShop(newPosition, renderShopInterface) {
-  showNotification('Shop Encounter', 'A merchant offers their wares.', 'info');
+  const shopMessage = getUIMessage('ENCOUNTERS', 'SHOP');
+  showNotification(shopMessage.title, shopMessage.message, shopMessage.type);
 
   // Render shop interface
   renderShopInterface();
@@ -1058,18 +1123,21 @@ export function startShop(newPosition, renderShopInterface) {
  */
 export function handleRest(newPosition, gameState, renderOverworldMap) {
   // Heal the player (50% of max HP)
-  const healAmount = Math.floor(gameState.player.maxHealth * 0.5);
+  const healAmount = Math.floor(
+    gameState.player.maxHealth * GAME_CONSTANTS.REST_HEAL_PERCENTAGE
+  );
   gameState.player.health = Math.min(
     gameState.player.health + healAmount,
     gameState.player.maxHealth
   );
 
+  const restMessage = getUIMessage('EVENTS', 'REST', { amount: healAmount });
   showGameMessage(
-    'Rest Complete',
-    `You rest and recover ${healAmount} health.`,
-    'success',
-    '🏕️',
-    4000
+    restMessage.title,
+    restMessage.message,
+    restMessage.type,
+    restMessage.icon,
+    ANIMATION_TIMING.MESSAGE_TIMEOUT
   );
 
   // Update the map display
@@ -1083,12 +1151,13 @@ export function handleRest(newPosition, gameState, renderOverworldMap) {
  * @param {Function} renderOverworldMap - Map rendering function
  */
 export function handleBoon(newPosition, gameState, renderOverworldMap) {
+  const boonMessage = getUIMessage('EVENTS', 'BOON');
   showGameMessage(
-    'Boon Received',
-    'You receive a beneficial effect!',
-    'success',
-    '🌟',
-    4000
+    boonMessage.title,
+    boonMessage.message,
+    boonMessage.type,
+    boonMessage.icon,
+    ANIMATION_TIMING.MESSAGE_TIMEOUT
   );
 
   // Boon logic is implemented in handleCardEncounter for 'boon' events
@@ -1105,12 +1174,13 @@ export function handleBoon(newPosition, gameState, renderOverworldMap) {
  * @param {Function} renderOverworldMap - Map rendering function
  */
 export function handleBane(newPosition, gameState, renderOverworldMap) {
+  const baneMessage = getUIMessage('EVENTS', 'BANE');
   showGameMessage(
-    'Bane Received',
-    'You suffer a negative effect!',
-    'error',
-    '🌧️',
-    4000
+    baneMessage.title,
+    baneMessage.message,
+    baneMessage.type,
+    baneMessage.icon,
+    ANIMATION_TIMING.MESSAGE_TIMEOUT
   );
 
   // Bane logic is implemented in handleCardEncounter for 'bane' events
@@ -1126,7 +1196,8 @@ export function handleBane(newPosition, gameState, renderOverworldMap) {
  * @param {Function} renderBattleInterface - Battle interface renderer
  */
 export function startBossBattle(newPosition, renderBattleInterface) {
-  showNotification('Boss Battle', 'A powerful boss appears!', 'warning');
+  const bossMessage = getUIMessage('ENCOUNTERS', 'BOSS');
+  showNotification(bossMessage.title, bossMessage.message, bossMessage.type);
 
   // Render battle interface
   renderBattleInterface();
@@ -1143,14 +1214,8 @@ async function processBoon(card, gameState) {
   const cardSuit = card.suit;
 
   // Convert suit symbols to suit names for BOONS lookup
-  const suitSymbolToName = {
-    '♠': 'spade',
-    '♥': 'heart',
-    '♦': 'diamond',
-    '♣': 'club',
-  };
-  const cardSuitName = suitSymbolToName[cardSuit];
-  const isRed = cardSuit === '♥' || cardSuit === '♦';
+  const cardSuitName = getSuitName(cardSuit);
+  const isRed = isRedSuit(cardSuit);
 
   // Get the boon effect based on card value and suit
   let boonEffect = BOONS[cardValue];
@@ -1256,7 +1321,7 @@ async function processBoon(card, gameState) {
 async function processBane(card, gameState) {
   const cardValue = card.value; // Use string value directly for BANES lookup
   const cardSuit = card.suit;
-  const isRed = cardSuit === 'hearts' || cardSuit === 'diamonds';
+  const isRed = isRedSuit(cardSuit);
 
   // Get the bane effect based on card value and suit
   let baneEffect = BANES[cardValue];
@@ -1307,7 +1372,7 @@ async function processBane(card, gameState) {
   if (baneEffect?.type === 'loseItem' && !result.applied) {
     return {
       header: effectData.header,
-      description: 'Or so you thought, you have nothing worthwhile to lose.',
+      description: UI_MESSAGES.CARD_EFFECTS.OR_SO_YOU_THOUGHT,
       icon: effectData.icon,
       applied: false,
     };
@@ -1358,7 +1423,10 @@ async function processBane(card, gameState) {
   if (baneEffect?.type === 'addJoker' && result.jokerAmount) {
     return {
       header: effectData.header,
-      description: `Add ${result.jokerAmount} joker${result.jokerAmount === 1 ? '' : 's'} to your deck.`,
+      description: UI_MESSAGES.CARD_EFFECTS.ADD_JOKER.replace(
+        '{amount}',
+        result.jokerAmount
+      ).replace('{plural}', formatPlural(result.jokerAmount, '', 's')),
       icon: effectData.icon,
       applied: result.applied,
     };
@@ -1382,7 +1450,7 @@ async function processBane(card, gameState) {
 async function applyBoonEffect(boonEffect, card, gameState) {
   if (!boonEffect || boonEffect.type === 'nothing') {
     return {
-      description: 'Nothing happens',
+      description: UI_MESSAGES.CARD_EFFECTS.NOTHING_HAPPENS,
       applied: false,
     };
   }
@@ -1429,7 +1497,7 @@ async function applyBoonEffect(boonEffect, card, gameState) {
       // For statXpGain, we don't process the first card here
       // The second card draw is handled in the main boon flow
       return {
-        description: 'Stat XP gain effect triggered',
+        description: UI_MESSAGES.CARD_EFFECTS.STAT_XP_GAIN_TRIGGERED,
         applied: true,
       };
     }
@@ -1437,7 +1505,7 @@ async function applyBoonEffect(boonEffect, card, gameState) {
     case 'currencyGain': {
       // Currency gain is now handled with second draws, so this should not be reached
       return {
-        description: 'Currency gain effect triggered',
+        description: UI_MESSAGES.CARD_EFFECTS.CURRENCY_GAIN_TRIGGERED,
         applied: true,
       };
     }
@@ -1448,21 +1516,26 @@ async function applyBoonEffect(boonEffect, card, gameState) {
       const artifact = ARTIFACTS[cardValueString];
       if (artifact) {
         if (artifact.type === 'random' && artifact.pool) {
-          const randomArtifact =
-            artifact.pool[Math.floor(Math.random() * artifact.pool.length)];
+          const randomArtifact = getRandomElement(artifact.pool);
           return {
-            description: `Gained artifact: ${randomArtifact.name}`,
+            description: UI_MESSAGES.ARTIFACTS.GAINED.replace(
+              '{emoji}',
+              '🧿'
+            ).replace('{name}', randomArtifact.name),
             applied: true,
           };
         } else if (artifact.type === 'equipment') {
           return {
-            description: `Gained equipment: ${artifact.equipmentType}`,
+            description: UI_MESSAGES.ARTIFACTS.EQUIPMENT_GAINED.replace(
+              '{type}',
+              artifact.equipmentType
+            ),
             applied: true,
           };
         }
       }
       return {
-        description: 'Gained a random artifact',
+        description: UI_MESSAGES.ARTIFACTS.RANDOM_ARTIFACT,
         applied: true,
       };
     }
@@ -1522,7 +1595,7 @@ async function applyBoonEffect(boonEffect, card, gameState) {
 
     default:
       return {
-        description: 'Unknown boon effect',
+        description: UI_MESSAGES.ERRORS.UNKNOWN_BOON_EFFECT,
         applied: false,
       };
   }
@@ -1547,7 +1620,7 @@ function getNegativeCardValue(card) {
 async function applyBaneEffect(baneEffect, card, gameState) {
   if (!baneEffect || baneEffect.type === 'nothing') {
     return {
-      description: 'Nothing happens',
+      description: UI_MESSAGES.CARD_EFFECTS.NOTHING_HAPPENS,
       applied: false,
     };
   }
@@ -1559,14 +1632,14 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 
       if (equipment.length === 0) {
         return {
-          description: 'You have no items to lose',
+          description: UI_MESSAGES.CARD_EFFECTS.NO_ITEMS,
           applied: false,
         };
       }
 
       // Randomly select an item to lose
-      const randomIndex = Math.floor(Math.random() * equipment.length);
-      const lostItem = equipment[randomIndex];
+      const lostItem = getRandomElement(equipment);
+      const randomIndex = equipment.indexOf(lostItem);
 
       // Remove the item from the equipment array
       equipment.splice(randomIndex, 1);
@@ -1591,7 +1664,7 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 
       // Try to get a more descriptive name from EQUIPMENT data
       try {
-        const { EQUIPMENT } = await import('./gameData.js');
+        const { EQUIPMENT } = await import('./gameConstants.js');
 
         // Look up the equipment name based on type and value
         if (
@@ -1616,7 +1689,10 @@ async function applyBaneEffect(baneEffect, card, gameState) {
       }
 
       return {
-        description: `Lost ${itemName} (${itemType})`,
+        description: UI_MESSAGES.CARD_EFFECTS.LOST_ITEM.replace(
+          '{itemName}',
+          itemName
+        ).replace('{itemType}', itemType),
         applied: true,
         lostItem: lostItem,
         itemName: itemName,
@@ -1628,7 +1704,7 @@ async function applyBaneEffect(baneEffect, card, gameState) {
       // For loseStat, we don't draw a card here anymore
       // The second card draw is handled in the main bane flow
       return {
-        description: 'Stat loss effect triggered',
+        description: UI_MESSAGES.CARD_EFFECTS.STAT_LOSS_TRIGGERED,
         applied: true,
       };
     }
@@ -1639,7 +1715,7 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 
       if (highCards.length === 0) {
         return {
-          description: 'You have no high cards to lose',
+          description: UI_MESSAGES.CARD_EFFECTS.NO_HIGH_CARDS,
           applied: false,
         };
       }
@@ -1659,7 +1735,7 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 
       if (faceCards.length === 0) {
         return {
-          description: 'You have no face cards to lose',
+          description: UI_MESSAGES.CARD_EFFECTS.NO_FACE_CARDS,
           applied: false,
         };
       }
@@ -1679,7 +1755,7 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 
       if (currentCurrency <= 0) {
         return {
-          description: 'You have no currency to lose',
+          description: UI_MESSAGES.CARD_EFFECTS.NO_CURRENCY,
           applied: false,
         };
       }
@@ -1717,7 +1793,7 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 
     default:
       return {
-        description: 'Unknown bane effect',
+        description: UI_MESSAGES.ERRORS.UNKNOWN_BANE_EFFECT,
         applied: false,
       };
   }
@@ -1735,7 +1811,7 @@ async function applyStatXpGain(card, gameState) {
   // Check if it's a joker (no XP gain for jokers)
   if (card.suit === 'joker' || card.value === '𝕁') {
     return {
-      description: 'You draw a joker and gain no experience.',
+      description: UI_MESSAGES.CARD_EFFECTS.NO_XP_JOKER,
       applied: false,
       xpGained: 0,
       statGained: null,
@@ -1785,7 +1861,10 @@ async function applyStatXpGain(card, gameState) {
   }
 
   // Build description based on whether additional cards were drawn
-  const description = `You gained ${totalXpGain} ${statToGain.charAt(0).toUpperCase() + statToGain.slice(1)} XP.`;
+  const description = UI_MESSAGES.CARD_EFFECTS.XP_GAIN.replace(
+    '{amount}',
+    totalXpGain
+  ).replace('{stat}', capitalizeFirst(statToGain));
 
   // Collect all cards drawn for display
   const allCardsDrawn = [card, ...additionalCards.map((ac) => ac.card)];
@@ -1814,7 +1893,7 @@ async function applyCurrencyGain(card, gameState) {
   // Check if it's a joker (no currency gain for jokers)
   if (card.suit === 'joker' || card.value === '𝕁') {
     return {
-      description: 'You draw a joker and gain no currency.',
+      description: UI_MESSAGES.CARD_EFFECTS.NO_CURRENCY_JOKER,
       applied: false,
       currencyGained: 0,
       cardValue: 0,
@@ -1850,7 +1929,10 @@ async function applyCurrencyGain(card, gameState) {
   await saveGameState(gameState);
 
   // Build description based on whether additional cards were drawn
-  const description = `You gained ${totalCurrencyGain} currency.`;
+  const description = UI_MESSAGES.CARD_EFFECTS.CURRENCY_GAIN.replace(
+    '{amount}',
+    totalCurrencyGain
+  );
 
   // Collect all cards drawn for display
   const allCardsDrawn = [card, ...additionalCards.map((ac) => ac.card)];
@@ -1879,14 +1961,17 @@ async function applyCurrencyLoss(card, gameState) {
   const cardValue = getNegativeCardValue(card);
   const currentCurrency = gameState.runData?.runCurrency || 0;
 
-  const currencyToLose = Math.min(cardValue, currentCurrency);
+  const currencyToLose = clamp(cardValue, 0, currentCurrency);
 
   gameState.runData.runCurrency = currentCurrency - currencyToLose;
 
   await saveGameState(gameState);
 
   return {
-    description: `Lost ${currencyToLose} currency (${card.value}${card.suit})`,
+    description: UI_MESSAGES.CARD_EFFECTS.CURRENCY_LOSS.replace(
+      '{amount}',
+      currencyToLose
+    ).replace('{card}', `${card.value}${card.suit}`),
     applied: true,
     currencyLost: currencyToLose,
     cardValue: cardValue,
@@ -1922,7 +2007,10 @@ async function applyStatLoss(card, gameState) {
   }
 
   return {
-    description: `Lost 1 ${statToLose} (${card.value}${card.suit})`,
+    description: UI_MESSAGES.CARD_EFFECTS.STAT_LOSS.replace(
+      '{stat}',
+      statToLose
+    ).replace('{card}', `${card.value}${card.suit}`),
     applied: true,
     statLost: statToLose,
     card: card,
@@ -1954,7 +2042,10 @@ async function applyHighCardLoss(drawnCard, gameState) {
   }
 
   return {
-    description: `Lost ${drawnCard.value}${drawnCard.suit} (high card)`,
+    description: UI_MESSAGES.CARD_EFFECTS.HIGH_CARD_LOST.replace(
+      '{card}',
+      `${drawnCard.value}${drawnCard.suit}`
+    ),
     applied: true,
   };
 }
@@ -1984,7 +2075,10 @@ async function applyFaceCardLoss(drawnCard, gameState) {
   }
 
   return {
-    description: `Lost ${drawnCard.value}${drawnCard.suit} (face card)`,
+    description: UI_MESSAGES.CARD_EFFECTS.FACE_CARD_LOST.replace(
+      '{card}',
+      `${drawnCard.value}${drawnCard.suit}`
+    ),
     applied: true,
   };
 }
@@ -2001,7 +2095,7 @@ async function applyAddCard(card, gameState) {
   // Check if it's a joker (no card to add for jokers)
   if (card.suit === 'joker' || card.value === '𝕁') {
     return {
-      description: 'You draw a joker and gain no new card.',
+      description: UI_MESSAGES.CARD_EFFECTS.NO_CARD_JOKER,
       applied: false,
       cardToAdd: null,
       cardValue: 0,
@@ -2027,7 +2121,10 @@ async function applyAddCard(card, gameState) {
   await savePlayerDeck(gameState.runData.playerDeck);
 
   return {
-    description: `Added ${cardDisplay} to your deck.`,
+    description: UI_MESSAGES.CARD_EFFECTS.CARD_ADDED.replace(
+      '{card}',
+      cardDisplay
+    ),
     applied: true,
     cardToAdd: cardDisplay,
     cardValue: cardValue,
@@ -2061,14 +2158,20 @@ async function applyRemoveCard(card, gameState) {
     await saveDeckToServer(gameState.runData.playerDeck);
 
     return {
-      description: `Removed ${cardDisplay} from your deck.`,
+      description: UI_MESSAGES.CARD_EFFECTS.CARD_REMOVED.replace(
+        '{card}',
+        cardDisplay
+      ),
       applied: true,
       cardRemoved: cardDisplay,
       cardValue: cardValue,
     };
   } else {
     return {
-      description: `Failed to remove ${cardDisplay} from your deck.`,
+      description: UI_MESSAGES.ERRORS.CARD_REMOVE_FAILED.replace(
+        '{card}',
+        cardDisplay
+      ),
       applied: false,
       cardRemoved: null,
       cardValue: cardValue,
@@ -2094,7 +2197,10 @@ async function applyArtifact(card, gameState) {
 
   if (!artifactKey) {
     return {
-      description: `No artifact found for ${cardDisplay}.`,
+      description: UI_MESSAGES.ARTIFACTS.NO_ARTIFACT_FOUND.replace(
+        '{card}',
+        cardDisplay
+      ),
       applied: false,
       artifactGained: null,
       cardValue: getCardValue(card),
@@ -2108,7 +2214,10 @@ async function applyArtifact(card, gameState) {
 
   if (!artifactKey) {
     return {
-      description: `No artifact found for ${cardDisplay}.`,
+      description: UI_MESSAGES.ARTIFACTS.NO_ARTIFACT_FOUND.replace(
+        '{card}',
+        cardDisplay
+      ),
       applied: false,
       artifactGained: null,
       cardValue: getCardValue(card),
@@ -2122,8 +2231,7 @@ async function applyArtifact(card, gameState) {
   const poolItems = ARTIFACT_POOL_ITEMS[artifactKey];
   if (poolItems && poolItems.length > 0) {
     // This is a pool - select a random artifact from it
-    const randomIndex = Math.floor(Math.random() * poolItems.length);
-    const selectedPoolKey = poolItems[randomIndex];
+    const selectedPoolKey = getRandomElement(poolItems);
     finalArtifact = ARTIFACT_DETAILS[selectedPoolKey];
     artifactKeyToStore = selectedPoolKey;
   } else {
@@ -2133,7 +2241,10 @@ async function applyArtifact(card, gameState) {
 
   if (!finalArtifact) {
     return {
-      description: `No artifact details found for ${artifactKey}.`,
+      description: UI_MESSAGES.ARTIFACTS.NO_ARTIFACT_DETAILS.replace(
+        '{key}',
+        artifactKey
+      ),
       applied: false,
       artifactGained: null,
       cardValue: getCardValue(card),
@@ -2197,10 +2308,15 @@ async function applyArtifact(card, gameState) {
   });
 
   // Add a small delay to simulate drawing animation
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) =>
+    setTimeout(resolve, ANIMATION_TIMING.ARTIFACT_DRAW_DELAY)
+  );
 
   return {
-    description: `Gained ${fullArtifactData.emoji} ${finalArtifact.name}!`,
+    description: UI_MESSAGES.ARTIFACTS.GAINED.replace(
+      '{emoji}',
+      fullArtifactData.emoji
+    ).replace('{name}', finalArtifact.name),
     applied: true,
     artifactGained: fullArtifactData.value,
     artifactEmoji: fullArtifactData.emoji,
@@ -2223,8 +2339,8 @@ function selectArtifactKeyFromSuit(suitMapping, cardSuit) {
   }
 
   // Check for color-based selection
-  const isRed = cardSuit === '♥' || cardSuit === '♦';
-  const isBlack = cardSuit === '♠' || cardSuit === '♣';
+  const isRed = isRedSuit(cardSuit);
+  const isBlack = isBlackSuit(cardSuit);
 
   if (isRed && suitMapping.red) {
     return suitMapping.red;
@@ -2242,21 +2358,6 @@ function selectArtifactKeyFromSuit(suitMapping, cardSuit) {
 }
 
 /**
- * Convert suit symbol to suit name for database compatibility
- * @param {string} suitSymbol - The suit symbol (♠, ♥, ♦, ♣)
- * @returns {string} - The suit name (spades, hearts, diamonds, clubs)
- */
-function getSuitName(suitSymbol) {
-  const suitMap = {
-    '♠': 'spade',
-    '♥': 'heart',
-    '♦': 'diamond',
-    '♣': 'club',
-  };
-  return suitMap[suitSymbol];
-}
-
-/**
  * Pick a random high card from the provided array
  * @param {Array} highCards - Array of high cards (10, J, Q, K, A) from player's personal deck
  * @returns {Promise<Object|null>} The picked high card or null if no high cards available
@@ -2270,11 +2371,10 @@ function pickRandomHighCard(highCards) {
 
     // Simulate drawing animation delay
     setTimeout(() => {
-      const randomIndex = Math.floor(Math.random() * highCards.length);
-      const pickedCard = highCards[randomIndex];
+      const pickedCard = getRandomElement(highCards);
 
       resolve(pickedCard);
-    }, 1000);
+    }, ANIMATION_TIMING.DRAWING_ANIMATION_DELAY);
   });
 }
 
@@ -2292,11 +2392,10 @@ function pickRandomFaceCard(faceCards) {
 
     // Simulate drawing animation delay
     setTimeout(() => {
-      const randomIndex = Math.floor(Math.random() * faceCards.length);
-      const pickedCard = faceCards[randomIndex];
+      const pickedCard = getRandomElement(faceCards);
 
       resolve(pickedCard);
-    }, 1000);
+    }, ANIMATION_TIMING.DRAWING_ANIMATION_DELAY);
   });
 }
 
@@ -2387,10 +2486,13 @@ export async function handleInventoryOverflow(gameState, onComplete) {
   });
 
   // Show the equipment selection dialog
+  const overflowMessage = UI_MESSAGES.INVENTORY.OVERFLOW.message
+    .replace('{count}', overflowCount)
+    .replace(/{plural}/g, overflowCount > 1 ? 's' : '');
   showInventoryOverflowDialog(
     equipmentCards,
     overflowCount,
-    `You have ${overflowCount} more item${overflowCount > 1 ? 's' : ''} than your inventory can hold. Choose which item${overflowCount > 1 ? 's' : ''} to remove:`,
+    overflowMessage,
     async (selectedItems) => {
       // If no items selected (canceled), don't remove anything
       if (selectedItems.length === 0) {
@@ -2428,7 +2530,11 @@ export async function handleInventoryOverflow(gameState, onComplete) {
       const removedNames = selectedItems
         .map((a) => `${a.emoji} ${a.name}`)
         .join(', ');
-      showNotification(`Removed: ${removedNames}`, 'info');
+      const removedMessage = UI_MESSAGES.INVENTORY.REMOVED.title.replace(
+        '{items}',
+        removedNames
+      );
+      showNotification(removedMessage, UI_MESSAGES.INVENTORY.REMOVED.type);
 
       if (onComplete) onComplete();
     }
@@ -2444,14 +2550,17 @@ export async function handleInventoryOverflow(gameState, onComplete) {
 async function handleChallenge(statType, gameState, handlers) {
   // Calculate challenge difficulty based on current level
   const challengeModifier = gameState.runData?.location?.level || 1;
-  const targetValue = 12 + challengeModifier;
+  const targetValue = CHALLENGE_CONSTANTS.DIFFICULTY_FORMULA(challengeModifier);
 
   // Show initial challenge message
+  const challengeMessage = getUIMessage('CHALLENGE', 'INITIAL', {
+    statType: capitalizeFirst(statType),
+  });
   showGameMessage(
-    `${statType.charAt(0).toUpperCase() + statType.slice(1)} Challenge`,
-    `Circumstances require you to exert your ${statType}. See if you can meet the challenge.`,
-    'warning',
-    '🎲',
+    challengeMessage.title,
+    challengeMessage.message,
+    challengeMessage.type,
+    challengeMessage.icon,
     null, // No timeout - player must click to continue
     async () => {
       // After initial message, start the card drawing phase
@@ -2557,11 +2666,14 @@ async function handleChallengeResult(
     await saveGameState(gameState);
 
     // Show success message
+    const successMessage = getUIMessage('CHALLENGE', 'SUCCESS', {
+      xp: cardValue,
+    });
     showGameMessage(
-      'Challenge Succeeded!',
-      `You gain ${cardValue} XP. Draw a card to determine your boon.`,
-      'success',
-      '🎯',
+      successMessage.title,
+      successMessage.message,
+      successMessage.type,
+      successMessage.icon,
       null, // No timeout - player must click to continue
       async () => {
         // After success message, trigger boon
@@ -2578,11 +2690,12 @@ async function handleChallengeResult(
     // Save the game state
     await saveGameState(gameState);
 
+    const failureMessage = getUIMessage('CHALLENGE', 'FAILURE');
     showGameMessage(
-      'Challenge Failed!',
-      'You failed. Draw a card to determine your bane.',
-      'error',
-      '💥',
+      failureMessage.title,
+      failureMessage.message,
+      failureMessage.type,
+      failureMessage.icon,
       null, // No timeout - player must click to continue
       async () => {
         // After failure message, trigger bane
@@ -2650,11 +2763,12 @@ async function triggerChallengeBoon(gameState, handlers) {
     }, drawnCard);
   } else {
     // No boon card available
+    const noBoonMessage = getUIMessage('CHALLENGE', 'NO_BOON');
     showGameMessage(
-      'No Boon Available',
-      'You succeeded in the challenge but no boon was available.',
-      'info',
-      '🎯',
+      noBoonMessage.title,
+      noBoonMessage.message,
+      noBoonMessage.type,
+      noBoonMessage.icon,
       null,
       () => {
         if (handlers.resetBusyState) {
@@ -2701,11 +2815,12 @@ async function triggerChallengeBane(gameState, handlers) {
     }, drawnCard);
   } else {
     // No bane card available
+    const noBaneMessage = getUIMessage('CHALLENGE', 'NO_BANE');
     showGameMessage(
-      'No Bane Available',
-      'You failed the challenge but no bane was available.',
-      'info',
-      '💥',
+      noBaneMessage.title,
+      noBaneMessage.message,
+      noBaneMessage.type,
+      noBaneMessage.icon,
       null,
       () => {
         if (handlers.resetBusyState) {

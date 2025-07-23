@@ -1,7 +1,7 @@
 // uiUtils.js - Shared UI utility functions
 
-import { SUIT_TO_EMOJI_MAP } from './gameData.js';
-import { getCardValue } from './gameUtils.js';
+import { SUIT_TO_EMOJI_MAP } from './gameConstants.js';
+import { getCardValue } from './sharedGameUtils.js';
 
 /**
  * Show a stylized game message (fantasy/roguelike themed)
@@ -851,7 +851,7 @@ export async function showInventoryOverflowDialog(
   onComplete
 ) {
   // Import the data we need for tooltips
-  const { EQUIPMENT, ARTIFACT_DETAILS } = await import('./gameData.js');
+  const { EQUIPMENT, ARTIFACT_DETAILS } = await import('./gameConstants.js');
 
   // Create dialog overlay
   const overlay = document.createElement('div');

@@ -1,4 +1,8 @@
-import { generateStandardDeck, shuffleDeck } from './gameUtils.js';
+import {
+  generateStandardDeck,
+  shuffleDeck,
+  getRandomElement,
+} from '../shared/sharedGameUtils.js';
 
 /**
  * Centralized Deck Service
@@ -186,8 +190,8 @@ export function drawCardFromDeck(gameState, deckType) {
     return { gameState, drawnCard: null };
   }
 
-  const randomIndex = Math.floor(Math.random() * currentDeck.length);
-  const drawnCard = currentDeck[randomIndex];
+  const drawnCard = getRandomElement(currentDeck);
+  const randomIndex = currentDeck.indexOf(drawnCard);
   const updatedDeck = [...currentDeck];
   updatedDeck.splice(randomIndex, 1);
 

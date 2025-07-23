@@ -1,7 +1,7 @@
 // Artifact service - handles artifact effects and management
 
 import { saveGameStateToServer } from './deckService.js';
-import { applyStatChanges } from './gameUtils.js';
+import { applyStatChanges } from './sharedGameUtils.js';
 
 // Local saveGameState function to avoid circular imports
 async function saveGameState(gameState) {
@@ -32,7 +32,7 @@ import {
   CARD_EFFECTS,
   ARTIFACT_STAT_EFFECTS,
   ACTIVE_EFFECTS,
-} from './gameData.js';
+} from './gameConstants.js';
 
 /**
  * Apply artifact effects when an artifact is gained
@@ -50,7 +50,7 @@ export async function applyArtifactEffects(artifactKey, gameState) {
 
   try {
     // Get artifact details from game data since equipment only stores basic info
-    const { ARTIFACT_DETAILS } = await import('./gameData.js');
+    const { ARTIFACT_DETAILS } = await import('./gameConstants.js');
     const artifactDetails = ARTIFACT_DETAILS[artifactKey];
 
     if (!artifactDetails || !artifactDetails.effect) {
@@ -123,7 +123,7 @@ export async function removeArtifactEffects(artifactKey, gameState) {
 
   try {
     // Get artifact details from game data since equipment only stores basic info
-    const { ARTIFACT_DETAILS } = await import('./gameData.js');
+    const { ARTIFACT_DETAILS } = await import('./gameConstants.js');
     const artifactDetails = ARTIFACT_DETAILS[artifactKey];
 
     if (!artifactDetails || !artifactDetails.effect) {

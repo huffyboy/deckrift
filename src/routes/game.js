@@ -1,6 +1,7 @@
 // Game routes
 import express from 'express';
 import { calculateAllXPThresholds } from '../services/gameUtils.js';
+import { getRandomInt } from '../shared/sharedGameUtils.js';
 import SaveService from '../services/saveService.js';
 import migrationService from '../services/migrationService.js';
 import {
@@ -79,7 +80,7 @@ router.get('/new', requireAuth, async (req, res) => {
       // Import utility functions and game data
       const { getChallengeModifier } = await import('../services/gameUtils.js');
       const { MAP_CARD_SUITS } = await import(
-        '../public/js/modules/gameData.js'
+        '../public/js/modules/gameConstants.js'
       );
 
       // Calculate health based on Will stat (10 HP per Will point)
@@ -124,7 +125,7 @@ router.get('/new', requireAuth, async (req, res) => {
 
       // Shuffle the cards
       for (let i = availableCards.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = getRandomInt(0, i);
         [availableCards[i], availableCards[j]] = [
           availableCards[j],
           availableCards[i],
@@ -262,14 +263,13 @@ router.get('/new', requireAuth, async (req, res) => {
     // Get upgrades from save data (now per-save)
     const unlockedUpgrades = activeSave?.gameData?.upgrades || [];
 
-    // Import realm data and map constants from gameData.js
     const {
       REALMS,
       MAP_CARD_SUITS,
       MAP_CONSTANTS,
       SHOP_PRICES,
       STARTING_STATS,
-    } = await import('../public/js/modules/gameData.js');
+    } = await import('../public/js/modules/gameConstants.js');
 
     return res.render('game', {
       title: 'Game - Deckrift',
@@ -317,9 +317,8 @@ router.get('/', requireAuth, async (req, res, next) => {
     // Get upgrades from save data (now per-save)
     const unlockedUpgrades = saveData?.gameData?.upgrades || [];
 
-    // Import realm data and map constants from gameData.js
     const { REALMS, MAP_CONSTANTS, SHOP_PRICES } = await import(
-      '../public/js/modules/gameData.js'
+      '../public/js/modules/gameConstants.js'
     );
 
     // Calculate XP thresholds for each stat
@@ -509,9 +508,8 @@ router.post('/regenerate-map', requireAuth, async (req, res, next) => {
       return res.status(404).json({ error: 'No active game found' });
     }
 
-    // Import realm data and map constants from gameData.js
     const { MAP_CARD_VALUES, MAP_CARD_SUITS } = await import(
-      '../public/js/modules/gameData.js'
+      '../public/js/modules/gameConstants.js'
     );
 
     // Import utility functions from server-side gameUtils.js
@@ -538,7 +536,7 @@ router.post('/regenerate-map', requireAuth, async (req, res, next) => {
 
     // Shuffle the cards
     for (let i = availableCards.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = getRandomInt(0, i);
       [availableCards[i], availableCards[j]] = [
         availableCards[j],
         availableCards[i],

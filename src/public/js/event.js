@@ -1,7 +1,7 @@
 // event.js - Page-specific logic for Event
 
 // Import shared utilities
-import { getCardValue } from './modules/gameUtils.js';
+import { getCardValue } from './modules/sharedGameUtils.js';
 
 // Initialize event interface
 document.addEventListener('DOMContentLoaded', () => {

@@ -7,7 +7,7 @@ import {
   TEXT_TO_VALUE_MAP,
   MAP_CARD_SUITS,
   MAP_CARD_VALUES,
-} from '../data/gameData.js';
+} from '../shared/gameConstants.js';
 
 /**
  * Calculate XP threshold for a stat level

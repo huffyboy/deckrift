@@ -8,7 +8,7 @@ import {
   ARTIFACT_DETAILS,
   STARTING_EQUIPMENT,
   REALMS,
-} from '../data/gameData.js';
+} from '../shared/gameConstants.js';
 import {
   getCardValue,
   calculateAllXPThresholds,
