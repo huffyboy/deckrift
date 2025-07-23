@@ -1165,6 +1165,39 @@ async function applyBaneEffect(baneEffect, card, gameState) {
 }
 
 /**
+ * Gain XP for a specific stat with proper level up handling
+ * @param {string} statName - The stat to gain XP in
+ * @param {number} xpAmount - Amount of XP to gain
+ * @param {Object} gameState - Current game state
+ * @returns {Promise<Object>} - Result with xpGained, statGained, and levelUpResult
+ */
+async function gainStatXP(statName, xpAmount, gameState) {
+  // Initialize statXP if it doesn't exist
+  if (!gameState.gameData.statXP) {
+    gameState.gameData.statXP = { power: 0, will: 0, craft: 0, focus: 0 };
+  }
+
+  // Add XP to the appropriate stat
+  gameState.gameData.statXP[statName] =
+    (gameState.gameData.statXP[statName] || 0) + xpAmount;
+
+  // Save the updated game state
+  await saveGameState(gameState);
+
+  // Check for level up
+  const levelUpResult = checkForLevelUp(gameState, statName, xpAmount);
+  if (levelUpResult) {
+    await applyStatLevelUp(gameState, levelUpResult);
+  }
+
+  return {
+    xpGained: xpAmount,
+    statGained: statName,
+    levelUpResult: levelUpResult,
+  };
+}
+
+/**
  * Apply stat XP gain to the game state.
  * This function is called when a 'statXpGain' boon effect is processed.
  * It draws a second card to determine which stat gains XP and how much.
@@ -1209,21 +1242,8 @@ async function applyStatXpGain(card, gameState) {
     }
   }
 
-  // Add XP to the appropriate stat
-  if (!gameState.gameData.statXP) {
-    gameState.gameData.statXP = { power: 0, will: 0, craft: 0, focus: 0 };
-  }
-  gameState.gameData.statXP[statToGain] =
-    (gameState.gameData.statXP[statToGain] || 0) + totalXpGain;
-
-  // Save the updated game state
-  await saveGameState(gameState);
-
-  // Check for level up
-  const levelUpResult = checkForLevelUp(gameState, statToGain, totalXpGain);
-  if (levelUpResult) {
-    await applyStatLevelUp(gameState, levelUpResult);
-  }
+  // Use the new reusable function
+  const xpResult = await gainStatXP(statToGain, totalXpGain, gameState);
 
   // Build description based on whether additional cards were drawn
   const description = UI_MESSAGES.CARD_EFFECTS.XP_GAIN.replace(
@@ -1243,6 +1263,7 @@ async function applyStatXpGain(card, gameState) {
     additionalCards,
     allCardsDrawn,
     bonusXp: totalXpGain - cardValue,
+    levelUpResult: xpResult.levelUpResult,
   };
 }
 
@@ -2018,21 +2039,18 @@ async function handleChallengeResult(
     // Challenge succeeded - gain XP and trigger boon
     const cardValue = selectedCard ? getCardValue(selectedCard) : 0;
 
-    // Gain XP in the challenged stat
-    const currentXP = gameState.gameData.statXP[statType] || 0;
-    gameState.gameData.statXP[statType] = currentXP + cardValue;
+    // Gain XP in the challenged stat using the reusable function
+    const xpResult = await gainStatXP(statType, cardValue, gameState);
 
     // Remove the selected card from the player's deck
     if (selectedCard) {
       removeSelectedCardFromDeck(selectedCard, gameState);
     }
 
-    // Save the game state
-    await saveGameState(gameState);
-
     // Show success message
     const successMessage = getUIMessage('CHALLENGE', 'SUCCESS', {
       xp: cardValue,
+      stat: capitalizeFirst(statType),
     });
     showGameMessage(
       successMessage.title,
@@ -2106,24 +2124,31 @@ async function triggerChallengeBoon(gameState, handlers) {
 
   if (drawnCard) {
     showDeckDrawingAnimation(() => {
+      // Process the boon based on the drawn card
       processBoon(drawnCard, gameState).then((boonResult) => {
-        showGameMessage(
-          boonResult.header,
-          boonResult.description,
-          'success',
-          `${drawnCard.display} ${boonResult.icon}`,
-          null, // No timeout
-          () => {
-            // Callback when message is dismissed
-            if (handlers.resetBusyState) {
-              handlers.resetBusyState();
-              // Re-render the map after resetting busy state
-              if (handlers.renderOverworldMap) {
-                handlers.renderOverworldMap();
-              }
-            }
-          }
-        );
+        // Check if this is a boon that needs a second card draw
+        if (boonResult.needsSecondDraw && boonResult.secondDrawMessage) {
+          // Show the main boon message first
+          showGameMessage(
+            boonResult.header,
+            boonResult.description,
+            'success',
+            `${drawnCard.display} ${boonResult.icon}`,
+            null, // No timeout
+            () =>
+              handleBoonSecondDraw(boonResult, drawnCard, gameState, handlers)
+          );
+        } else {
+          // Show the specific boon result using the header and description from gameData
+          showGameMessage(
+            boonResult.header,
+            boonResult.description,
+            'success',
+            `${drawnCard.display} ${boonResult.icon}`,
+            null, // No timeout
+            () => handleEventCompletion(handlers)
+          );
+        }
       });
     }, drawnCard);
   } else {
@@ -2153,29 +2178,36 @@ async function triggerChallengeBoon(gameState, handlers) {
  * @param {Object} handlers - Handler functions
  */
 async function triggerChallengeBane(gameState, handlers) {
-  // Draw a bane card from player's deck??
+  // Draw a bane card from player's deck (but don't remove it)
   const drawnCard = await getRandomCardFromPlayerDeck(null, 'bane');
 
   if (drawnCard) {
     showDeckDrawingAnimation(() => {
+      // Process the bane based on the drawn card
       processBane(drawnCard, gameState).then((baneResult) => {
-        showGameMessage(
-          baneResult.header,
-          baneResult.description,
-          'error',
-          `${drawnCard.display} ${baneResult.icon}`,
-          null, // No timeout
-          () => {
-            // Callback when message is dismissed
-            if (handlers.resetBusyState) {
-              handlers.resetBusyState();
-              // Re-render the map after resetting busy state
-              if (handlers.renderOverworldMap) {
-                handlers.renderOverworldMap();
-              }
-            }
-          }
-        );
+        // Check if this is a bane that needs a second card draw
+        if (baneResult.needsSecondDraw && baneResult.secondDrawMessage) {
+          // Show the main bane message first
+          showGameMessage(
+            baneResult.header,
+            baneResult.description,
+            'error',
+            `${drawnCard.display} ${baneResult.icon}`,
+            null, // No timeout
+            () =>
+              handleBaneSecondDraw(baneResult, drawnCard, gameState, handlers)
+          );
+        } else {
+          // Show the specific bane result using the header and description from gameData
+          showGameMessage(
+            baneResult.header,
+            baneResult.description,
+            'error',
+            `${drawnCard.display} ${baneResult.icon}`,
+            null, // No timeout
+            () => handleEventCompletion(handlers)
+          );
+        }
       });
     }, drawnCard);
   } else {

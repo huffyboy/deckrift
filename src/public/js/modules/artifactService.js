@@ -1,7 +1,7 @@
 // Artifact service - handles artifact effects and management
 
 import { saveGameStateToServer } from './deckService.js';
-import { applyStatChanges } from './sharedGameUtils.js';
+import { applyStatChanges } from './gameUtils.js';
 
 // Local saveGameState function to avoid circular imports
 async function saveGameState(gameState) {

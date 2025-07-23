@@ -393,7 +393,7 @@ export const UI_MESSAGES = {
     },
     SUCCESS: {
       title: 'Challenge Succeeded!',
-      message: 'You gain {xp} XP. Draw a card to determine your boon.',
+      message: 'You gain {xp} {stat} XP. Draw a card to determine your boon.',
       type: 'success',
       icon: '🎯',
     },
