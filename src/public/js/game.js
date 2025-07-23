@@ -17,7 +17,11 @@ import {
   generateBaneEffect as generateBaneEffectUtil,
 } from './modules/sharedGameUtils.js';
 
-import { showNotification, updateHealthDisplay } from './modules/uiUtils.js';
+import {
+  showNotification,
+  updateHealthDisplay,
+  updateCurrencyDisplay,
+} from './modules/uiUtils.js';
 
 // Import event handler functions
 import {
@@ -369,6 +373,7 @@ function handleCardEvent(mapCell, _newPosition) {
     handleBane,
     startBossBattle,
     renderOverworldMap,
+    updateCurrencyDisplay,
     resetBusyState: () => {
       isCardSequenceInProgress = false;
     },

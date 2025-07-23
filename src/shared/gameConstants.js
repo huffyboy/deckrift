@@ -1683,10 +1683,10 @@ export const ACTIVE_EFFECTS = ['xpBoost', 'currencyBoost'];
 // Artifact mappings - maps card values/suits to artifact keys
 export const ARTIFACT_MAPPINGS = {
   A: {
-    spade: 'lucky_spade_charm',
-    heart: 'lucky_heart_charm',
-    diamond: 'lucky_diamond_charm',
-    club: 'lucky_club_charm',
+    spades: 'lucky_spade_charm',
+    hearts: 'lucky_heart_charm',
+    diamonds: 'lucky_diamond_charm',
+    clubs: 'lucky_club_charm',
   },
   K: 'totem_pool',
   Q: 'totem_pool',
@@ -1701,20 +1701,20 @@ export const ARTIFACT_MAPPINGS = {
   },
   8: {
     black: 'scrapper_bot',
-    diamond: 'bloody_magistone',
-    heart: 'void_magistone',
+    diamonds: 'bloody_magistone',
+    hearts: 'void_magistone',
   },
   7: {
-    diamond: 'bloody_sigil',
-    heart: 'void_sigil',
-    spade: 'bloody_totem',
-    club: 'void_totem',
+    diamonds: 'bloody_sigil',
+    hearts: 'void_sigil',
+    spades: 'bloody_totem',
+    clubs: 'void_totem',
   },
   6: {
-    diamond: 'bloody_charm',
-    heart: 'void_charm',
-    spade: 'bloody_trinket',
-    club: 'void_trinket',
+    diamonds: 'bloody_charm',
+    hearts: 'void_charm',
+    spades: 'bloody_trinket',
+    clubs: 'void_trinket',
   },
   5: {
     red: 'heavy',

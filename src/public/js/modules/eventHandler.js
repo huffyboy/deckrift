@@ -13,6 +13,7 @@ import {
   formatPlural,
   getUIMessage,
 } from './sharedGameUtils.js';
+import { getChallengeModifier } from './gameUtils.js';
 import {
   showNotification,
   showGameMessage,
@@ -43,6 +44,7 @@ import {
   ARTIFACT_POOL_ITEMS,
   EQUIPMENT,
   STANDARD_SUITS,
+  SHOP_PRICES,
 } from './gameConstants.js';
 import {
   drawAndRemoveCardFromPlayerDeck,
@@ -57,6 +59,7 @@ import {
   saveDeckToServer,
   saveGameStateToServer,
   createShuffledStandardDeck,
+  getDeck,
 } from './deckService.js';
 import {
   applyArtifactEffects,
@@ -2040,7 +2043,7 @@ async function handleChallengeResult(
     const cardValue = selectedCard ? getCardValue(selectedCard) : 0;
 
     // Gain XP in the challenged stat using the reusable function
-    const xpResult = await gainStatXP(statType, cardValue, gameState);
+    await gainStatXP(statType, cardValue, gameState);
 
     // Remove the selected card from the player's deck
     if (selectedCard) {
@@ -2311,24 +2314,555 @@ function handleRestEvent(event, gameState, handlers) {
  * @param {Object} gameState - Current game state
  * @param {Object} handlers - Handler functions
  */
-function handleShopEvent(event, gameState, handlers) {
-  showGameMessage(
-    'Shop',
-    'A shop appears! TODO',
-    'shop',
-    '⚖️',
-    ANIMATION_TIMING.MESSAGE_TIMEOUT,
-    () => {
-      // Callback when message is dismissed (either by timeout or click)
-      if (handlers.resetBusyState) {
-        handlers.resetBusyState();
-        // Re-render the map after resetting busy state
-        if (handlers.renderOverworldMap) {
-          handlers.renderOverworldMap();
-        }
+async function handleShopEvent(event, gameState, handlers) {
+  // Generate shop items and costs
+  const shopItems = await generateShopItems(gameState);
+  const challengeModifier = getChallengeModifier(
+    gameState.runData.location.realm,
+    gameState.runData.location.level
+  );
+
+  // Store shop data in game state
+  gameState.runData.shop = {
+    items: shopItems,
+    challengeModifier: challengeModifier,
+    isActive: true,
+  };
+
+  // Save the game state with shop data
+  await saveGameState(gameState);
+
+  // Show shop interface
+  showShopInterface(gameState, handlers);
+}
+
+/**
+ * Generate shop items for the current shop event
+ * @param {Object} gameState - Current game state
+ * @returns {Promise<Array>} - Array of shop items
+ */
+async function generateShopItems(gameState) {
+  const items = [];
+
+  // Add basic heal item
+  const challengeModifier = getChallengeModifier(
+    gameState.runData.location.realm,
+    gameState.runData.location.level
+  );
+
+  items.push({
+    id: 'heal',
+    name: 'Heal (10 HP)',
+    description: 'Restore 10 health points',
+    cost: SHOP_PRICES.basicHeal + challengeModifier - 1,
+    type: 'heal',
+    emoji: '❤️',
+  });
+
+  // Add card removal item
+  items.push({
+    id: 'cardRemoval',
+    name: 'Remove Card',
+    description: 'Remove a card from your deck',
+    cost: SHOP_PRICES.cardRemoval + challengeModifier - 1,
+    type: 'cardRemoval',
+    emoji: '🔥',
+  });
+
+  // Generate 3 random artifacts for the shop
+  const shopArtifacts = await generateShopArtifacts(3, challengeModifier);
+  items.push(...shopArtifacts);
+
+  return items;
+}
+
+/**
+ * Get artifact details from a card (reusable function)
+ * This extracts the artifact selection logic from applyArtifact for reuse
+ * @param {Object} card - The card object
+ * @returns {Object|null} - Artifact details or null if no artifact found
+ */
+function getArtifactDetailsFromCard(card) {
+  const cardValue = card.value;
+  const cardSuit = card.suit;
+
+  // Get the artifact key from mappings
+  let artifactKey = ARTIFACT_MAPPINGS[cardValue];
+
+  if (!artifactKey) {
+    return null;
+  }
+
+  // Handle suit-specific mappings
+  if (typeof artifactKey === 'object') {
+    artifactKey = selectArtifactKeyFromSuit(artifactKey, cardSuit);
+  }
+
+  if (!artifactKey) {
+    return null;
+  }
+
+  // Handle random pools first
+  let finalArtifact = null;
+  let artifactKeyToStore = artifactKey;
+
+  const poolItems = ARTIFACT_POOL_ITEMS[artifactKey];
+
+  if (poolItems && poolItems.length > 0) {
+    // This is a pool - select a random artifact from it
+    const selectedPoolKey = getRandomElement(poolItems);
+    finalArtifact = ARTIFACT_DETAILS[selectedPoolKey];
+    artifactKeyToStore = selectedPoolKey;
+  } else {
+    // This is a direct artifact - get its details
+    finalArtifact = ARTIFACT_DETAILS[artifactKey];
+  }
+
+  if (!finalArtifact) {
+    return null;
+  }
+
+  // For weapons and armor, get the cardCondition from EQUIPMENT
+  let effectText = finalArtifact.effectText;
+  if (finalArtifact.type === 'weapon') {
+    const weaponData = EQUIPMENT.weapons[artifactKeyToStore];
+    if (weaponData && weaponData.cardCondition) {
+      effectText = weaponData.cardCondition;
+    }
+  } else if (finalArtifact.type === 'armor') {
+    const armorData = EQUIPMENT.armor[artifactKeyToStore];
+    if (armorData && armorData.cardCondition) {
+      effectText = armorData.cardCondition;
+    }
+  }
+
+  return {
+    artifactKey: artifactKeyToStore,
+    details: finalArtifact,
+    effectText: effectText,
+  };
+}
+
+/**
+ * Generate a random artifact based on a drawn card
+ * This is a reusable function for both boon events and shop items
+ * @param {Object} card - The drawn card
+ * @returns {Object|null} - Artifact details or null if no artifact found
+ */
+function generateArtifactFromCard(card) {
+  const artifactResult = getArtifactDetailsFromCard(card);
+
+  if (!artifactResult) {
+    return null;
+  }
+
+  const result = {
+    artifactKey: artifactResult.artifactKey,
+    details: artifactResult.details,
+  };
+  return result;
+}
+
+/**
+ * Generate random equipment items for the shop
+ * @param {number} count - Number of items to generate
+ * @param {number} challengeModifier - Challenge modifier for pricing
+ * @returns {Promise<Array>} - Array of equipment items
+ */
+async function generateShopArtifacts(count, challengeModifier) {
+  const items = [];
+  const equipmentCosts = [
+    SHOP_PRICES.equipmentOne + challengeModifier - 1,
+    SHOP_PRICES.equipmentTwo + challengeModifier - 1,
+    SHOP_PRICES.equipmentThree + challengeModifier - 1,
+  ];
+
+  // Draw random cards from standard deck until we get the requested number of artifacts
+  let attempts = 0;
+  const maxAttempts = count * 10; // Prevent infinite loops
+
+  while (items.length < count && attempts < maxAttempts) {
+    const drawnCard = await drawFromStandardDeck();
+    const cardValue = getCardValue(drawnCard);
+
+    // Use the reusable function to generate artifact
+    const artifactResult = generateArtifactFromCard(drawnCard);
+
+    if (artifactResult) {
+      const { artifactKey, details } = artifactResult;
+
+      // Use the details from the artifact result directly - don't call getArtifactDetailsFromCard again
+      const description = details.effectText || 'A mysterious artifact.';
+
+      const item = {
+        id: `equipment_${items.length}`,
+        name: details.name,
+        description: description,
+        cost: equipmentCosts[items.length],
+        type: 'equipment',
+        emoji: details.emoji,
+        artifactKey: artifactKey,
+        equipmentType: details.type,
+        cardValue: cardValue,
+        cardSuit: drawnCard.suit,
+      };
+
+      items.push(item);
+    }
+
+    attempts++;
+  }
+
+  return items;
+}
+
+/**
+ * Show the shop interface
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+function showShopInterface(gameState, handlers) {
+  const shopItems = gameState.runData.shop.items;
+  const playerCurrency = gameState.runData.runCurrency || 0;
+  const playerHealth = gameState.runData.health;
+  const playerMaxHealth = gameState.runData.maxHealth;
+
+  // Create shop overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'shop-overlay';
+
+  // Create shop dialog
+  const dialog = document.createElement('div');
+  dialog.className = 'shop-dialog';
+
+  // Separate items by type
+  const equipmentItems = shopItems.filter((item) => item.type === 'equipment');
+  const utilityItems = shopItems.filter((item) => item.type !== 'equipment');
+
+  // Create shop HTML
+  let shopHTML = `
+    <div class="shop-interface">
+      <div class="shop-header">
+        <div class="shop-info">
+          <span><strong>Currency:</strong> ${playerCurrency}</span>
+          <span><strong>Health:</strong> ${playerHealth}/${playerMaxHealth}</span>
+        </div>
+      </div>
+
+      <!-- Equipment Row -->
+      <div class="shop-row">
+        <div class="shop-items equipment-row">
+  `;
+
+  equipmentItems.forEach((item) => {
+    const canAfford = playerCurrency >= item.cost;
+    const isPurchased = item.purchased === true;
+    const isDisabled = !canAfford || isPurchased;
+
+    shopHTML += `
+      <div class="shop-item ${isDisabled ? 'disabled' : ''}">
+        <div class="item-header">
+          <span class="item-emoji">${item.emoji}</span>
+          <span class="item-name">${item.name}</span>
+          <span class="item-cost">${item.cost} 💰</span>
+        </div>
+        <div class="item-description">${item.description}</div>
+        <button class="btn btn-primary purchase-btn"
+                onclick="purchaseShopItem('${item.id}')"
+                ${isDisabled ? 'disabled' : ''}>
+          ${isPurchased ? 'Purchased' : !canAfford ? 'Not Enough Currency' : 'Purchase'}
+        </button>
+      </div>
+    `;
+  });
+
+  shopHTML += `
+        </div>
+      </div>
+
+      <!-- Utility Items Row -->
+      <div class="shop-row">
+        <div class="shop-items utility-row">
+  `;
+
+  utilityItems.forEach((item) => {
+    const canAfford = playerCurrency >= item.cost;
+    const isHealItem = item.type === 'heal';
+    const isFullHealth = playerHealth >= playerMaxHealth;
+    const isDisabled = (isHealItem && isFullHealth) || !canAfford;
+
+    shopHTML += `
+      <div class="shop-item ${isDisabled ? 'disabled' : ''}">
+        <div class="item-header">
+          <span class="item-emoji">${item.emoji}</span>
+          <span class="item-name">${item.name}</span>
+          <span class="item-cost">${item.cost} 💰</span>
+        </div>
+        <div class="item-description">${item.description}</div>
+        <button class="btn btn-primary purchase-btn"
+                onclick="purchaseShopItem('${item.id}')"
+                ${isDisabled ? 'disabled' : ''}>
+          ${
+            isHealItem && isFullHealth
+              ? 'Full Health'
+              : !canAfford
+                ? 'Not Enough Currency'
+                : 'Purchase'
+          }
+        </button>
+      </div>
+    `;
+  });
+
+  shopHTML += `
+        </div>
+      </div>
+
+      <div class="shop-actions">
+        <button class="btn btn-secondary" onclick="leaveShop()">Leave Shop</button>
+      </div>
+    </div>
+  `;
+
+  dialog.innerHTML = shopHTML;
+
+  // Add dialog to overlay and overlay to page
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  // Add shop functions to global scope
+  window.purchaseShopItem = async (itemId) => {
+    // Disable the button immediately to prevent multiple clicks
+    const button = event.target;
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Processing...';
+    }
+
+    try {
+      await handleShopPurchase(itemId, gameState, handlers);
+    } catch (error) {
+      // Re-enable button on error
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Purchase';
       }
     }
-  );
+  };
+
+  window.leaveShop = () => {
+    // Clear shop data
+    delete gameState.runData.shop;
+    saveGameState(gameState);
+
+    // Remove overlay
+    if (overlay.parentElement) {
+      overlay.remove();
+    }
+
+    // Call completion handlers
+    if (handlers.resetBusyState) {
+      handlers.resetBusyState();
+    }
+    if (handlers.renderOverworldMap) {
+      handlers.renderOverworldMap();
+    }
+  };
+}
+
+/**
+ * Handle shop purchase
+ * @param {string} itemId - ID of the item to purchase
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ */
+async function handleShopPurchase(itemId, gameState, handlers) {
+  const shopItems = gameState.runData.shop.items;
+  const item = shopItems.find((i) => i.id === itemId);
+
+  if (!item) {
+    showNotification('Error', 'Item not found', 'error');
+    return;
+  }
+
+  // Check if item is already purchased (for equipment)
+  if (item.type === 'equipment' && item.purchased) {
+    showNotification('Error', 'Item already purchased', 'error');
+    return;
+  }
+
+  const playerCurrency = gameState.runData.runCurrency || 0;
+  if (playerCurrency < item.cost) {
+    showNotification('Error', 'Not enough currency', 'error');
+    return;
+  }
+
+  // Deduct currency
+  gameState.runData.runCurrency = playerCurrency - item.cost;
+
+  let purchaseResult = null;
+
+  // Handle different item types
+  switch (item.type) {
+    case 'heal':
+      purchaseResult = await handleHealPurchase(gameState);
+      break;
+    case 'cardRemoval':
+      purchaseResult = await handleCardRemovalPurchase(gameState, handlers);
+      break;
+    case 'equipment':
+      purchaseResult = await handleEquipmentPurchase(item, gameState);
+      break;
+    default:
+      showNotification('Error', 'Unknown item type', 'error');
+      return;
+  }
+
+  if (purchaseResult && purchaseResult.success) {
+    // Mark equipment items as purchased (but keep heal/card removal available)
+    if (item.type === 'equipment') {
+      item.purchased = true;
+    }
+
+    // Save game state
+    await saveGameState(gameState);
+
+    // Show success message
+    showNotification('Purchase Successful', purchaseResult.message, 'success');
+
+    // Remove the old shop overlay first
+    const existingOverlay = document.querySelector('.shop-overlay');
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+
+    // Update shop interface to reflect new currency and purchased items
+    showShopInterface(gameState, handlers);
+
+    // Update currency display in main UI after shop interface is refreshed
+    if (handlers.updateCurrencyDisplay) {
+      handlers.updateCurrencyDisplay(gameState.runData.runCurrency);
+    } else {
+      // Fallback: import and call updateCurrencyDisplay directly
+      const { updateCurrencyDisplay } = await import('./uiUtils.js');
+      updateCurrencyDisplay(gameState.runData.runCurrency);
+    }
+  } else {
+    // Refund currency on failure
+    gameState.runData.runCurrency = playerCurrency;
+    showNotification(
+      'Error',
+      purchaseResult?.message || 'Purchase failed',
+      'error'
+    );
+
+    // Update currency display in main UI after refund
+    if (handlers.updateCurrencyDisplay) {
+      handlers.updateCurrencyDisplay(gameState.runData.runCurrency);
+    }
+  }
+}
+
+/**
+ * Handle heal purchase
+ * @param {Object} gameState - Current game state
+ * @returns {Object} - Purchase result
+ */
+async function handleHealPurchase(gameState) {
+  const healAmount = GAME_CONSTANTS.SHOP_HEAL_AMOUNT;
+  const currentHealth = gameState.runData.health;
+  const maxHealth = gameState.runData.maxHealth;
+
+  if (currentHealth >= maxHealth) {
+    return { success: false, message: 'Already at full health' };
+  }
+
+  const newHealth = Math.min(currentHealth + healAmount, maxHealth);
+  const actualHeal = newHealth - currentHealth;
+
+  gameState.runData.health = newHealth;
+
+  return {
+    success: true,
+    message: `Healed for ${actualHeal} HP`,
+  };
+}
+
+/**
+ * Handle card removal purchase
+ * @param {Object} gameState - Current game state
+ * @param {Object} handlers - Handler functions
+ * @returns {Object} - Purchase result
+ */
+async function handleCardRemovalPurchase(gameState, handlers) {
+  // Start card removal process similar to the card removal event
+  const playerDeck = getDeck(gameState, DECK_TYPES.PLAYER_MAIN);
+
+  if (!playerDeck || playerDeck.length === 0) {
+    return { success: false, message: 'No cards to remove' };
+  }
+
+  // Draw multiple cards based on hand size (Focus stat) or deck size, whichever is smaller
+  const handSize = gameState.gameData.stats.focus || 4;
+  const deckSize = playerDeck.length;
+  const cardsToDraw = Math.min(handSize, deckSize);
+  const drawnCards = [];
+
+  // Draw multiple cards from player's deck
+  for (let i = 0; i < cardsToDraw; i++) {
+    const card = await drawFromPlayerDeck(gameState);
+    if (card) {
+      drawnCards.push(card);
+    }
+  }
+
+  // Show multi-card remove dialog
+  showMultiCardRemoveDialog(drawnCards, gameState, handlers, applyRemoveCard);
+
+  return { success: true, message: 'Select a card to remove' };
+}
+
+/**
+ * Handle equipment purchase
+ * @param {Object} item - Shop item
+ * @param {Object} gameState - Current game state
+ * @returns {Object} - Purchase result
+ */
+async function handleEquipmentPurchase(item, gameState) {
+  const artifactKey = item.artifactKey;
+  const artifactDetails = ARTIFACT_DETAILS[artifactKey];
+
+  if (!artifactDetails) {
+    return { success: false, message: 'Equipment not found' };
+  }
+
+  // Add equipment to inventory
+  if (!gameState.runData.equipment) {
+    gameState.runData.equipment = [];
+  }
+
+  const equipmentItem = {
+    type: artifactDetails.type || 'artifact',
+    value: artifactKey,
+    equipped: false,
+  };
+
+  gameState.runData.equipment.push(equipmentItem);
+
+  // Apply artifact effects if it's an artifact (not weapon/armor)
+  if (artifactDetails.type === 'artifact') {
+    await applyArtifactEffects(artifactKey, gameState);
+  }
+
+  // Handle inventory overflow
+  await handleInventoryOverflow(gameState, () => {
+    // Callback after overflow handling
+  });
+
+  return {
+    success: true,
+    message: `Gained ${artifactDetails.emoji} ${artifactDetails.name}`,
+  };
 }
 
 /**
