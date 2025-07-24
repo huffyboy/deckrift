@@ -62,19 +62,18 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: true,
     saveUninitialized: true,
-    store: new MongoStore({
+    store: isDevelopment ? new MongoStore({
       mongoUrl: process.env.MONGODB_URI,
       ttl: 24 * 60 * 60, // 1 day
       autoRemove: 'native',
       touchAfter: 24 * 3600, // 24 hours
       collectionName: 'sessions',
-    }),
+    }) : undefined, // Use memory store in production for now
     cookie: {
       secure: !isDevelopment,
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: isDevelopment ? 'lax' : 'none',
-      // domain: isDevelopment ? undefined : new URL(process.env.URL).hostname,
+      sameSite: 'lax',
     },
     name: 'sessionId',
     rolling: true,
