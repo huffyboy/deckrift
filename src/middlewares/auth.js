@@ -11,7 +11,7 @@ export const requireAuth = async (req, res, next) => {
   try {
     console.log('Auth middleware - req.session:', req.session);
     console.log('Auth middleware - userId:', req.session?.userId);
-    
+
     const { userId } = req.session;
 
     if (!userId) {
