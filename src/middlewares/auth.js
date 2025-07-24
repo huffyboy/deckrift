@@ -9,9 +9,13 @@ import logger from '../config/logger.js';
 // Middleware to check if user is authenticated
 export const requireAuth = async (req, res, next) => {
   try {
+    console.log('Auth middleware - req.session:', req.session);
+    console.log('Auth middleware - userId:', req.session?.userId);
+    
     const { userId } = req.session;
 
     if (!userId) {
+      console.log('Auth middleware - No userId found, redirecting to login');
       // Check if this is a JSON request (AJAX/fetch)
       if (req.xhr || req.headers.accept?.includes('application/json')) {
         return res.status(401).json({

@@ -74,7 +74,7 @@ app.use(
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       sameSite: 'lax',
-      domain: isDevelopment ? undefined : process.env.DOMAIN,
+      domain: isDevelopment ? undefined : new URL(process.env.URL).hostname,
     },
     name: 'sessionId',
     rolling: true,
