@@ -73,7 +73,7 @@ app.use(
       secure: !isDevelopment,
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: 'lax',
+      sameSite: isDevelopment ? 'lax' : 'none',
       // domain: isDevelopment ? undefined : new URL(process.env.URL).hostname,
     },
     name: 'sessionId',
@@ -90,6 +90,7 @@ app.use((req, res, next) => {
   const originalEnd = res.end;
   res.end = function (chunk, encoding) {
     console.log('Response headers:', res.getHeaders());
+    console.log('Set-Cookie header:', res.getHeader('Set-Cookie'));
     originalEnd.call(this, chunk, encoding);
   };
 
