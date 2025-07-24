@@ -54,20 +54,25 @@ export const loginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
 
+    console.log('Login attempt for username:', username);
+
     // Validate input
     if (!username || !password) {
+      console.log('Login failed: Missing username or password');
       return res.redirect('/login?error=Username and password are required');
     }
 
     // Find user
     const user = await User.findOne({ username });
     if (!user) {
+      console.log('Login failed: User not found');
       return res.redirect('/login?error=Invalid credentials');
     }
 
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
+      console.log('Login failed: Invalid password');
       return res.redirect('/login?error=Invalid credentials');
     }
 
@@ -79,9 +84,13 @@ export const loginUser = async (req, res) => {
     req.session.userId = user._id;
     req.session.username = user.username;
 
+    console.log('Login successful for user:', username);
+    console.log('Session data:', req.session);
+
     // Redirect to home realm on successful login
     res.redirect('/home-realm');
   } catch (error) {
+    console.error('Login error:', error);
     res.redirect('/login?error=Login failed');
   }
 };

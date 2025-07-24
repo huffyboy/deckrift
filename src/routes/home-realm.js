@@ -281,7 +281,8 @@ router.post('/new-run', requireAuth, async (req, res) => {
       */
 
       // Create a deck of cards (excluding jokers) - using all standard values
-      const standardCardValues = [ // TODO modify for testing
+      const standardCardValues = [
+        // TODO modify for testing
         'A',
         '2',
         '3',

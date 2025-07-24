@@ -74,12 +74,19 @@ app.use(
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       sameSite: 'lax',
-      domain: isDevelopment ? undefined : 'deckrift-server.onrender.com',
+      // Remove hardcoded domain - let it auto-detect
     },
     name: 'sessionId',
     rolling: true,
   })
 );
+
+// Debug session middleware
+app.use((req, res, next) => {
+  console.log('Session middleware - req.session:', req.session);
+  console.log('Session middleware - req.headers.cookie:', req.headers.cookie);
+  next();
+});
 
 // Routes
 app.use('/', mainRouter);
@@ -117,5 +124,16 @@ process.on('uncaughtException', (error) => {
 
 // Start server
 app.listen(port, () => {
-  logger.info(`Server is running at ${process.env.URL}`);
+  logger.info(
+    `Server is running at ${process.env.URL || `http://localhost:${port}`}`
+  );
+  console.log(
+    `Server is running at ${process.env.URL || `http://localhost:${port}`}`
+  );
+  console.log('Environment:', process.env.NODE_ENV || 'development');
+  console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Set' : 'Not set');
+  console.log(
+    'Session Secret:',
+    process.env.SESSION_SECRET ? 'Set' : 'Not set'
+  );
 });
