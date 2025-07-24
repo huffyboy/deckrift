@@ -59,24 +59,15 @@ app.use(express.urlencoded({ extended: true }));
 // Session middleware
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
-    resave: true,
-    saveUninitialized: true,
-    store: isDevelopment ? new MongoStore({
-      mongoUrl: process.env.MONGODB_URI,
-      ttl: 24 * 60 * 60, // 1 day
-      autoRemove: 'native',
-      touchAfter: 24 * 3600, // 24 hours
-      collectionName: 'sessions',
-    }) : undefined, // Use memory store in production for now
+    secret: process.env.SESSION_SECRET || '123xxxx345',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
     cookie: {
-      secure: !isDevelopment,
+      secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
-    name: 'sessionId',
-    rolling: true,
   })
 );
 
