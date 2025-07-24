@@ -42,8 +42,16 @@ export const registerUser = async (req, res) => {
     req.session.userId = user._id;
     req.session.username = user.username;
 
-    // Redirect to home realm on successful registration
-    res.redirect('/home-realm');
+    // Save session explicitly
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.redirect('/register?error=Session error');
+      }
+
+      // Redirect to home realm on successful registration
+      res.redirect('/home-realm');
+    });
   } catch (error) {
     res.redirect('/register?error=Registration failed');
   }
@@ -84,11 +92,19 @@ export const loginUser = async (req, res) => {
     req.session.userId = user._id;
     req.session.username = user.username;
 
-    console.log('Login successful for user:', username);
-    console.log('Session data:', req.session);
+    // Save session explicitly
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.redirect('/login?error=Session error');
+      }
 
-    // Redirect to home realm on successful login
-    res.redirect('/home-realm');
+      console.log('Login successful for user:', username);
+      console.log('Session data:', req.session);
+
+      // Redirect to home realm on successful login
+      res.redirect('/home-realm');
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.redirect('/login?error=Login failed');

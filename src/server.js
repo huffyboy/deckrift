@@ -60,26 +60,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
     secret: process.env.SESSION_SECRET || '123xxxx345',
-    resave: true,
-    saveUninitialized: true,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGODB_URI,
-      collectionName: 'sessions',
-    }),
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Render free tier uses HTTP, not HTTPS
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24, // 1 day
+      sameSite: 'lax',
     },
   })
 );
-
-// Debug session store
-app.use((req, res, next) => {
-  console.log('Session store:', req.sessionStore);
-  console.log('Session ID:', req.sessionID);
-  next();
-});
 
 // Debug session middleware
 app.use((req, res, next) => {
