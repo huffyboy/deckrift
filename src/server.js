@@ -74,7 +74,7 @@ app.use(
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       sameSite: 'lax',
-      // Remove hardcoded domain - let it auto-detect
+      domain: isDevelopment ? undefined : process.env.DOMAIN,
     },
     name: 'sessionId',
     rolling: true,
@@ -85,6 +85,14 @@ app.use(
 app.use((req, res, next) => {
   console.log('Session middleware - req.session:', req.session);
   console.log('Session middleware - req.headers.cookie:', req.headers.cookie);
+
+  // Log response headers after the response is sent
+  const originalEnd = res.end;
+  res.end = function (chunk, encoding) {
+    console.log('Response headers:', res.getHeaders());
+    originalEnd.call(this, chunk, encoding);
+  };
+
   next();
 });
 
