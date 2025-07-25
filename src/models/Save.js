@@ -88,6 +88,10 @@ const saveSchema = new mongoose.Schema(
         enemyHealth: { type: Number, default: 0 },
         enemyMaxHealth: { type: Number, default: 0 },
         turn: { type: String, enum: ['player', 'enemy'], default: 'player' },
+        phase: { type: String, default: 'player-attack' },
+        pendingEnemyDamage: { type: Number, default: 0 },
+        enemyDiscardsUsed: { type: Number, default: 0 },
+        lastEnemyAction: { type: mongoose.Schema.Types.Mixed, default: null },
       },
       eventStatus: {
         currentEvent: { type: mongoose.Schema.Types.Mixed, default: null },

@@ -1,0 +1,67 @@
+<% var pageScript = '/js/battle.js'; var page = 'battle-victory'; %>
+<link rel="stylesheet" href="/css/battle-victory.css">
+
+<div class="victory-container">
+    <div class="victory-header">
+        <h1 class="victory-title">
+            <% if (isFinalBoss) { %>
+                🏆 THE END 🏆
+            <% } else { %>
+                Victory!
+            <% } %>
+        </h1>
+        <p class="victory-subtitle">You have defeated <%= enemy.name %></p>
+    </div>
+
+    <div class="victory-content">
+        <div class="rewards-section">
+            <h3>Rewards Earned</h3>
+            <div class="rewards-list">
+                <% if (rewards.currency > 0 && rewards.cards && rewards.cards.length > 0) { %>
+                    <div class="reward-item">
+                        <span class="reward-icon">💰</span>
+                        <span class="reward-text">
+                            You draw 
+                            <% rewards.cards.forEach((card, index) => { %>
+                                <% if (index > 0) { %> and <% } %>
+                                <%= card.value %><% if (card.suit === 'hearts') { %>♥️<% } %><% if (card.suit === 'diamonds') { %>♦️<% } %><% if (card.suit === 'clubs') { %>♣️<% } %><% if (card.suit === 'spades') { %>♠️<% } %>
+                            <% }); %>
+                            and gained <%= rewards.currency %> currency.
+                        </span>
+                    </div>
+                <% } %>
+                
+                <% if (rewards.xp && Object.keys(rewards.xp).length > 0) { %>
+                    <div class="reward-item">
+                        <span class="reward-icon">📈</span>
+                        <span class="reward-text">XP Gained:</span>
+                        <ul class="xp-list">
+                            <% Object.entries(rewards.xp).forEach(([stat, amount]) => { %>
+                                <li><%= stat.charAt(0).toUpperCase() + stat.slice(1) %>: <%= amount %></li>
+                            <% }); %>
+                        </ul>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <% if (isBoss && !isFinalBoss) { %>
+            <div class="realm-completion">
+                <h3>Realm Progress</h3>
+                <p>You have completed the <%= enemy.realm %> realm!</p>
+            </div>
+        <% } %>
+
+        <% if (isFinalBoss) { %>
+            <div class="final-completion">
+                <h3>🎊 Congratulations! 🎊</h3>
+                <p>You have completed all realms and defeated the final boss!</p>
+                <p>You are a true Rift Walker!</p>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="victory-actions">
+        <a href="/game" class="btn btn-primary">Continue</a>
+    </div>
+</div> 

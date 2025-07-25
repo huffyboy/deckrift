@@ -72,22 +72,6 @@ app.use(
   })
 );
 
-// Debug session middleware
-app.use((req, res, next) => {
-  console.log('Session middleware - req.session:', req.session);
-  console.log('Session middleware - req.headers.cookie:', req.headers.cookie);
-
-  // Log response headers after the response is sent
-  const originalEnd = res.end;
-  res.end = function (chunk, encoding) {
-    console.log('Response headers:', res.getHeaders());
-    console.log('Set-Cookie header:', res.getHeader('Set-Cookie'));
-    originalEnd.call(this, chunk, encoding);
-  };
-
-  next();
-});
-
 // Routes
 app.use('/', mainRouter);
 app.use('/home-realm', homeRealmRouter);
@@ -126,14 +110,5 @@ process.on('uncaughtException', (error) => {
 app.listen(port, () => {
   logger.info(
     `Server is running at ${process.env.URL || `http://localhost:${port}`}`
-  );
-  console.log(
-    `Server is running at ${process.env.URL || `http://localhost:${port}`}`
-  );
-  console.log('Environment:', process.env.NODE_ENV || 'development');
-  console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Set' : 'Not set');
-  console.log(
-    'Session Secret:',
-    process.env.SESSION_SECRET ? 'Set' : 'Not set'
   );
 });

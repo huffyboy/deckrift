@@ -2,15 +2,10 @@
 
 // Initialize battle interface
 document.addEventListener('DOMContentLoaded', () => {
-  // Get battle state from server-side data
-  if (typeof window.battleState !== 'undefined') {
-    // Battle state available
-  }
-
-  // Initialize battle interface
-  initializeBattle();
+  // Battle initialization is handled in the EJS template
 });
 
-function initializeBattle() {
-  // Battle initialization logic
-}
+// Export functions for potential use by other modules
+window.battleUtils = {
+  // Utility functions can be added here if needed
+};

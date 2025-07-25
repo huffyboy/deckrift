@@ -31,6 +31,10 @@ export function createFightStatus(options = {}) {
     enemyHealth: 0,
     enemyMaxHealth: 0,
     turn: 'player',
+    phase: 'player-attack',
+    pendingEnemyDamage: 0,
+    enemyDiscardsUsed: 0,
+    lastEnemyAction: null,
     ...options,
   };
 }
@@ -210,6 +214,14 @@ export const FightStatusSchema = {
   enemyHealth: { type: 'number', default: 0 },
   enemyMaxHealth: { type: 'number', default: 0 },
   turn: { type: 'string', enum: ['player', 'enemy'], default: 'player' },
+  phase: {
+    type: 'string',
+    enum: ['player-attack', 'enemy-turn', 'player-defend'],
+    default: 'player-attack',
+  },
+  pendingEnemyDamage: { type: 'number', default: 0 },
+  enemyDiscardsUsed: { type: 'number', default: 0 },
+  lastEnemyAction: { type: 'object', default: null },
 };
 
 /**

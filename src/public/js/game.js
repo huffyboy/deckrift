@@ -86,45 +86,31 @@ async function initializeDeck(customCards = null) {
   }
 }
 
-// Function to create a testing deck with only J cards
-// To use for testing: replace initializeDeck() with initializeTestingDeck() in initializeGame()
-async function initializeTestingDeck() {
-  // Create a deck with only J cards (4 suits)
-  const jCards = [
-    { value: 'A', suit: '♠', display: 'A♠' },
-    { value: 'A', suit: '♥', display: 'A♥' },
-    { value: 'A', suit: '♦', display: 'A♦' },
-    { value: 'A', suit: '♣', display: 'A♣' },
-  ];
-
-  return initializeDeck(jCards);
-}
-
 // Function to create a custom deck with specific cards
 // Example: createCustomDeck(['J♠', 'J♥', 'K♠', 'Q♠', 'A♠'])
-async function createCustomDeck(cardStrings) {
-  const customCards = cardStrings.map((cardStr) => {
-    let value, suit;
-    if (cardStr.length === 2) {
-      value = cardStr[0];
-      suit = cardStr[1];
-    } else if (cardStr.length === 3) {
-      value = cardStr.substring(0, 2); // "10"
-      suit = cardStr[2];
-    } else {
-      value = '?';
-      suit = '?';
-    }
+// async function createCustomDeck(cardStrings) {
+//   const customCards = cardStrings.map((cardStr) => {
+//     let value, suit;
+//     if (cardStr.length === 2) {
+//       value = cardStr[0];
+//       suit = cardStr[1];
+//     } else if (cardStr.length === 3) {
+//       value = cardStr.substring(0, 2); // "10"
+//       suit = cardStr[2];
+//     } else {
+//       value = '?';
+//       suit = '?';
+//     }
 
-    return {
-      value,
-      suit,
-      display: cardStr,
-    };
-  });
+//     return {
+//       value,
+//       suit,
+//       display: cardStr,
+//     };
+//   });
 
-  return initializeDeck(customCards);
-}
+//   return initializeDeck(customCards);
+// }
 
 /* CARD_TEST
 // Make testing functions available globally for debugging
@@ -218,7 +204,7 @@ async function drawCard() {
  */
 async function getRandomCardFromPlayerDeck(
   testCard = null,
-  eventType = 'bane'
+  _eventType = 'bane'
 ) {
   // Test mode: return the specified test card
   if (testCard) {

@@ -2240,24 +2240,49 @@ async function triggerChallengeBane(gameState, handlers) {
  * @param {Object} gameState - Current game state
  * @param {Object} handlers - Handler functions
  */
-function handleFightEvent(event, gameState, handlers) {
-  showGameMessage(
-    'Battle',
-    'A battle appears! TODO',
-    'fight',
-    '⚔️',
-    ANIMATION_TIMING.MESSAGE_TIMEOUT,
-    () => {
-      // Callback when message is dismissed (either by timeout or click)
-      if (handlers.resetBusyState) {
-        handlers.resetBusyState();
-        // Re-render the map after resetting busy state
-        if (handlers.renderOverworldMap) {
-          handlers.renderOverworldMap();
-        }
-      }
+async function handleFightEvent(event, gameState, _handlers) {
+  // Determine enemy type based on event
+  const enemyType = event.enemyType || 'power'; // Default to power-based enemy
+
+  // Mark current tile as visited before starting battle
+  const currentX = gameState.runData.location.mapX;
+  const currentY = gameState.runData.location.mapY;
+
+  if (gameState.runData.map && gameState.runData.map.tiles) {
+    const tileIndex = gameState.runData.map.tiles.findIndex(
+      (tile) => tile.x === currentX && tile.y === currentY
+    );
+    if (tileIndex !== -1) {
+      gameState.runData.map.tiles[tileIndex].visited = true;
+      // Save the updated game state
+      await saveGameState(gameState);
     }
-  );
+  }
+
+  try {
+    // Start battle by calling the battle start endpoint
+    const response = await fetch('/battle/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        enemyType: enemyType,
+        enemyId: null, // Regular enemies don't have specific IDs
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Redirect to battle page
+      window.location.href = data.redirect;
+    } else {
+      throw new Error(data.error || 'Failed to start battle');
+    }
+  } catch (error) {
+    // Error saving player deck
+  }
 }
 
 /**
@@ -3409,24 +3434,49 @@ function handleNothingEvent(event, gameState, handlers) {
  * @param {Object} gameState - Current game state
  * @param {Object} handlers - Handler functions
  */
-function handleBossEvent(event, gameState, handlers) {
-  showGameMessage(
-    'Boss Battle',
-    'A powerful boss appears! TODO',
-    'boss',
-    '👹',
-    ANIMATION_TIMING.MESSAGE_TIMEOUT,
-    () => {
-      // Callback when message is dismissed (either by timeout or click)
-      if (handlers.resetBusyState) {
-        handlers.resetBusyState();
-        // Re-render the map after resetting busy state
-        if (handlers.renderOverworldMap) {
-          handlers.renderOverworldMap();
-        }
-      }
+async function handleBossEvent(event, gameState, _handlers) {
+  // Determine boss ID based on event or realm
+  const bossId = event.bossId || gameState.runData.location.realm || 1;
+
+  // Mark current tile as visited before starting battle
+  const currentX = gameState.runData.location.mapX;
+  const currentY = gameState.runData.location.mapY;
+
+  if (gameState.runData.map && gameState.runData.map.tiles) {
+    const tileIndex = gameState.runData.map.tiles.findIndex(
+      (tile) => tile.x === currentX && tile.y === currentY
+    );
+    if (tileIndex !== -1) {
+      gameState.runData.map.tiles[tileIndex].visited = true;
+      // Save the updated game state
+      await saveGameState(gameState);
     }
-  );
+  }
+
+  try {
+    // Start boss battle by calling the battle start endpoint
+    const response = await fetch('/battle/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        enemyType: 'boss',
+        enemyId: bossId,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Redirect to battle page
+      window.location.href = data.redirect;
+    } else {
+      throw new Error(data.error || 'Failed to start boss battle');
+    }
+  } catch (error) {
+    // Error saving player deck
+  }
 }
 
 /**

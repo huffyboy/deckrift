@@ -14,6 +14,11 @@
     <link rel="stylesheet" href="/css/animations.css">
     <link rel="stylesheet" href="/css/status.css">
     
+    <!-- Page-specific CSS -->
+    <% if (typeof pageCSS !== 'undefined' && pageCSS) { %>
+      <link rel="stylesheet" href="<%= pageCSS %>">
+    <% } %>
+    
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">

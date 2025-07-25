@@ -15,6 +15,7 @@ import {
   ENEMIES,
   SHOP_PRICES,
   BANES,
+  EQUIPMENT,
 } from './gameConstants.js';
 
 // ============================================================================
@@ -386,6 +387,103 @@ export function generateBaneEffect() {
   return BANES[randomBaneKey];
 }
 
+/**
+ * Calculate the best armor for a given card based on damage mitigation
+ * @param {Array} availableArmors - Array of armor objects the player has equipped
+ * @param {Object} card - The card being played { value, suit }
+ * @param {number} rawDamage - The raw damage being mitigated
+ * @returns {Object} - The best armor object or { id: 'none', value: 'none' } if no armor is better
+ */
+export function calculateBestArmor(availableArmors, card, rawDamage) {
+  if (!availableArmors || availableArmors.length === 0) {
+    return { id: 'none', value: 'none' };
+  }
+
+  let bestArmor = null;
+  let bestMitigation = 1.0; // 1.0 = no mitigation (100% damage)
+
+  for (const armor of availableArmors) {
+    // Calculate damage mitigation for this armor and card
+    const mitigation = calculateDamageMitigation([armor], card, rawDamage);
+    const damageMultiplier = mitigation.finalDamage / rawDamage;
+
+    if (damageMultiplier < bestMitigation) {
+      bestMitigation = damageMultiplier;
+      bestArmor = armor;
+    }
+  }
+
+  // If no armor found or no armor is better than taking full damage, use 'none'
+  if (!bestArmor || bestMitigation >= 1.0) {
+    return { id: 'none', value: 'none' };
+  }
+
+  return bestArmor;
+}
+
+/**
+ * Calculate damage mitigation for armor and card combination
+ * @param {Array} armors - Array of armor objects
+ * @param {Object} card - The card being played { value, suit }
+ * @param {number} rawDamage - The raw damage being mitigated
+ * @returns {Object} - Mitigation result with finalDamage
+ */
+function calculateDamageMitigation(armors, card, rawDamage) {
+  if (!armors || armors.length === 0) {
+    return { finalDamage: rawDamage };
+  }
+
+  let totalMitigation = 1.0;
+
+  for (const armor of armors) {
+    const armorData = EQUIPMENT.armor[armor.value];
+    if (!armorData || !armorData.hitEffects) {
+      continue;
+    }
+
+    // Check if the card meets the armor's hit conditions
+    const cardValue = parseInt(card.value);
+    const isFaceCard = cardValue >= 11 || cardValue === 1;
+    const isRedSuit = card.suit === 'hearts' || card.suit === 'diamonds';
+    const isBlackSuit = card.suit === 'spades' || card.suit === 'clubs';
+
+    // Apply armor effects based on conditions
+    for (const effect of armorData.hitEffects) {
+      let shouldApply = false;
+
+      switch (effect.condition) {
+        case 'face':
+          shouldApply = isFaceCard;
+          break;
+        case 'red':
+          shouldApply = isRedSuit;
+          break;
+        case 'black':
+          shouldApply = isBlackSuit;
+          break;
+        case 'all':
+          shouldApply = true;
+          break;
+        default:
+          // Check for specific card values
+          if (effect.condition.includes('>=')) {
+            const minValue = parseInt(effect.condition.split('>=')[1]);
+            shouldApply = cardValue >= minValue;
+          } else if (effect.condition.includes('<=')) {
+            const maxValue = parseInt(effect.condition.split('<=')[1]);
+            shouldApply = cardValue <= maxValue;
+          }
+      }
+
+      if (shouldApply) {
+        totalMitigation *= 1 - effect.reduction;
+      }
+    }
+  }
+
+  return { finalDamage: Math.round(rawDamage * totalMitigation) };
+}
+
 // ============================================================================
 // DEFAULT EXPORT FOR FRONTEND GENERATION
 // ============================================================================
@@ -415,4 +513,5 @@ export default {
   generateShopItems,
   calculateShopCosts,
   generateBaneEffect,
+  calculateBestArmor,
 };

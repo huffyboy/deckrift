@@ -1,0 +1,146 @@
+<% var pageScript = '/js/battle.js'; var page = 'battle-defeat'; %>
+<div class="defeat-container">
+    <div class="defeat-header">
+        <h1 class="defeat-title">💀 Defeat 💀</h1>
+        <p class="defeat-subtitle">You have been defeated by <%= enemy.name %></p>
+    </div>
+
+    <div class="defeat-content">
+        <div class="enemy-victorious">
+            <h3>Enemy Victorious</h3>
+            <div class="enemy-info">
+                <p><strong>Name:</strong> <%= enemy.name %></p>
+                <% if (enemy.realm) { %>
+                    <p><strong>Realm:</strong> <%= enemy.realm %></p>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="defeat-message">
+            <h3>What Happens Now?</h3>
+            <p>Your run has ended. You will return to the Home Realm where you can:</p>
+            <ul class="defeat-options">
+                <li>Start a new run with your accumulated stats and upgrades</li>
+                <li>Keep any currency you earned during this run</li>
+                <li>Try again with a different strategy</li>
+            </ul>
+        </div>
+
+        <div class="encouragement">
+            <h3>💪 Don't Give Up!</h3>
+            <p>Every defeat is a learning experience. Each run makes you stronger!</p>
+        </div>
+    </div>
+
+    <div class="defeat-actions">
+        <a href="/home-realm" class="btn btn-primary">Return to Home Realm</a>
+        <a href="/game" class="btn btn-secondary">Try Again</a>
+    </div>
+</div>
+
+<style>
+.defeat-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    text-align: center;
+}
+
+.defeat-header {
+    margin-bottom: 2rem;
+}
+
+.defeat-title {
+    font-size: 3rem;
+    color: #dc3545;
+    margin-bottom: 1rem;
+}
+
+.defeat-subtitle {
+    font-size: 1.5rem;
+    color: #6c757d;
+}
+
+.defeat-content {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.enemy-victorious, .defeat-message, .encouragement {
+    margin-bottom: 2rem;
+}
+
+.enemy-victorious h3, .defeat-message h3, .encouragement h3 {
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+.enemy-info p {
+    margin: 0.5rem 0;
+    color: #6c757d;
+}
+
+.defeat-options {
+    text-align: left;
+    max-width: 500px;
+    margin: 1rem auto;
+    padding-left: 1.5rem;
+}
+
+.defeat-options li {
+    margin: 0.5rem 0;
+    color: #495057;
+}
+
+.encouragement {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 5px;
+    padding: 1rem;
+}
+
+.encouragement h3 {
+    color: #721c24;
+}
+
+.encouragement p {
+    color: #721c24;
+    margin: 0;
+}
+
+.defeat-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #c82333;
+    color: white;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+    color: white;
+}
+</style> 

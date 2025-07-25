@@ -14,7 +14,6 @@ import {
   createRunData,
 } from '../services/saveSchemas.js';
 import { handleRouteError } from '../middlewares/errorHandler.js';
-import { createShuffledStandardDeck } from '../services/deckService.js';
 
 const router = express.Router();
 
@@ -362,13 +361,6 @@ router.post('/new-run', requireAuth, async (req, res) => {
           // Skip empty spaces for non-first/last rows
         }
       }
-
-      // Initialize player deck using deck service
-      const playerDeck = createShuffledStandardDeck().map((card) => ({
-        value: card.value,
-        suit: card.suit,
-        type: card.type || 'standard',
-      }));
 
       // Clear run data but preserve game data and generate new map
       activeSave.runData = createRunData({

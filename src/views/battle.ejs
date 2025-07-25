@@ -1,236 +1,278 @@
 <% var pageScript = '/js/battle.js'; var page = 'battle'; %>
+<style>
+@keyframes hitFade {
+    0% {
+        opacity: 1;
+        transform: scale(0.5) translateY(0);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.2) translateY(-20px);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1) translateY(-40px);
+    }
+}
+</style>
 <div class="battle-container">
-    <!-- Battle Header -->
-    <div class="battle-header">
-        <div class="row">
-            <div class="col-md-6">
-                <h2>Battle</h2>
-                <p class="battle-subtitle">Fighting <%= enemy.name %></p>
-            </div>
-            <div class="col-md-6">
-                <div class="battle-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Turn:</span>
-                        <span class="stat-value"><%= battleState.turn %></span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Phase:</span>
-                        <span class="stat-value"><%= battleState.phase %></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+         <!-- Battle Header -->
+     <div class="battle-header">
+         <h2>Battle</h2>
+     </div>
 
-    <!-- Enemy Section -->
-    <div class="enemy-section">
-        <div class="enemy-card">
-            <h3><%= enemy.name %></h3>
-            <div class="enemy-stats">
-                <div class="stat-row">
-                    <span class="stat-label">Health:</span>
-                    <div class="health-bar enemy-health">
-                        <div class="health-fill" style="width: <%= (enemy.health / enemy.maxHealth) * 100 %>%"></div>
-                    </div>
-                    <span class="stat-value"><%= enemy.health %>/<%= enemy.maxHealth %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Weapon:</span>
-                    <span class="stat-value"><%= enemy.weapon %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Power:</span>
-                    <span class="stat-value"><%= enemy.stats.power %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Will:</span>
-                    <span class="stat-value"><%= enemy.stats.will %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Craft:</span>
-                    <span class="stat-value"><%= enemy.stats.craft %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Focus:</span>
-                    <span class="stat-value"><%= enemy.stats.focus %></span>
-                </div>
-            </div>
-        </div>
-    </div>
+         <!-- Main Battle Area -->
+     <div class="battle-main">
+         <!-- Player Section (Left) -->
+         <div class="player-section">
+             <div class="player-card">
+                 <div class="player-info">
+                     <h3>You</h3>
+                     <div class="health-bar player-health">
+                         <div class="health-fill" style="width: <%= (player.health / player.maxHealth) * 100 %>%"></div>
+                     </div>
+                     <div class="health-text"><%= player.health %>/<%= player.maxHealth %></div>
+                 </div>
+                 <div class="player-avatar">👤</div>
+             </div>
+         </div>
 
-    <!-- Player Section -->
-    <div class="player-section">
-        <div class="player-card">
-            <h3>Your Character</h3>
-            <div class="player-stats">
-                <div class="stat-row">
-                    <span class="stat-label">Health:</span>
-                    <div class="health-bar player-health">
-                        <div class="health-fill" style="width: <%= (player.health / player.maxHealth) * 100 %>%"></div>
-                    </div>
-                    <span class="stat-value"><%= player.health %>/<%= player.maxHealth %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Current Weapon:</span>
-                    <span class="stat-value"><%= player.currentWeapon %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Current Armor:</span>
-                    <span class="stat-value"><%= player.currentArmor %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Power:</span>
-                    <span class="stat-value"><%= player.stats.power %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Will:</span>
-                    <span class="stat-value"><%= player.stats.will %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Craft:</span>
-                    <span class="stat-value"><%= player.stats.craft %></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Focus:</span>
-                    <span class="stat-value"><%= player.stats.focus %></span>
-                </div>
-            </div>
-        </div>
-    </div>
+         <!-- Phase Indicator (Center) -->
+         <div class="phase-indicator" id="phase-indicator">
+             <% if (battleState.phase === 'player-attack') { %>
+                 <span class="phase-badge attack">Your Turn - Attack!</span>
+             <% } else if (battleState.phase === 'player-defend') { %>
+                 <span class="phase-badge defend">Defend!</span>
+             <% } else if (battleState.phase === 'enemy-turn') { %>
+                 <span class="phase-badge enemy">Enemy Thinking...</span>
+             <% } %>
+         </div>
 
-    <!-- Battle Actions -->
-    <div class="battle-actions">
-        <div class="row">
-            <div class="col-md-4">
-                <button class="btn btn-primary" onclick="drawCards()" <%= battleState.canDraw ? '' : 'disabled' %>>
-                    Draw Cards
-                </button>
-            </div>
-            <div class="col-md-4">
-                <button class="btn btn-secondary" onclick="switchWeapon()" <%= battleState.canSwitchWeapon ? '' : 'disabled' %>>
-                    Switch Weapon
-                </button>
-            </div>
-            <div class="col-md-4">
-                <button class="btn btn-warning" onclick="endTurn()" <%= battleState.canEndTurn ? '' : 'disabled' %>>
-                    End Turn
-                </button>
-            </div>
-        </div>
-    </div>
+         <!-- Enemy Section (Right) -->
+         <div class="enemy-section">
+             <div class="enemy-card">
+                 <div class="enemy-avatar">
+                     <% 
+                     const enemyEmojis = ['👹', '👻', '💀'];
+                     const randomIndex = Math.floor(Math.random() * enemyEmojis.length);
+                     %>
+                     <%= enemyEmojis[randomIndex] %>
+                 </div>
+                 <div class="enemy-info">
+                     <h3>Enemy</h3>
+                     <div class="health-bar enemy-health">
+                         <div class="health-fill" style="width: <%= (enemy.health / enemy.maxHealth) * 100 %>%"></div>
+                     </div>
+                     <div class="health-text"><%= enemy.health %>/<%= enemy.maxHealth %></div>
+                 </div>
+             </div>
+         </div>
+     </div>
 
-    <!-- Player Hand -->
-    <div class="hand-section">
-        <h4>Your Hand</h4>
-        <div class="hand-container" id="player-hand">
-            <% if (player.hand && player.hand.length > 0) { %>
-                <% player.hand.forEach((card, index) => { %>
-                <div class="hand-card" onclick="playCard(<%= index %>)">
-                    <div class="card <%= card.suit %>">
-                        <div class="card-value"><%= card.value %></div>
-                        <div class="card-suit"><%= card.suitSymbol %></div>
+    <!-- Player Actions Section (Hand + Weapons) -->
+    <div class="player-actions-section">
+                 <!-- Player Hand (Left side - 70%) -->
+         <div class="hand-section">
+             <h4>Your Hand (<span id="hand-count"><%= player.hand.length %></span>/<%= player.stats.focus %>)</h4>
+             
+             <!-- Sort Button -->
+             <div class="sort-controls">
+                 <button class="sort-btn" data-sort="value" onclick="toggleSortType()">Sort</button>
+             </div>
+             
+             <div class="hand-container" id="player-hand">
+                 <% if (player.hand && player.hand.length > 0) { %>
+                     <% player.hand.forEach((card, index) => { %>
+                     <div class="hand-card" onclick="playCard(<%= index %>)">
+                         <div class="card <%= card.suit %>">
+                             <div class="card-value"><%= card.value %></div>
+                             <div class="card-suit">
+                                 <% if (card.suit === 'hearts') { %>♥️<% } %>
+                                 <% if (card.suit === 'diamonds') { %>♦️<% } %>
+                                 <% if (card.suit === 'clubs') { %>♣️<% } %>
+                                 <% if (card.suit === 'spades') { %>♠️<% } %>
+                             </div>
+                         </div>
+                     </div>
+                     <% }); %>
+                 <% } else { %>
+                     <p class="no-cards">No cards in hand</p>
+                 <% } %>
+             </div>
+             
+             <!-- Armor Display -->
+             <div class="armor-display">
+                 <h5>Your Armor</h5>
+                 <div class="armor-options">
+                     <% player.equipment.armors.forEach(armor => { %>
+                                           <div class="armor-option <%= armor.equipped ? 'equipped' : '' %>" 
+                           data-tooltip="<%= armor.name %>: <%= getArmorCondition(armor.id) %>">
+                         <div class="armor-icon">
+                             <%= armor.emoji || '🛡️' %>
+                         </div>
+                     </div>
+                     <% }); %>
+                 </div>
+             </div>
+         </div>
+
+        <!-- Weapon Selection (Right side - 30%) -->
+        <div class="weapon-section">
+            <h4>Select Weapon</h4>
+            <div class="weapon-options">
+                <% player.equipment.weapons.forEach(weapon => { %>
+                <div class="weapon-option <%= weapon.id === player.currentWeapon ? 'selected' : '' %>" 
+                     onclick="selectWeapon('<%= weapon.id %>')"
+                     data-tooltip="<%= getWeaponCondition(weapon.id) %>">
+                    <div class="weapon-icon">
+                        <%= weapon.emoji || '⚔️' %>
                     </div>
                 </div>
                 <% }); %>
-            <% } else { %>
-                <p class="no-cards">No cards in hand. Draw cards to continue.</p>
-            <% } %>
-        </div>
-    </div>
-
-    <!-- Battle Log -->
-    <div class="battle-log">
-        <h4>Battle Log</h4>
-        <div class="log-container" id="battle-log">
-            <% if (battleState.log && battleState.log.length > 0) { %>
-                <% battleState.log.forEach(logEntry => { %>
-                <div class="log-entry <%= logEntry.type %>">
-                    <span class="log-turn"><%= logEntry.turn %>:</span>
-                    <span class="log-message"><%= logEntry.message %></span>
-                </div>
-                <% }); %>
-            <% } else { %>
-                <p class="no-log">Battle log will appear here.</p>
-            <% } %>
-        </div>
-    </div>
-
-    <!-- Equipment Selection -->
-    <div class="equipment-section">
-        <h4>Available Equipment</h4>
-        <div class="equipment-container">
-            <div class="weapons-section">
-                <h5>Weapons</h5>
-                <div class="weapons-list">
-                    <% player.equipment.weapons.forEach(weapon => { %>
-                    <div class="equipment-item <%= weapon.id === player.currentWeapon ? 'selected' : '' %>">
-                        <span class="equipment-name"><%= weapon.name %></span>
-                        <span class="equipment-desc"><%= weapon.description %></span>
-                    </div>
-                    <% }); %>
-                </div>
             </div>
-            <div class="armor-section">
-                <h5>Armor</h5>
-                <div class="armor-list">
-                    <% player.equipment.armor.forEach(armor => { %>
-                    <div class="equipment-item <%= armor.id === player.currentArmor ? 'selected' : '' %>">
-                        <span class="equipment-name"><%= armor.name %></span>
-                        <span class="equipment-desc"><%= armor.description %></span>
-                    </div>
-                    <% }); %>
+            <div class="weapon-condition">
+                <h5 id="weapon-name-heading"><%= player.equipment.weapons.find(w => w.id === player.currentWeapon)?.name || 'No Weapon' %></h5>
+                <div class="weapon-condition-text" id="weapon-condition-text">
+                    <%= getWeaponCondition(player.currentWeapon) %>
                 </div>
             </div>
         </div>
     </div>
+
+         <!-- Battle Log -->
+     <div class="battle-log">
+         <h4>Battle Log</h4>
+         <div class="log-container" id="battle-log">
+         </div>
+     </div>
 </div>
 
-<!-- Card Details Modal -->
-<div class="modal fade" id="cardModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Card Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="card-details" id="card-details">
-                    <!-- Card details will be populated by JavaScript -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
+<script type="module">
+// Import game constants
+import { EQUIPMENT, CARD_VALUES } from '/js/modules/gameConstants.js';
 
-<!-- Weapon Selection Modal -->
-<div class="modal fade" id="weaponModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Select Weapon</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="weapon-options" id="weapon-options">
-                    <!-- Weapon options will be populated by JavaScript -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="confirmWeaponSelection()">Select Weapon</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
 // Battle state management
 let currentBattleState = <%- JSON.stringify(battleState) %>;
-let selectedCardIndex = null;
-let selectedWeapon = null;
+let currentPlayer = <%- JSON.stringify(player) %>;
+let currentEnemy = <%- JSON.stringify(enemy) %>;
+let selectedWeapon = '<%= player.currentWeapon %>'; // Initialize with current weapon
+let isProcessingAction = false;
+
+// Helper function to format card display
+function formatCardDisplay(card) {
+    
+    // Handle both suit symbols and suit names
+    const suitEmoji = {
+        'hearts': '♥️',
+        'diamonds': '♦️',
+        'clubs': '♣️',
+        'spades': '♠️',
+        '♥': '♥️',
+        '♦': '♦️',
+        '♣': '♣️',
+        '♠': '♠️'
+    };
+    
+    // Convert numeric values to card names
+    let cardValue = card.value;
+    if (card.value === '1') cardValue = 'A';
+    else if (card.value === '11') cardValue = 'J';
+    else if (card.value === '12') cardValue = 'Q';
+    else if (card.value === '13') cardValue = 'K';
+    else if (card.value === '14') cardValue = 'A';
+    
+    const result = `${cardValue}${suitEmoji[card.suit] || '?'}`;
+    return result;
+}
+
+// Helper function to calculate best armor for a given card
+function calculateBestArmor(availableArmors, card, rawDamage) {
+    
+    if (!availableArmors || availableArmors.length === 0) {
+        return { id: 'none', value: 'none' };
+    }
+
+    let bestArmor = null;
+    let bestMitigation = 1.0; // 1.0 = no mitigation (100% damage)
+
+    for (const armor of availableArmors) {
+        // Calculate damage mitigation for this armor and card
+        const mitigation = calculateDamageMitigation([armor], card, rawDamage);
+        const damageMultiplier = mitigation.finalDamage / rawDamage;
+        
+        if (damageMultiplier < bestMitigation) {
+            bestMitigation = damageMultiplier;
+            bestArmor = armor;
+        }
+    }
+
+    // If no armor found or no armor is better than taking full damage, use 'none'
+    if (!bestArmor || bestMitigation >= 1.0) {
+        return { id: 'none', value: 'none' };
+    }
+
+    return bestArmor;
+}
+
+// Helper function to calculate damage mitigation
+function calculateDamageMitigation(armors, card, rawDamage) {
+    if (!armors || armors.length === 0) {
+        return { finalDamage: rawDamage };
+    }
+    
+    let bestReduction = 1.0;
+    let bestArmor = null;
+    
+    for (const armor of armors) {
+        const armorData = EQUIPMENT.armor[armor.id || armor.value];
+        if (!armorData || !armorData.hitEffects) {
+            continue;
+        }
+        
+        // Convert card value to numeric for comparison using imported CARD_VALUES
+        const cardValue = CARD_VALUES[card.value] || parseInt(card.value);
+        
+        // Check each hit effect
+        for (const hitEffect of armorData.hitEffects) {
+            const condition = hitEffect.condition;
+            let shouldApply = false;
+            
+            if (condition.type === 'range' && cardValue >= condition.from && cardValue <= condition.to) {
+                shouldApply = true;
+            } else if (condition.type === 'card' && card.value === condition.value) {
+                shouldApply = true;
+            } else if (condition.type === 'color' && condition.value === 'red' && 
+                      ['hearts', 'diamonds'].includes(card.suit)) {
+                shouldApply = true;
+            } else if (condition.type === 'suit' && card.suit === condition.value) {
+                shouldApply = true;
+            }
+            
+            if (shouldApply) {
+                const multiplier = EQUIPMENT.effectToMultiplier[hitEffect.effect];
+                if (multiplier < bestReduction) {
+                    bestReduction = multiplier;
+                    bestArmor = armor;
+                }
+            }
+        }
+    }
+    
+    const finalDamage = Math.floor(rawDamage * bestReduction);
+    const damageReduced = rawDamage - finalDamage;
+    
+    return { 
+        finalDamage: finalDamage,
+        damageReduced: damageReduced,
+        armorUsed: bestArmor,
+        reductionMultiplier: bestReduction
+    };
+}
+
+// Helper function to get armor data
+function getArmorData(armorValue) {
+    return EQUIPMENT.armor[armorValue];
+}
 
 // Initialize battle interface
 document.addEventListener('DOMContentLoaded', function() {
@@ -238,265 +280,583 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeBattle() {
+    // Validate battle state
+    if (!currentBattleState || currentBattleState.phase === undefined) {
+        console.error('Invalid battle state on initialization - redirecting to game');
+        window.location.href = '/game';
+        return;
+    }
+    
+    // Sort by value by default on battle start
+    sortHand();
     updateBattleInterface();
-    scrollToBottom();
+    updatePhaseMessage();
+    
+    // Auto-process enemy turn if it's enemy turn
+    if (currentBattleState.phase === 'enemy-turn') {
+        setTimeout(() => {
+            processEnemyTurn();
+        }, 1000);
+    }
 }
 
 function updateBattleInterface() {
-    // Update health bars
     updateHealthBars();
-    
-    // Update action buttons
-    updateActionButtons();
-    
-    // Update hand display
     updateHandDisplay();
-    
-    // Update battle log
-    updateBattleLog();
+    updateWeaponSelection();
+    updateSortButtons();
 }
 
 function updateHealthBars() {
     const enemyHealthBar = document.querySelector('.enemy-health .health-fill');
     const playerHealthBar = document.querySelector('.player-health .health-fill');
+    const enemyHealthText = document.querySelector('.enemy-info .health-text');
+    const playerHealthText = document.querySelector('.player-info .health-text');
     
     if (enemyHealthBar) {
-        enemyHealthBar.style.width = (currentBattleState.enemy.health / currentBattleState.enemy.maxHealth) * 100 + '%';
+        enemyHealthBar.style.width = (currentEnemy.health / currentEnemy.maxHealth) * 100 + '%';
     }
     
     if (playerHealthBar) {
-        playerHealthBar.style.width = (currentBattleState.player.health / currentBattleState.player.maxHealth) * 100 + '%';
+        playerHealthBar.style.width = (currentPlayer.health / currentPlayer.maxHealth) * 100 + '%';
+    }
+    
+    // Update health text
+    if (enemyHealthText) {
+        enemyHealthText.textContent = currentEnemy.health + '/' + currentEnemy.maxHealth;
+    }
+    
+    if (playerHealthText) {
+        playerHealthText.textContent = currentPlayer.health + '/' + currentPlayer.maxHealth;
     }
 }
 
-function updateActionButtons() {
-    const drawButton = document.querySelector('button[onclick="drawCards()"]');
-    const switchButton = document.querySelector('button[onclick="switchWeapon()"]');
-    const endTurnButton = document.querySelector('button[onclick="endTurn()"]');
+// Sort state
+let currentSortType = 'value'; // 'value', 'suit' - default to value
+
+function sortHand() {
+    if (!currentPlayer.hand || currentPlayer.hand.length === 0) return;
     
-    if (drawButton) {
-        drawButton.disabled = !currentBattleState.canDraw;
+    const sortedHand = [...currentPlayer.hand];
+    
+    if (currentSortType === 'value') {
+        sortedHand.sort((a, b) => {
+            const valueA = CARD_VALUES[a.value] || 0;
+            const valueB = CARD_VALUES[b.value] || 0;
+            return valueB - valueA; // Descending order
+        });
+    } else if (currentSortType === 'suit') {
+        const suitOrder = { 'hearts': 0, 'diamonds': 1, 'clubs': 2, 'spades': 3 };
+        sortedHand.sort((a, b) => {
+            const suitA = suitOrder[a.suit] || 0;
+            const suitB = suitOrder[b.suit] || 0;
+            if (suitA !== suitB) return suitA - suitB;
+            // If same suit, sort by value (descending)
+            const valueA = CARD_VALUES[a.value] || 0;
+            const valueB = CARD_VALUES[b.value] || 0;
+            return valueB - valueA;
+        });
     }
     
-    if (switchButton) {
-        switchButton.disabled = !currentBattleState.canSwitchWeapon;
-    }
-    
-    if (endTurnButton) {
-        endTurnButton.disabled = !currentBattleState.canEndTurn;
-    }
+    currentPlayer.hand = sortedHand;
+    updateHandDisplay();
+    updateSortButtons();
+}
+
+function toggleSortType() {
+    // Toggle between value and suit
+    currentSortType = currentSortType === 'value' ? 'suit' : 'value';
+    sortHand();
+}
+
+function updateSortButtons() {
+    const sortButtons = document.querySelectorAll('.sort-btn');
+    sortButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.sort === currentSortType) {
+            btn.classList.add('active');
+        }
+    });
 }
 
 function updateHandDisplay() {
     const handContainer = document.getElementById('player-hand');
+    const handCountElement = document.getElementById('hand-count');
     if (!handContainer) return;
     
-    if (currentBattleState.player.hand && currentBattleState.player.hand.length > 0) {
+    // Update hand count display
+    if (handCountElement) {
+        handCountElement.textContent = currentPlayer.hand.length;
+    }
+    
+    if (currentPlayer.hand && currentPlayer.hand.length > 0) {
         handContainer.innerHTML = '';
-        currentBattleState.player.hand.forEach((card, index) => {
+        currentPlayer.hand.forEach((card, index) => {
             const cardDiv = document.createElement('div');
             cardDiv.className = 'hand-card';
+            cardDiv.onclick = () => playCard(index);
+            
+            // Make cards look non-clickable during enemy turn
+            if (currentBattleState.turn === 'enemy') {
+                cardDiv.classList.add('disabled');
+                cardDiv.onclick = null; // Remove click handler during enemy turn
+            }
+            
+            const suitEmoji = {
+                'hearts': '♥️',
+                'diamonds': '♦️',
+                'clubs': '♣️',
+                'spades': '♠️'
+            };
+            
             cardDiv.innerHTML = `
-                <div class="card ${card.suit}" onclick="playCard(${index})">
+                <div class="card ${card.suit}">
                     <div class="card-value">${card.value}</div>
-                    <div class="card-suit">${card.suitSymbol}</div>
+                    <div class="card-suit">${suitEmoji[card.suit]}</div>
                 </div>
             `;
             handContainer.appendChild(cardDiv);
         });
+        
     } else {
-        handContainer.innerHTML = '<p class="no-cards">No cards in hand. Draw cards to continue.</p>';
+        handContainer.innerHTML = '<p class="no-cards">No cards in hand</p>';
     }
 }
 
-function updateBattleLog() {
+function updateWeaponSelection() {
+    // Update weapon selection display
+    const weaponOptions = document.querySelectorAll('.weapon-option');
+    weaponOptions.forEach(option => {
+        option.classList.remove('selected', 'disabled');
+        if (option.onclick.toString().includes(selectedWeapon)) {
+            option.classList.add('selected');
+        }
+        
+        // Disable weapon selection during enemy turn
+        if (currentBattleState.turn === 'enemy') {
+            option.classList.add('disabled');
+        }
+    });
+    
+    // Update weapon condition display
+    updateWeaponCondition(selectedWeapon);
+}
+
+function updatePhaseMessage() {
+    const phaseIndicator = document.getElementById('phase-indicator');
+    const handSection = document.querySelector('.hand-section');
+    
+    if (phaseIndicator) {
+        let badgeClass = '';
+        let text = '';
+        let handPhaseClass = '';
+        
+        // Check for defend phase first (enemy has pending damage)
+        if (currentBattleState.pendingEnemyDamage) {
+            badgeClass = 'defend';
+            text = 'Defend!';
+            handPhaseClass = 'phase-defend';
+        } else if (currentBattleState.phase === 'player-attack') {
+            badgeClass = 'attack';
+            text = 'Your Turn - Attack!';
+            handPhaseClass = 'phase-attack';
+        } else if (currentBattleState.phase === 'player-defend') {
+            badgeClass = 'defend';
+            text = 'Defend!';
+            handPhaseClass = 'phase-defend';
+        } else if (currentBattleState.phase === 'enemy-turn') {
+            badgeClass = 'enemy';
+            text = 'Enemy Thinking...';
+            handPhaseClass = 'phase-enemy';
+        } else {
+            // Fallback based on turn
+            if (currentBattleState.turn === 'player') {
+                badgeClass = 'attack';
+                text = 'Your Turn - Attack!';
+                handPhaseClass = 'phase-attack';
+            } else if (currentBattleState.turn === 'enemy') {
+                badgeClass = 'enemy';
+                text = 'Enemy Thinking...';
+                handPhaseClass = 'phase-enemy';
+            } else {
+                badgeClass = 'unknown';
+                text = 'Unknown Phase';
+                handPhaseClass = '';
+            }
+        }
+        
+        phaseIndicator.innerHTML = `<span class="phase-badge ${badgeClass}">${text}</span>`;
+        
+        // Update hand section background based on phase
+        if (handSection) {
+            // Remove all phase classes first
+            handSection.classList.remove('phase-attack', 'phase-defend', 'phase-enemy');
+            // Add the current phase class
+            if (handPhaseClass) {
+                handSection.classList.add(handPhaseClass);
+            }
+        }
+    } else {
+        console.log('Phase indicator element not found');
+    }
+}
+
+function addBattleLog(message) {
     const logContainer = document.getElementById('battle-log');
     if (!logContainer) return;
     
-    if (currentBattleState.log && currentBattleState.log.length > 0) {
-        logContainer.innerHTML = '';
-        currentBattleState.log.forEach(logEntry => {
-            const logDiv = document.createElement('div');
-            logDiv.className = `log-entry ${logEntry.type}`;
-            logDiv.innerHTML = `
-                <span class="log-turn">${logEntry.turn}:</span>
-                <span class="log-message">${logEntry.message}</span>
-            `;
-            logContainer.appendChild(logDiv);
-        });
-    } else {
-        logContainer.innerHTML = '<p class="no-log">Battle log will appear here.</p>';
-    }
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry';
+    logEntry.innerHTML = `<span class="log-message">${message}</span>`;
+    
+    // Add new entries at the top instead of bottom
+    logContainer.insertBefore(logEntry, logContainer.firstChild);
 }
 
-function scrollToBottom() {
-    const logContainer = document.getElementById('battle-log');
-    if (logContainer) {
-        logContainer.scrollTop = logContainer.scrollHeight;
+function showHitAnimation(target) {
+    // Create hit animation element
+    const hitElement = document.createElement('div');
+    hitElement.className = 'hit-animation';
+    hitElement.innerHTML = '💥';
+    hitElement.style.cssText = `
+        position: absolute;
+        font-size: 2rem;
+        z-index: 1000;
+        pointer-events: none;
+        animation: hitFade 1s ease-out forwards;
+    `;
+    
+    // Position the animation
+    if (target === 'enemy') {
+        const enemyAvatar = document.querySelector('.enemy-avatar');
+        if (enemyAvatar) {
+            const rect = enemyAvatar.getBoundingClientRect();
+            hitElement.style.left = (rect.left + rect.width / 2 - 20) + 'px';
+            hitElement.style.top = (rect.top + rect.height / 2 - 20) + 'px';
+        }
+    } else if (target === 'player') {
+        const playerAvatar = document.querySelector('.player-avatar');
+        if (playerAvatar) {
+            const rect = playerAvatar.getBoundingClientRect();
+            hitElement.style.left = (rect.left + rect.width / 2 - 20) + 'px';
+            hitElement.style.top = (rect.top + rect.height / 2 - 20) + 'px';
+        }
     }
+    
+    // Add to page and remove after animation
+    document.body.appendChild(hitElement);
+    setTimeout(() => {
+        if (hitElement.parentNode) {
+            hitElement.parentNode.removeChild(hitElement);
+        }
+    }, 1000);
 }
 
-// Battle actions
-function drawCards() {
-    fetch('/battle/draw-cards', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            currentBattleState = data.battleState;
-            updateBattleInterface();
-        } else {
-            alert('Failed to draw cards: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to draw cards');
+// Make functions globally available for inline onclick handlers
+window.toggleSortType = function() {
+    toggleSortType();
+};
+
+window.playCard = function(cardIndex) {
+    if (isProcessingAction) return;
+    
+    // Check if we're actually in a battle
+    if (!currentBattleState || currentBattleState.phase === undefined) {
+        console.error('Invalid battle state - redirecting to game');
+        window.location.href = '/game';
+        return;
+    }
+    
+    // Prevent playing cards during enemy turn
+    if (currentBattleState.turn === 'enemy') {
+        console.log('Cannot play card during enemy turn');
+        return;
+    }
+    
+    isProcessingAction = true;
+    
+    // Visual feedback - disable all cards and show processing state
+    const allCards = document.querySelectorAll('.hand-card');
+    allCards.forEach(card => {
+        card.classList.add('processing');
     });
-}
-
-function playCard(cardIndex) {
-    selectedCardIndex = cardIndex;
+    
+    const card = currentPlayer.hand[cardIndex];
+    
+    // Determine action and prepare request
+    let action, weaponSelected, armorSelected;
+    
+    if (currentBattleState.pendingEnemyDamage || currentBattleState.phase === 'player-defend') {
+        // Player is defending - calculate best armor
+        action = 'player-defend';
+        
+        // Get available armors from player equipment
+        const availableArmors = currentPlayer.equipment.armors || [];
+        
+        // Calculate best armor for this card and damage
+        const bestArmor = calculateBestArmor(availableArmors, card, currentBattleState.pendingEnemyDamage);
+        armorSelected = bestArmor.id;
+        
+        addBattleLog(`Defending with ${formatCardDisplay(card)} using ${bestArmor.id === 'none' ? 'no armor' : bestArmor.name}`);
+    } else {
+        // Player is attacking
+        action = 'player-attack';
+        weaponSelected = selectedWeapon || currentPlayer.currentWeapon;
+        const weapon = currentPlayer.equipment.weapons.find(w => w.id === weaponSelected);
+        const weaponName = weapon ? weapon.name : 'Bare Hands';
+        
+        addBattleLog(`${weaponName} attack with ${formatCardDisplay(card)}`);
+    }
+    
+    const requestBody = {
+        action: action,
+        cardPlayed: card,
+        weaponSelected: weaponSelected,
+        armorSelected: armorSelected
+    };
     
     fetch('/battle/play-card', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            cardIndex: cardIndex
-        })
+        body: JSON.stringify(requestBody)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            currentBattleState = data.battleState;
-            updateBattleInterface();
             
-            if (data.battleEnded) {
-                if (data.playerWon) {
-                    window.location.href = '/battle/victory';
+            // Update battle state based on new API response
+            if (data.action === 'player-attack') {
+                // Handle attack
+                if (data.damage > 0) {
+                    addBattleLog(`Hit! Enemy takes ${data.damage} damage.`);
+                    showHitAnimation('enemy');
                 } else {
-                    window.location.href = '/battle/defeat';
+                    addBattleLog(`Missed! No damage dealt`);
                 }
+                
+                // Update enemy health
+                currentEnemy.health = data.enemyHp;
+                
+                // Check for victory
+                if (data.nextPhase === 'battle over' && data.playerWon) {
+                    window.location.href = '/battle/end';
+                    return;
+                }
+                
+                // Switch to enemy turn
+                currentBattleState.phase = 'enemy-turn';
+                currentBattleState.turn = 'enemy';
+                
+                // Auto-process enemy turn after a short delay
+                setTimeout(() => {
+                    processEnemyTurn();
+                }, 1000);
+                
+                         } else if (data.action === 'player-defend') {
+                 // Handle defense
+                 if (data.rawDamage > 0 && data.damage === data.rawDamage) {
+                     addBattleLog(`Took ${data.damage} damage. Was not able to defend.`);
+                     showHitAnimation('player');
+                 } else if (data.rawDamage > 0 && data.damage === 0) {
+                     addBattleLog(`You avoided all damage!`);
+                 } else if (data.rawDamage > 0 && data.damage < data.rawDamage) {
+                     addBattleLog(`Blocked attack. Damage reduced from ${data.rawDamage} to ${data.damage}.`);
+                     if (data.damage > 0) {
+                         showHitAnimation('player');
+                     }
+                 } else if (data.rawDamage === 0 && data.damage === 0) {
+                     addBattleLog(`No damage taken.`);
+                 }
+                
+                // Update player health
+                currentPlayer.health = data.playerHp;
+                
+                // Check for defeat
+                if (data.nextPhase === 'battle over' && !data.playerWon) {
+                    window.location.href = '/battle/end';
+                    return;
+                }
+                
+                // Switch back to player attack
+                currentBattleState.phase = 'player-attack';
+                currentBattleState.turn = 'player';
+                currentBattleState.pendingEnemyDamage = 0;
             }
+            
+            // Update hand
+            currentPlayer.hand = data.playerHand;
+            
+            // Re-sort the hand after cards are added/removed
+            sortHand();
+            
+            updateBattleInterface();
+            updatePhaseMessage();
+            
+            // Re-enable cards after update, but keep disabled state during enemy turn
+            const allCards = document.querySelectorAll('.hand-card');
+            allCards.forEach(card => {
+                card.classList.remove('processing');
+                // Only remove disabled if it's not enemy turn
+                if (currentBattleState.turn !== 'enemy') {
+                    card.classList.remove('disabled');
+                }
+            });
+            
         } else {
+            console.error('Play card error:', data.error);
+            if (data.currentState) {
+                // Update state with current state from server
+                currentBattleState.phase = data.currentState.phase;
+                currentBattleState.turn = data.currentState.turn;
+                currentPlayer.health = data.currentState.playerHp;
+                currentEnemy.health = data.currentState.enemyHp;
+                updateBattleInterface();
+                updatePhaseMessage();
+            }
             alert('Failed to play card: ' + data.error);
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to play card');
+        console.error('Network error:', error);
+        alert('Network error. Please try again.');
+    })
+    .finally(() => {
+        isProcessingAction = false;
     });
-}
+};
 
-function switchWeapon() {
-    // Populate weapon options
-    const weaponOptions = document.getElementById('weapon-options');
-    if (!weaponOptions) return;
+// Make functions globally available for inline onclick handlers
+window.selectWeapon = function(weaponId) {
+    // Prevent weapon selection during enemy turn
+    if (currentBattleState.turn === 'enemy') {
+        console.log('Cannot select weapon during enemy turn');
+        return;
+    }
     
-    weaponOptions.innerHTML = '';
-    currentBattleState.player.equipment.weapons.forEach(weapon => {
-        const weaponDiv = document.createElement('div');
-        weaponDiv.className = `weapon-option ${weapon.id === currentBattleState.player.currentWeapon ? 'selected' : ''}`;
-        weaponDiv.onclick = () => selectWeapon(weapon.id);
-        weaponDiv.innerHTML = `
-            <h6>${weapon.name}</h6>
-            <p>${weapon.description}</p>
-        `;
-        weaponOptions.appendChild(weaponDiv);
-    });
-    
-    new bootstrap.Modal(document.getElementById('weaponModal')).show();
-}
-
-function selectWeapon(weaponId) {
     selectedWeapon = weaponId;
     
     // Update selection display
     const weaponOptions = document.querySelectorAll('.weapon-option');
-    weaponOptions.forEach(option => option.classList.remove('selected'));
-    event.target.closest('.weapon-option').classList.add('selected');
+    weaponOptions.forEach(option => {
+        option.classList.remove('selected');
+        if (option.onclick.toString().includes(weaponId)) {
+            option.classList.add('selected');
+        }
+    });
+    
+    // Update weapon condition display
+    updateWeaponCondition(weaponId);
+};
+
+function updateWeaponCondition(weaponId) {
+    const conditionText = document.getElementById('weapon-condition-text');
+    const nameHeading = document.getElementById('weapon-name-heading');
+    if (!conditionText || !nameHeading) return;
+    
+    // Find the weapon in the current player's equipment
+    const weapon = currentPlayer.equipment.weapons.find(w => w.id === weaponId);
+    if (weapon) {
+        nameHeading.textContent = weapon.name;
+        conditionText.textContent = weapon.cardCondition || 'Unknown weapon';
+    } else {
+        nameHeading.textContent = 'No Weapon';
+        conditionText.textContent = 'Unknown weapon';
+    }
 }
 
-function confirmWeaponSelection() {
-    if (!selectedWeapon) {
-        alert('Please select a weapon first.');
-        return;
-    }
+
+
+function processEnemyTurn() {
+    if (isProcessingAction) return;
+    isProcessingAction = true;
     
-    fetch('/battle/switch-weapon', {
+    console.log('Processing enemy turn...');
+    addBattleLog('Enemy is taking their turn...');
+    
+    fetch('/battle/enemy-turn', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            weaponId: selectedWeapon
+            action: 'enemy-turn',
+            cardPlayed: null,
+            weaponSelected: null
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            currentBattleState = data.battleState;
-            updateBattleInterface();
-            bootstrap.Modal.getInstance(document.getElementById('weaponModal')).hide();
-        } else {
-            alert('Failed to switch weapon: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to switch weapon');
-    });
-}
-
-function endTurn() {
-    fetch('/battle/end-turn', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            currentBattleState = data.battleState;
-            updateBattleInterface();
+            console.log('Enemy turn response:', data);
             
-            if (data.battleEnded) {
-                if (data.playerWon) {
-                    window.location.href = '/battle/victory';
+            // Update battle state based on new API response
+            if (data.nextPhase === 'player defend') {
+                // Enemy is attacking - player needs to defend
+                const enemyCard = data.cardPlayed;
+                const enemyWeapon = data.weaponUsed;
+                const damage = data.rawDamage;
+                
+                                 addBattleLog(`Enemy played ${formatCardDisplay(enemyCard)}. ${enemyWeapon} attack for ${damage} damage.`);
+                 
+                 // Set pending damage for player to defend
+                 currentBattleState.pendingEnemyDamage = damage;
+                 currentBattleState.phase = 'player-defend';
+                 currentBattleState.turn = 'player';
+            } else if (data.nextPhase === 'player attack if miss') {
+                // Enemy missed
+                if (data.cardPlayed) {
+                    addBattleLog(`Enemy played ${formatCardDisplay(data.cardPlayed)}. ${data.weaponUsed} missed.`);
                 } else {
-                    window.location.href = '/battle/defeat';
+                    addBattleLog('Enemy missed!');
                 }
+                
+                // Switch to player attack
+                currentBattleState.phase = 'player-attack';
+                currentBattleState.turn = 'player';
+                currentBattleState.pendingEnemyDamage = 0;
             }
+            
+            console.log('Updated currentBattleState:', {
+                turn: currentBattleState.turn,
+                phase: currentBattleState.phase,
+                pendingEnemyDamage: currentBattleState.pendingEnemyDamage
+            });
+            
+            updateBattleInterface();
+            updatePhaseMessage();
+            
+            // Re-enable cards after update, but keep disabled state during enemy turn
+            const allCards = document.querySelectorAll('.hand-card');
+            allCards.forEach(card => {
+                card.classList.remove('processing');
+                // Only remove disabled if it's not enemy turn
+                if (currentBattleState.turn !== 'enemy') {
+                    card.classList.remove('disabled');
+                }
+            });
+            
         } else {
-            alert('Failed to end turn: ' + data.error);
+            console.error('Enemy turn error:', data.error);
+            if (data.currentState) {
+                // Update state with current state from server
+                currentBattleState.phase = data.currentState.phase;
+                currentBattleState.turn = data.currentState.turn;
+                currentPlayer.health = data.currentState.playerHp;
+                currentEnemy.health = data.currentState.enemyHp;
+                updateBattleInterface();
+                updatePhaseMessage();
+            }
+            alert('Failed to process enemy turn: ' + data.error);
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to end turn');
+        console.error('Network error:', error);
+        alert('Network error. Please try again.');
+    })
+    .finally(() => {
+        isProcessingAction = false;
     });
 }
-
-// Auto-scroll log when new entries are added
-const observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-        if (mutation.type === 'childList') {
-            scrollToBottom();
-        }
-    });
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    const logContainer = document.getElementById('battle-log');
-    if (logContainer) {
-        observer.observe(logContainer, { childList: true });
-    }
-});
 </script> 

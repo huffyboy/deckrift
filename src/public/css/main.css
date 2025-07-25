@@ -125,7 +125,7 @@ h6 {
 
 .game-stat {
   text-align: center;
-  padding: 1rem;
+  padding: 0.5rem;
   background: rgba(74, 44, 143, 0.1);
   border-radius: 8px;
   border: 1px solid rgba(74, 44, 143, 0.3);
@@ -188,7 +188,6 @@ h6 {
   background: rgba(139, 0, 0, 0.6);
   border: 2px solid rgba(139, 0, 0, 0.8);
   border-radius: 8px;
-  margin: 0.5rem 0;
   overflow: hidden;
 }
 
@@ -746,81 +745,7 @@ h6 {
 }
 
 /* ===== BATTLE SCREEN ===== */
-.battle-content {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.battle-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
-  border-radius: 8px;
-  border: 2px solid #4a2c8f;
-}
-
-.enemy-info h2 {
-  margin-bottom: 0.5rem;
-}
-
-.enemy-stats,
-.player-info {
-  display: flex;
-  gap: 1rem;
-  font-size: 1rem;
-}
-
-.battle-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  padding: 2rem;
-  background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
-  border-radius: 12px;
-  border: 2px solid #4a2c8f;
-  margin: 1rem 0;
-}
-
-.enemy-area,
-.player-area {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-}
-
-.enemy-card {
-  width: 120px;
-  height: 180px;
-  background: linear-gradient(135deg, #8b0000, #dc143c);
-  border: 2px solid #d4af37;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-.player-hand {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.battle-controls {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  padding: 1rem;
-}
+/* Battle styles moved to battle.css */
 
 /* ===== EVENT SCREEN ===== */
 .event-content {

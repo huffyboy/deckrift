@@ -2031,6 +2031,15 @@ export const ARTIFACT_DETAILS = {
     emoji: '⚔️',
     flavorText: 'A reliable sword that provides balanced offense and defense.',
   },
+  none: {
+    name: 'Bare Hands',
+    type: 'weapon',
+    effect: 'none',
+    emoji: '👊',
+    flavorText: 'Sometimes the best weapon is no weapon at all.',
+    effectText:
+      'Fighting with your bare hands. Face cards deal half damage, Ace deals full damage.',
+  },
 };
 
 // Legacy ARTIFACTS constant for backward compatibility

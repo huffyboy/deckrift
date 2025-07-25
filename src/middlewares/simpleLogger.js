@@ -15,7 +15,7 @@ const simpleLogger = (req, res, next) => {
     originalEnd.call(this, chunk, encoding);
 
     // Log request details
-    const { method, path } = req;
+    const { method, originalUrl } = req;
     const { statusCode } = res;
 
     // Ignore noisy requests
@@ -26,8 +26,8 @@ const simpleLogger = (req, res, next) => {
       '/sitemap.xml',
     ];
 
-    if (!ignoredPaths.includes(path)) {
-      logger.http(`${method} ${path} - ${statusCode}`);
+    if (!ignoredPaths.includes(originalUrl)) {
+      logger.http(`${method} ${originalUrl} - ${statusCode}`);
     }
   };
 

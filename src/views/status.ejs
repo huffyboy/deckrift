@@ -17,7 +17,7 @@
                     <strong>Health:</strong> <%= gameSave.runData.health %>/<%= gameSave.runData.maxHealth %>
                 </div>
                 <div class="player-info-item">
-                    <strong>Run Currency:</strong> <%= gameSave.runData.currency || 0 %>
+                    <strong>Run Currency:</strong> <%= gameSave.runData.runCurrency || 0 %>
                 </div>
                 <div class="player-info-item">
                     <strong>Realm:</strong> <%= REALMS[gameSave.runData.location.realm] ? REALMS[gameSave.runData.location.realm].name : `Realm ${gameSave.runData.location.realm}` %>

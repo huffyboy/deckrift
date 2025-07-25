@@ -325,11 +325,23 @@ router.get('/', requireAuth, async (req, res, next) => {
     // Load current save
     const saveResult = await saveService.loadSave(userId);
     if (!saveResult.success) {
-      // No save found, redirect to new game
-      return res.redirect('/game/new');
+      // No save found, redirect to home realm
+      return res.redirect('/home-realm?message=No save found');
     }
 
     const saveData = saveResult.saveData;
+
+    // Check if there's an active run
+    if (!saveData.runData.location) {
+      // No active run, redirect to home realm
+      return res.redirect('/home-realm?message=No active run');
+    }
+
+    // Check if we're in a battle
+    if (saveData.runData.fightStatus.inBattle) {
+      // Battle ongoing, redirect to battle page
+      return res.redirect('/battle');
+    }
 
     // Get upgrades from save data (now per-save)
     const unlockedUpgrades = saveData?.gameData?.upgrades || [];
